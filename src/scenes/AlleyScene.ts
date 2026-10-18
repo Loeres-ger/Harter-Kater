@@ -1,19 +1,42 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { item, lookStage, state } from '../state';
-import { BAR_DOOR_SPAWN } from './BarScene';
+import { BAR_BACK_SPAWN, BAR_DOOR_SPAWN } from './BarScene';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
 
+// Draußen: das Kneipengebäude (Dach R, Fassade F/H, Eingang D, Hintertür Q) lässt sich komplett umrunden.
+// Links die Straße (_ = -), Gehwege (,), hinten die Gasse (.), rechts ein Durchgang zum Nachbarhaus (E/N).
+//  # w L g p  Rückwände der Nachbarhäuser (Ziegel, Fenster, Lampe, Graffiti, Rohre)
+//  B Rückseite der Kneipe  C Schornstein  V Lüftung  r Traufe  A Kippenautomat  U zugenagelte Nachbartür
+//  G Container  T Mülltonne  b Kisten  m Müllsäcke  l Laterne  n Bank  zZ parkendes Auto
+//  o Gullydeckel  x Riss  u Pfütze  K Katze  X Dealer  Y Dame
 const MAP = [
-  '########################',
-  '##D###A####L######L#####',
-  '#............GG.T......#',
-  '#..p.........K...Y...b.#',
-  '#.......Y...........X..#',
-  '#....T......p.......bb.#',
-  '########################',
+  '__=__###############################',
+  '_____##w#L#g##w##L#p#w#g##L#w##p#L##',
+  '__=__,,...m............GG.T.....bb.#',
+  '_____,,.....Y....u....K.....x.o....#',
+  '__=__,,.T......................X..m#',
+  '_____,,,,BBBBBBBBBBBBBQBBBB..EEEEEEE',
+  '__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE',
+  '_____,,,,RRRCRRRRRRRRRRRRRR..EEEEEEE',
+  '__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE',
+  '_____,,,,RRRRRRRRRRRVRRRRRR..EEEEEEE',
+  '__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE',
+  '_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE',
+  '__=__,,,,RRRRRRRRRRRRRRRVRR..EEEEEEE',
+  '_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE',
+  '__=__,,,,rrrrrrrrrrrrrrrrrr..EEEEEEE',
+  '_____,,,,FHFFHFFHFFHFFHFFHF..NONNONN',
+  '__=__,,,,FHFAFHFFDFFHFHFFHF..NUNNONN',
+  '_____,,,,,,T,,,,,,,,,,,,,,,,,,,,,,,,',
+  '__=__,,,,,,,,,,,,,,,n,,,,,,,,,Y,,,,,',
+  '_____,,,l,,,,,,,,,,l,,,,,,,,,,l,,,,,',
+  '_____________zZ_____________________',
+  '__=__-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-',
+  '__=_________________________________',
+  '____________________________________',
 ];
 
 const trashSearched = new Map<string, number>();
@@ -29,6 +52,8 @@ const KILLED = ['Handtasche geplündert. Jetzt schnell weg mit der Leiche!', 'Da
 const SLAPPED = ['Handtaschen-Hieb! Aua.', '„Finger weg, Opa!“ *KLATSCH*', 'Pfefferspray! Deine Augen brennen.'];
 // Sichtfeld des Polizisten: Kegel in Laufrichtung (Länge, Breite am Ansatz, Aufweitung) + Nahbereich
 const VIEW_LEN = 96, VIEW_NEAR = 16, VIEW_SPREAD = 0.45, VIEW_CLOSE = 24;
+/** Streife: Reihe und Strecke (in Kacheln) in der Gasse hinter dem Haus */
+const COP_ROW = 3, COP_FROM = 8, COP_TO = 30;
 
 const CAT_LINES = [
   'Das glühende Auge folgt dir. Das blinde auch.',
@@ -72,20 +97,48 @@ export class AlleyScene extends TopDown {
   }
 
   protected mapRows() { return MAP; }
-  protected isWall(ch: string) { return '#DAL'.includes(ch); }
+  protected isWall(ch: string) { return '#wLgpADFHNOU'.includes(ch); }
   protected darkness() { return 0.5; }
-  protected floorKey(x: number, y: number) { return `cobble${(x * 5 + y * 11) % 3}`; }
+  protected floorKey(x: number, y: number) {
+    const ch = this.rows[y][x];
+    if (ch === '=') return 'roadDash';
+    if (ch === '-') return 'roadDashH';
+    if (ch === 'o') return 'manhole';
+    if (ch === 'x') return 'crackCobble';
+    // Bereich bestimmt den Boden unter Objekten: Straße links/unten, Gehweg, sonst Kopfsteinpflaster
+    if (ch === '_' || x <= 4 || y >= 20) return 'road';
+    if (ch === ',' || y >= 17 || (x >= 5 && x <= 8)) return (x * 7 + y * 3) % 5 ? 'walk' : 'walk2';
+    return `cobble${(x * 5 + y * 11) % 3}`;
+  }
 
-  protected tileFor(ch: string): TileInfo {
+  protected tileFor(ch: string, x = 0, y = 0): TileInfo {
     switch (ch) {
       case '#': return { key: 'brickFront', solid: true };
-      case 'D': return { key: 'doorFront', solid: true };
-      case 'A': return { key: 'automat', solid: true };
+      case 'w': return { key: (x * 3 + 1) % 4 ? 'brickWin' : 'brickWinLit', solid: true };
+      case 'g': return { key: 'brickGraffiti', solid: true };
+      case 'p': return { key: 'brickPipe', solid: true };
       case 'L': return { key: 'lampWall', solid: true };
+      case 'B': return { key: 'roofBack', solid: true };
+      case 'Q': return { key: 'backDoor', solid: true };
+      case 'R': return { key: 'roof', solid: true };
+      case 'C': return { key: 'chimney', solid: true };
+      case 'V': return { key: 'vent', solid: true };
+      case 'r': return { key: 'eaves', solid: true };
+      case 'E': return { key: 'roofDark', solid: true };
+      case 'F': return { key: (x + y) % 3 ? 'facade' : 'facade2', solid: true };
+      case 'H': return { key: 'facadeWin', solid: true };
+      case 'D': return { key: 'barDoor', solid: true };
+      case 'A': return { key: 'automat', solid: true };
+      case 'N': return { key: 'brickFacade', solid: true };
+      case 'O': return { key: 'brickFacadeWin', solid: true };
+      case 'U': return { key: 'neighborDoor', solid: true };
       case 'G': return { key: 'dumpster', solid: true, object: true };
       case 'T': return { key: 'trash', solid: true, object: true };
       case 'b': return { key: 'crate', solid: true, object: true };
-      case 'p': return { key: 'puddle', solid: false };
+      case 'm': return { key: 'bags', solid: true, object: true };
+      case 'n': return { key: 'bench', solid: true, object: true };
+      case 'l': case 'z': case 'Z': return { key: '', solid: true }; // Laterne/Auto: eigene Sprites
+      case 'u': return { key: 'puddle', solid: false };
       default: return { key: '', solid: false };
     }
   }
@@ -95,7 +148,7 @@ export class AlleyScene extends TopDown {
     if (state.carrying) return 'Die Katze wartet. Bring ihr das Abendessen.';
     if (this.corpse) return this.corpseCarried ? 'In eine Mülltonne oder den Container damit!' : 'Pack die Leiche (E) und ab in den Müll!';
     if (state.dead) return 'Hol die Leiche aus der Bar.';
-    return 'Kippen am Automat, Stoff beim Dealer, Fusel im Müll.';
+    return 'Automat vorne, Dealer hinten, Fusel im Müll.';
   }
 
   private find(ch: string): [number, number] {
@@ -110,9 +163,16 @@ export class AlleyScene extends TopDown {
     audio.music('alley');
     audio.setRain(true);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audio.setRain(false));
-    // Tür zurück
+    // Türen in die Kneipe: Haupteingang vorne, Hintertür zur Gasse
     const [dx, dy] = this.find('D');
-    this.interacts.push({ x: dx * T + 8, y: (dy + 1) * T + 4, r: 18, label: () => (this.corpse ? 'Erst die Leiche loswerden!' : 'Zurück in die Bar'), act: () => (this.corpse ? this.toast('Mit einer Leiche durch die Kneipe? Lieber nicht.') : this.go('Bar', { spawn: BAR_DOOR_SPAWN })) });
+    const [qx, qy] = this.find('Q');
+    const enter = (spawn: [number, number], label: string) => ({
+      label: () => (this.corpse ? 'Erst die Leiche loswerden!' : label),
+      act: () => (this.corpse ? this.toast('Mit einer Leiche durch die Kneipe? Lieber nicht.') : this.go('Bar', { spawn })),
+    });
+    this.interacts.push({ x: dx * T + 8, y: (dy + 1) * T + 4, r: 18, ...enter(BAR_DOOR_SPAWN, 'Kneipe betreten') });
+    this.interacts.push({ x: qx * T + 8, y: qy * T - 4, r: 18, ...enter(BAR_BACK_SPAWN, 'Hintertür zur Kneipe') });
+    this.buildStreet(dx, dy, qx, qy);
 
     // Zigarettenautomat
     const [ax, ay] = this.find('A');
@@ -170,7 +230,7 @@ export class AlleyScene extends TopDown {
     this.addLight(dealer.x, dealer.y - 10, 0.6, 0.35);
 
     // Streifenpolizist läuft die Gasse auf und ab
-    this.cop = this.add.sprite(4 * T, 4 * T + 14, 'polizist', 6).setOrigin(0.5, 1).setScale(0.5);
+    this.cop = this.add.sprite(COP_FROM * T, COP_ROW * T + 14, 'polizist', 6).setOrigin(0.5, 1).setScale(0.5);
     this.cop.play('polizist_side');
     this.npcs.push(this.cop);
     this.cone = this.add.graphics().setDepth(5001).setBlendMode(Phaser.BlendModes.ADD);
@@ -211,6 +271,38 @@ export class AlleyScene extends TopDown {
       tint: 0x8aa0c8,
       frequency: 12,
     }).setDepth(5002);
+  }
+
+  /** Fassade, Straßenmöbel und Lichter rund ums Haus. */
+  private buildStreet(dx: number, dy: number, qx: number, qy: number) {
+    // Schild über dem Eingang, Außenlampe, Lichtschein der Fenster auf dem Gehweg
+    this.add.image(dx * T + 8, (dy - 1) * T + 7, 'barSign').setScale(0.5).setDepth(2);
+    this.addLight(dx * T + 8, (dy - 1) * T + 6, 0.55, 0.45).setTint(0xff6ab4);
+    this.addLight(dx * T + 8, (dy + 1) * T, 0.8, 0.75).setTint(0xffd080);
+    this.addLight(qx * T + 8, qy * T - 2, 0.6, 0.6).setTint(0xfff0b0);
+    for (let x = 0; x < this.rows[dy].length; x++) if (this.rows[dy][x] === 'H') this.addLight(x * T + 8, (dy + 1) * T + 2, 0.45, 0.32).setTint(0xffb860);
+    for (let y = 0; y < this.rows.length; y++)
+      for (let x = 0; x < this.rows[y].length; x++) {
+        const ch = this.rows[y][x];
+        if (ch === 'l') {
+          // Straßenlaterne: hoher Sprite, steht mit dem Fuß auf der Kachel
+          this.add.image(x * T + 8, (y + 1) * T - 1, 'lampPost').setOrigin(0.5, 1).setScale(0.5).setDepth((y + 1) * T - 1);
+          this.addLight(x * T + 8, y * T - 6, 1.1, 0.8).setTint(0xfff0c0);
+        } else if (ch === 'z') {
+          this.add.image(x * T, y * T + 15, 'car').setOrigin(0, 1).setScale(0.5).setDepth(y * T + 15);
+          this.interacts.push({ x: x * T + 16, y: y * T - 2, r: 20, label: () => 'Altes Auto', act: () => this.toast('Ein rostiger Golf. Strafzettel von 2019 hinter dem Wischer.') });
+        } else if (ch === 'n') {
+          this.interacts.push({ x: x * T + 8, y: y * T + 8, r: 16, label: () => 'Bank', act: () => this.toast('Eingeritzt: „BRENNINGER STINKT“.') });
+        } else if (ch === 'U') {
+          this.interacts.push({ x: x * T + 8, y: (y + 1) * T + 4, r: 16, label: () => 'Zugenagelte Tür', act: () => this.toast('Zugenagelt. Hier wohnt schon lange keiner mehr.') });
+        } else if (ch === 'o') {
+          // Dampf aus dem Gully
+          this.add.particles(x * T + 8, y * T + 8, 'light', {
+            lifespan: 2400, speedY: { min: -12, max: -6 }, speedX: { min: -3, max: 3 }, scale: { start: 0.06, end: 0.22 },
+            alpha: { start: 0.18, end: 0 }, tint: 0xc8c8d0, frequency: 260,
+          }).setDepth(4000);
+        }
+      }
   }
 
   private addDame(tx: number, ty: number, variant: number) {
@@ -341,7 +433,7 @@ export class AlleyScene extends TopDown {
     } else {
       c.x += this.copDir * 26 * dt;
       c.anims.play('polizist_side', true);
-      if ((this.copDir > 0 && c.x > 19 * T) || (this.copDir < 0 && c.x < 3 * T)) {
+      if ((this.copDir > 0 && c.x > COP_TO * T) || (this.copDir < 0 && c.x < COP_FROM * T)) {
         this.copDir *= -1;
         this.copWait = 1.5;
       }
@@ -411,7 +503,7 @@ export class AlleyScene extends TopDown {
     const cam = this.cameras.main;
     const { x, y } = this.cat;
     // Das Monster steht später mitten auf dem Pflaster, Füße auf der untersten Reihe
-    const mx = x, my = 5 * T + 14;
+    const mx = x, my = y + T + 2;
     this.toast('Die Katze ... zuckt.');
     audio.music('monster');
     audio.sfx('growl');

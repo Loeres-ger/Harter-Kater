@@ -17,6 +17,14 @@ export const SEATS: [number, number, Facing][] = [
   [3, 8, 'right'],
   [5, 8, 'left'],
   [12, 8, 'left'],
+  [8, 10, 'right'],
+  [10, 10, 'left'],
+  [18, 9, 'right'],
+  [20, 9, 'left'],
+  [12, 11, 'right'],
+  [14, 11, 'left'],
+  [19, 12, 'right'],
+  [21, 12, 'left'],
 ];
 
 export const roster = {
@@ -44,14 +52,14 @@ function spawnOne(now: number) {
   roster.lastSpawn = now;
 }
 
-/** Beim ersten Besuch 2–3 Gäste, später kommt alle ~40 s ein neuer, wenn Plätze frei sind. */
+/** Beim ersten Besuch 3–4 Gäste, später kommt alle ~40 s ein neuer, wenn Plätze frei sind. */
 export function ensureGuests(now: number) {
   if (roster.lastSpawn < -900) {
-    const n = 2 + Math.floor(Math.random() * 2);
+    const n = 3 + Math.floor(Math.random() * 2);
     for (let i = 0; i < n; i++) spawnOne(now);
     return;
   }
-  if (roster.guests.length < 3 && now - roster.lastSpawn > 40) spawnOne(now);
+  if (roster.guests.length < 4 && now - roster.lastSpawn > 40) spawnOne(now);
 }
 
 export function removeGuest(id: string) {

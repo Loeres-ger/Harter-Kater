@@ -17,24 +17,35 @@ interface GuestView {
   fidget?: Phaser.Tweens.Tween;
 }
 
-// Kleine, gemütliche Kneipe. Hinter dem Tresen (oben links) ist das Reich des Wirts,
-// rein kommt man durch die Klappe (F).
+// Die Kneipe: Tresen oben links (rein durch die Klappe F), Gastraum, rechts oben die Toilette
+// mit Hinterausgang (E) zur Gasse, unten die Eingangstür (D).
+//  P Poster  U Uhr  Z Dartscheibe  V Fernseher  M/N/O Spielautomaten
+//  k Waschbecken+Spiegel  u Pissoir  j Fliesenwand  l Kabinenwand  q WC  v/w Kabinentüren
+//  d Durchgang WC  y Garderobe  i Mülleimer  e Pflanze  a Unordnung am Boden
 const MAP = [
-  '##################',
-  '#SSSSSS##WW##MNO##',
-  '#......C.........#',
-  '#CCCCCFC.........#',
-  '#.s.s............#',
-  '#..........rrrr..#',
-  '#..hth.....rrrr.J#',
-  '#................#',
-  '#..hth....hth....#',
-  '#................#',
-  '####D#############',
+  '########################',
+  '#SSSSSSPUWWZVMNO#kuujjj#',
+  '#......C........#ffflqq#',
+  '#CCCCCFC........#ffflvw#',
+  '#.s.s.s..i.....y#ffffff#',
+  '#..........rrrr.#ffffffE',
+  '#..hth.....rrrr.#ffffff#',
+  '#......a........##d#####',
+  '#..hth....hth..........#',
+  '#......a..........hth.J#',
+  '#.......hth.........e..#',
+  '#...........hth........#',
+  '#e.................hth.#',
+  '####D###################',
 ];
 
 export const BAR_START_SPAWN: [number, number] = [3, 2];
-export const BAR_DOOR_SPAWN: [number, number] = [4, 9];
+export const BAR_DOOR_SPAWN: [number, number] = [4, 12];
+/** Hinterausgang (Toilettenflur) */
+export const BAR_BACK_SPAWN: [number, number] = [22, 5];
+/** Ankunftspunkte draußen: vor dem Haupteingang bzw. vor der Hintertür */
+const OUT_FRONT: [number, number] = [17, 17];
+const OUT_BACK: [number, number] = [22, 4];
 export const BAR_TRESEN_SPAWN: [number, number] = [4, 2];
 const VICTIM_TILE: [number, number] = [4, 4];
 const KALLE_TILE: [number, number] = [10, 8];
@@ -80,15 +91,37 @@ export class BarScene extends TopDown {
   }
 
   protected mapRows() { return MAP; }
-  protected isWall(ch: string) { return '#SWDMNO'.includes(ch); }
+  protected isWall(ch: string) { return '#SWDMNOPUZVkujE'.includes(ch); }
   protected darkness() { return 0.3; }
   protected floorKey(x: number, y: number) {
-    return this.rows[y][x] === 'r' ? 'rug' : `floor${(x * 7 + y * 3) % 3}`;
+    const ch = this.rows[y][x];
+    if ('flqvwd'.includes(ch)) return (x * 3 + y * 5) % 7 === 0 ? 'wcFloorDirty' : 'wcFloor';
+    if (ch === 'r') return 'rug';
+    // abgelaufene Stellen vor Tresen, Tür und Toilette
+    if ((x * 13 + y * 7) % 9 === 0 || (y === 12 && x === 4) || (y === 8 && x === 18)) return 'floorWorn';
+    return `floor${(x * 7 + y * 3) % 3}`;
   }
 
-  protected tileFor(ch: string): TileInfo {
+  protected tileFor(ch: string, x = 0, y = 0): TileInfo {
     switch (ch) {
-      case '#': return { key: 'wallFront', solid: true };
+      case '#': return { key: 'panelFront', solid: true };
+      case 'P': return { key: 'panelPoster', solid: true };
+      case 'U': return { key: 'panelClock', solid: true };
+      case 'Z': return { key: 'panelDart', solid: true };
+      case 'V': return { key: 'panelTV', solid: true };
+      case 'k': return { key: 'sinkMirror', solid: true };
+      case 'u': return { key: 'urinal', solid: true };
+      case 'j': return { key: 'tileWallFront', solid: true };
+      case 'E': return { key: 'exitDoor', solid: true };
+      case 'l': return { key: 'stallWall', solid: true };
+      case 'q': return { key: 'wcBowl', solid: true };
+      case 'v': return { key: 'stallDoorH', solid: true };
+      case 'w': return { key: 'stallDoorD', solid: true };
+      case 'd': return { key: 'wcDoor', solid: false };
+      case 'y': return { key: 'coatRack', solid: true, object: true };
+      case 'i': return { key: 'bin', solid: true, object: true };
+      case 'e': return { key: 'plant', solid: true, object: true };
+      case 'a': return { key: 'clutter', solid: false };
       case 'S': return { key: 'shelf', solid: true };
       case 'W': return { key: 'window', solid: true };
       case 'D': return { key: 'doorBottom', solid: true };
@@ -97,7 +130,7 @@ export class BarScene extends TopDown {
       case 'O': return { key: 'cab_derby', solid: true };
       case 'C': return { key: 'counter', solid: true, object: true };
       case 'F': return { key: 'counterFlap', solid: false };
-      case 't': return { key: 'table', solid: true, object: true };
+      case 't': return { key: (x + y) % 2 ? 'tableB' : 'table', solid: true, object: true };
       case 'h': return { key: 'chair', solid: false };
       case 's': return { key: 'stool', solid: false };
       case 'J': return { key: 'jukebox', solid: true, object: true };
@@ -184,8 +217,16 @@ export class BarScene extends TopDown {
       });
     }
 
-    this.interacts.push({ x: 16 * T + 8, y: 6 * T + 12, r: 20, label: () => 'Jukebox', act: () => this.toast(Phaser.Utils.Array.GetRandom(SCHLAGER)) });
-    this.interacts.push({ x: 4 * T + 8, y: 10 * T, r: 18, label: () => 'Raus in die Gasse', act: () => this.go('Alley', { spawn: [2, 2] }) });
+    const [jx, jy] = this.find('J');
+    this.interacts.push({ x: jx * T + 8, y: jy * T + 12, r: 20, label: () => 'Jukebox', act: () => this.toast(Phaser.Utils.Array.GetRandom(SCHLAGER)) });
+    // Türen: vorne raus auf die Straße, hinten durch die Toilette in die Gasse
+    const [dx, dy] = this.find('D');
+    this.interacts.push({ x: dx * T + 8, y: dy * T, r: 18, label: () => 'Raus auf die Straße', act: () => this.go('Alley', { spawn: OUT_FRONT }) });
+    const [ex, ey] = this.find('E');
+    this.interacts.push({ x: ex * T - 2, y: ey * T + 10, r: 18, label: () => 'Hintertür zur Gasse', act: () => this.go('Alley', { spawn: OUT_BACK }) });
+    this.addLight(dx * T + 8, dy * T - 4, 0.45, 0.55).setTint(0xffd080);
+    this.addLight(ex * T - 4, ey * T + 8, 0.4, 0.5).setTint(0x80ff90);
+    this.setupToilet();
 
     if (!coinsSpawned) {
       coinsSpawned = true;
@@ -194,7 +235,43 @@ export class BarScene extends TopDown {
 
     this.setupGuests();
 
-    for (const [x, y] of [[4, 3], [4, 7], [11, 8], [13, 5], [16, 6]]) this.addLight(x * T, y * T, 0.9, 0.7);
+    // warmes, gedämpftes Licht über Tresen und Tischen
+    for (const [x, y] of [[4, 3], [4, 7], [11, 8], [13, 5], [9, 10], [19, 10], [13, 11]]) this.addLight(x * T, y * T, 0.9, 0.62).setTint(0xffc890);
+    this.smoke();
+  }
+
+  private find(ch: string): [number, number] {
+    for (let y = 0; y < this.rows.length; y++) {
+      const x = this.rows[y].indexOf(ch);
+      if (x >= 0) return [x, y];
+    }
+    return [1, 1];
+  }
+
+  /** Leichter Zigarettenrauch unter der Decke */
+  private smoke() {
+    this.add.particles(0, 0, 'light', {
+      x: { min: T, max: 16 * T }, y: { min: 2 * T, max: 12 * T },
+      lifespan: 6000, speedX: { min: -4, max: 4 }, speedY: { min: -3, max: -1 },
+      scale: { start: 0.2, end: 0.6 }, alpha: { start: 0.07, end: 0 }, tint: 0xb0a090, frequency: 500,
+    }).setDepth(5000);
+  }
+
+  /** Toilette: flackernde Funzel und ein paar Untersuchungstexte. */
+  private setupToilet() {
+    const lamp = this.addLight(19 * T + 8, 4 * T, 0.75, 0.6).setTint(0xd0f0d0);
+    this.tweens.killTweensOf(lamp);
+    this.time.addEvent({ delay: 120, loop: true, callback: () => lamp.setAlpha(Math.random() < 0.12 ? 0.05 : 0.45 + Math.random() * 0.15) });
+    const spots: [string, string, string][] = [
+      ['k', 'Waschbecken', 'Der Hahn hustet braunes Wasser. Der Spiegel ist blind vor Dreck.'],
+      ['u', 'Pissoir', 'Seit Jahren nicht geputzt. Besser nicht genauer hinsehen.'],
+      ['v', 'Herren-Kabine', 'Besetzt. Von drinnen: „Nie wieder Fusel ...“'],
+      ['w', 'Damen-Kabine', 'Abgeschlossen. Seit 1998.'],
+    ];
+    for (const [ch, label, text] of spots) {
+      const [x, y] = this.find(ch);
+      this.interacts.push({ x: x * T + 8, y: (y + 1) * T + 6, r: 14, label: () => label, act: () => this.toast(text) });
+    }
   }
 
   // ---------------------------------------------------------------- Stammgäste
