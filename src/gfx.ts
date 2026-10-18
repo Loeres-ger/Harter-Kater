@@ -144,7 +144,7 @@ function drawHuman(c: Ctx, ox: number, dir: number, step: number, pal: Pal) {
   outline(c, ox, 0, 16, 20);
 }
 
-function humanSheet(scene: Phaser.Scene, key: string, pal: Pal) {
+export function humanSheet(scene: Phaser.Scene, key: string, pal: Pal) {
   const t = tex(scene, key, 16 * 9, 20, (c) => {
     for (let d = 0; d < 3; d++) for (let s = 0; s < 3; s++) drawHuman(c, (d * 3 + s) * 16, d, s, pal);
   });

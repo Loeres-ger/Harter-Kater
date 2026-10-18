@@ -2,6 +2,20 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import { VICTIM, impatient, lookStage, state } from '../state';
 import { T, TileInfo, TopDown } from './TopDown';
+import { floatText } from '../ui';
+import { GuestDef, guestById } from '../guests/data';
+import { BarGuest, SEATS, ensureGuests, removeGuest, resetRoster, roster } from '../guests/roster';
+
+interface GuestView {
+  g: BarGuest;
+  def: GuestDef;
+  sprite: Phaser.GameObjects.Sprite;
+  shadow: Phaser.GameObjects.Image;
+  baseX: number;
+  baseY: number;
+  nextTaunt: number;
+  fidget?: Phaser.Tweens.Tween;
+}
 
 // Kleine, gemütliche Kneipe. Hinter dem Tresen (oben links) ist das Reich des Wirts,
 // rein kommt man durch die Klappe (F).
@@ -28,6 +42,7 @@ const KALLE_TILE: [number, number] = [10, 8];
 let coinsSpawned = false;
 export function resetBar() {
   coinsSpawned = false;
+  resetRoster();
 }
 
 const SCHLAGER = ['„Atemlos durch die Nacht“ läuft. Schon wieder.', '„Ein Bett im Kornfeld“. Kalle summt mit.', '„Griechischer Wein“. Irgendwer weint.', 'Die Jukebox frisst deine Münze nicht. Glück gehabt.'];
@@ -52,6 +67,7 @@ export class BarScene extends TopDown {
   private wishBubble?: Phaser.GameObjects.Container;
   private wishIcon?: Phaser.GameObjects.Image;
   private body?: Phaser.GameObjects.Sprite;
+  private guestViews = new Map<string, GuestView>();
 
   constructor() {
     super('Bar');
@@ -60,6 +76,7 @@ export class BarScene extends TopDown {
   init() {
     super.init();
     this.victim = this.wishBubble = this.wishIcon = this.body = undefined;
+    this.guestViews = new Map();
   }
 
   protected mapRows() { return MAP; }
@@ -175,11 +192,105 @@ export class BarScene extends TopDown {
       for (let i = 0; i < 2; i++) this.spawnCoin(...this.randomFloorTile());
     }
 
+    this.setupGuests();
+
     for (const [x, y] of [[4, 3], [4, 7], [11, 8], [13, 5], [16, 6]]) this.addLight(x * T, y * T, 0.9, 0.7);
+  }
+
+  // ---------------------------------------------------------------- Stammgäste
+
+  private setupGuests() {
+    ensureGuests(state.time);
+    for (const g of roster.guests) this.addGuestView(g);
+    const onResume = () => this.afterFight();
+    this.events.on(Phaser.Scenes.Events.RESUME, onResume);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.RESUME, onResume));
+  }
+
+  private addGuestView(g: BarGuest) {
+    const def = guestById(g.id);
+    const [tx, ty, facing] = SEATS[g.seat];
+    const x = tx * T + 8 + (facing === 'right' ? 2 : -2), y = ty * T + 13;
+    const shadow = this.add.image(x, y - 1, 'shadow').setDepth(1);
+    const sprite = this.add.sprite(x, y, `guest_${g.id}`, 6).setOrigin(0.5, 1).setDepth(y).setFlipX(facing === 'left');
+    const view: GuestView = { g, def, sprite, shadow, baseX: x, baseY: y, nextTaunt: 0 };
+    this.guestViews.set(g.id, view);
+    this.interacts.push({
+      x, y: y - 4, r: 18,
+      label: () => (sprite.active && !g.rowdy && roster.guests.includes(g) ? `Mit ${def.name} plaudern` : null),
+      act: () => this.toast(`${def.name.split(' ').pop()}: „${Phaser.Utils.Array.GetRandom(def.calm)}“`),
+    });
+    if (g.rowdy) this.setRowdy(view, true);
+  }
+
+  /** Pöbelnder Gast: steht auf, zappelt, läuft rot an. */
+  private setRowdy(v: GuestView, on: boolean) {
+    v.g.rowdy = on;
+    this.tweens.killTweensOf(v.sprite);
+    if (on) {
+      v.sprite.setY(v.baseY - 3).setTint(0xffb0a0).setFrame(0).setFlipX(false);
+      v.fidget = this.tweens.add({ targets: v.sprite, x: v.baseX + 1.5, angle: { from: -5, to: 5 }, duration: 70, yoyo: true, repeat: -1 });
+      v.nextTaunt = 0;
+    } else {
+      v.sprite.setPosition(v.baseX, v.baseY).setAngle(0).clearTint();
+    }
+  }
+
+  private startFight(v: GuestView) {
+    if (this.leaving) return;
+    this.scene.launch('Fight', { guestId: v.g.id, resume: 'Bar' });
+    this.scene.bringToTop('Fight');
+    this.scene.pause();
+  }
+
+  /** Nach dem Kampf: Gewinner/Verlierer in der Kneipe darstellen. */
+  private afterFight() {
+    const f = roster.lastFight;
+    if (!f) return;
+    roster.lastFight = null;
+    roster.nextRowdy = state.time + 30 + Math.random() * 25;
+    const v = this.guestViews.get(f.id);
+    removeGuest(f.id);
+    if (!v) return;
+    this.guestViews.delete(f.id);
+    this.tweens.killTweensOf(v.sprite);
+    if (f.won) {
+      // liegt k.o. am Boden und wird dann rausgetragen
+      v.sprite.clearTint().setFrame(0).setAngle(90).setPosition(v.baseX, v.baseY + 4);
+      this.tweens.add({ targets: [v.sprite, v.shadow], alpha: 0, delay: 3500, duration: 800, onComplete: () => { v.sprite.destroy(); v.shadow.destroy(); } });
+      this.toast(`${v.def.name} ist erledigt. +${f.amount}€`);
+    } else {
+      v.sprite.clearTint().setAngle(0);
+      this.tweens.add({ targets: [v.sprite, v.shadow], alpha: 0, y: '+=30', duration: 1200, onComplete: () => { v.sprite.destroy(); v.shadow.destroy(); } });
+      this.toast(`Du wurdest verprügelt. ${v.def.name} haut ab.${f.amount ? ` -${f.amount}€` : ''}`);
+    }
+  }
+
+  private updateGuests() {
+    if (this.leaving) return;
+    const now = this.time.now;
+    // ab und zu fängt einer an zu pöbeln
+    const views = [...this.guestViews.values()];
+    if (state.running && !views.some((v) => v.g.rowdy) && views.length && state.time > roster.nextRowdy) {
+      const v = Phaser.Utils.Array.GetRandom(views);
+      this.setRowdy(v, true);
+      roster.nextRowdy = state.time + 35 + Math.random() * 25;
+      this.toast(`${v.def.name} fängt an zu pöbeln!`);
+      audio.sfx('angry');
+    }
+    for (const v of views) {
+      if (!v.g.rowdy) continue;
+      if (now > v.nextTaunt) {
+        floatText(this, v.sprite.x, v.sprite.y - 24, Phaser.Utils.Array.GetRandom(v.def.rowdy), '#ff8a7a');
+        v.nextTaunt = now + 2600;
+      }
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, v.sprite.x, v.sprite.y) < 24) return this.startFight(v);
+    }
   }
 
   update(t: number, d: number) {
     super.update(t, d);
+    this.updateGuests();
     if (this.victim && this.wishBubble && this.wishIcon) {
       this.victim.setTexture(`schnoesel${lookStage()}`, 3);
       this.wishBubble.setVisible(!!state.wish);

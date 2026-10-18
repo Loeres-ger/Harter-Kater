@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import { makeAllTextures } from '../gfx';
 import { makeCasinoTextures } from '../casino/gfx';
+import { makeGuestTextures } from '../guests/gfx';
 import { VICTIM, resetState, state } from '../state';
 import { H, W, fadeTo, txt } from '../ui';
 import { resetAlley } from './AlleyScene';
@@ -30,6 +31,7 @@ export class TitleScene extends Phaser.Scene {
   create() {
     if (!this.textures.exists('wirt')) makeAllTextures(this);
     makeCasinoTextures(this);
+    makeGuestTextures(this);
     showLegalLinks(true);
     audio.music('title');
     // Audio darf erst nach einer Nutzeraktion starten
