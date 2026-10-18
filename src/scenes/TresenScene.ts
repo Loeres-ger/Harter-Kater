@@ -228,26 +228,14 @@ export class TresenScene extends Phaser.Scene {
   private die() {
     this.busy = true;
     this.wishC.setVisible(false);
-    this.time.delayedCall(1400, () => {
-      this.tweens.killTweensOf(this.victim);
-      this.tweens.add({ targets: this.victim, angle: 28, x: VX + 20, duration: 600, ease: 'Sine.easeIn' });
-      this.tweens.add({ targets: this.victim, y: COUNTER_Y + 260, delay: 500, duration: 500, ease: 'Quad.easeIn' });
-      this.flies.forEach((f) => f.setVisible(false));
-      this.time.delayedCall(900, () => {
-        this.cameras.main.shake(300, 0.01);
-        audio.sfx('thud');
-        audio.music('tension');
-      });
-      this.time.delayedCall(1400, () => {
-        const t = txt(this, W / 2, 120, `${VICTIM} ist vom Hocker gefallen.\nFür immer.\n\nDie Katze in der Gasse hat Hunger ...`, '#f4ead0')
-          .setOrigin(0.5).setAlign('center').setDepth(100).setStroke('#120c0b', 4);
-        t.setAlpha(0);
-        this.tweens.add({ targets: t, alpha: 1, duration: 500 });
-      });
-      this.time.delayedCall(5200, () => {
-        this.leaving = true;
-        fadeTo(this, 'Cutscene', { script: 'kapitel4', next: { scene: 'Bar', data: { spawn: BAR_TRESEN_SPAWN } } });
-      });
+    this.flies.forEach((f) => f.setVisible(false));
+    // er läuft grün an und erstarrt, den Rest erzählt die Todesszene
+    this.tweens.killTweensOf(this.victim);
+    this.tweens.add({ targets: this.victim, x: VX + 1, duration: 50, yoyo: true, repeat: 20 });
+    this.time.delayedCall(500, () => this.victim.setTint(0xc8e8a0));
+    this.time.delayedCall(1800, () => {
+      this.leaving = true;
+      fadeTo(this, 'Cutscene', { script: 'kapitel4', next: { scene: 'Bar', data: { spawn: BAR_TRESEN_SPAWN } } });
     });
   }
 

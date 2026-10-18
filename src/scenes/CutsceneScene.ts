@@ -23,6 +23,8 @@ const NAMES: Record<Who, [string, string]> = {
 
 const BAR_H = 22; // Kinobalken
 const BOX_Y = 178;
+// Todesszene: Glanz etwas kleiner und höher, damit Tresen und Pfütze über der Textbox bleiben
+const TOD_Y = 162, TOD_S = 0.75, COUNTER_TOP = 152;
 
 /** Spielt ein Skript aus story.ts ab: Hintergründe, Porträts, Dialoge, Effekte. */
 export class CutsceneScene extends Phaser.Scene {
@@ -46,6 +48,15 @@ export class CutsceneScene extends Phaser.Scene {
   private insetImg?: Phaser.GameObjects.Image;
   /** Porträt, dessen Mund beim Tippen auf- und zugeht */
   private talker?: Phaser.GameObjects.Image;
+  // Todesszene: von Glanz, Überlagerungen im Gesicht, Kotzstrahl und Pfütze
+  private glanz?: Phaser.GameObjects.Image;
+  private glanzTint = 0xffffff;
+  private face?: Phaser.GameObjects.Container;
+  private streamG?: Phaser.GameObjects.Graphics;
+  private puddleG?: Phaser.GameObjects.Graphics;
+  private stream = { on: false, width: 0 };
+  private puddle = { x: 0, r: 0, chunks: [] as [number, number, number][] };
+  private todObjs: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super('Cutscene');
@@ -58,6 +69,15 @@ export class CutsceneScene extends Phaser.Scene {
     this.bulldozer = undefined;
     this.rain = undefined;
     this.inset = this.insetImg = this.talker = undefined;
+    this.glanz = this.face = this.streamG = this.puddleG = undefined;
+    this.todObjs = [];
+    this.stream = { on: false, width: 0 };
+    this.puddle = { x: 0, r: 0, chunks: [] };
+    if (!this.textures.exists('chunk')) {
+      const g = this.make.graphics({}, false).fillStyle(0xffffff).fillRect(0, 0, 3, 3);
+      g.generateTexture('chunk', 3, 3);
+      g.destroy();
+    }
     state.running = false;
     audio.music('tension');
 
@@ -197,6 +217,10 @@ export class CutsceneScene extends Phaser.Scene {
 
   private setBg(key: string) {
     this.bg.removeAll(true);
+    for (const o of this.todObjs) o.destroy();
+    this.todObjs = [];
+    this.glanz = this.face = this.streamG = this.puddleG = undefined;
+    this.stream.on = false;
     this.rain?.destroy();
     this.rain = undefined;
     this.hidePortraits();
@@ -224,6 +248,22 @@ export class CutsceneScene extends Phaser.Scene {
       this.bg.add(kalle);
       this.bg.add(this.add.image(0, 186, 'counterFront').setOrigin(0));
       for (const x of [112, 312]) this.bg.add(this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5));
+    } else if (key === 'tod') {
+      this.bg.add(this.add.image(0, 0, 'tresenBg').setOrigin(0));
+      for (const x of [112, 312]) this.bg.add(this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5));
+      // von Glanz mittig hinter dem Tresen, er schwankt
+      const g = this.add.image(240, TOD_Y, 'bust4').setOrigin(0.5, 1).setScale(TOD_S).setDepth(500);
+      this.glanz = g;
+      this.glanzTint = 0xffffff;
+      this.portraits.right = g;
+      this.tweens.add({ targets: g, angle: { from: -2, to: 2 }, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      const counter = this.add.image(0, COUNTER_TOP, 'counterFront').setOrigin(0).setDepth(510);
+      // Boden vor dem Tresen verdeckt, was beim Sturz unten herausragt
+      this.todObjs.push(this.add.rectangle(0, COUNTER_TOP + counter.height, W, H, 0x0d0b0a).setOrigin(0).setDepth(511));
+      this.face = this.add.container(g.x, g.y).setDepth(505);
+      this.streamG = this.add.graphics().setDepth(515);
+      this.puddleG = this.add.graphics().setDepth(520);
+      this.todObjs.push(g, counter, this.face, this.streamG, this.puddleG);
     } else if (key === 'letter') {
       this.bg.add(this.add.image(0, -60, 'counterFront').setOrigin(0).setScale(1, 4));
       const paper = this.add.container(240, 135); // gerade, sonst werden die Pixel-Buchstaben zackig
@@ -327,7 +367,7 @@ export class CutsceneScene extends Phaser.Scene {
     const x = side === 'left' ? 76 : W - 76;
     let p = this.portraits[side];
     if (p && p.texture.key === key) {
-      p.setTint(0xffffff);
+      p.setTint(p === this.glanz ? this.glanzTint : 0xffffff);
     } else {
       p?.destroy();
       p = this.add.image(side === 'left' ? -80 : W + 80, BOX_Y + 6, key).setOrigin(0.5, 1).setScale(1).setDepth(500);
@@ -381,6 +421,12 @@ export class CutsceneScene extends Phaser.Scene {
   private async fx(kind: string) {
     const cam = this.cameras.main;
     switch (kind) {
+      case 'queasy':
+        return this.queasy();
+      case 'puke':
+        return this.puke();
+      case 'collapse':
+        return this.collapse();
       case 'thunder':
         cam.flash(180, 255, 255, 255);
         cam.shake(400, 0.012);
@@ -480,7 +526,229 @@ export class CutsceneScene extends Phaser.Scene {
     }
   }
 
+  // ---------------------------------------------------------------- Todesszene
+
+  /** Mund von Glanz auf dem Bildschirm (dreht und staucht mit dem Porträt mit). */
+  private mouthPos(): [number, number] {
+    const g = this.glanz!;
+    const d = 122 * g.scaleY;
+    return [g.x + d * Math.sin(g.rotation), g.y - d * Math.cos(g.rotation)];
+  }
+
+  /** Kleiner Tropfen (Schweiß, Sabber), der herunterrinnt. */
+  private drop(x: number, y: number, color: number, fall = 28) {
+    const d = this.add.rectangle(x, y, 2, 3, color).setDepth(506);
+    this.todObjs.push(d);
+    this.tweens.add({ targets: d, y: y + fall, alpha: 0, duration: 700, ease: 'Quad.easeIn', onComplete: () => d.destroy() });
+  }
+
+  private setSick(amount: number) {
+    const c = Phaser.Display.Color.Interpolate.ColorWithColor(
+      Phaser.Display.Color.ValueToColor(0xffffff), Phaser.Display.Color.ValueToColor(0x9ad070), 100, amount,
+    );
+    this.glanzTint = Phaser.Display.Color.GetColor(c.r, c.g, c.b);
+    this.glanz?.setTint(this.glanzTint);
+  }
+
+  /** Ihm wird übel: grün im Gesicht, Backen blähen sich, Magen rumort, Schweiß. */
+  private async queasy() {
+    const g = this.glanz;
+    if (!g) return;
+    audio.sfx('gurgle');
+    this.tweens.addCounter({ from: 0, to: 100, duration: 1800, onUpdate: (tw) => this.setSick(tw.getValue() ?? 0) });
+    this.tweens.add({ targets: g, scaleX: TOD_S * 1.05, duration: 200, yoyo: true, repeat: 3, delay: 700 });
+    this.time.delayedCall(900, () => {
+      audio.sfx('gurgle');
+      this.cameras.main.shake(250, 0.004);
+    });
+    for (let i = 0; i < 7; i++) this.time.delayedCall(i * 280, () => this.drop(g.x + Phaser.Math.Between(-20, 20), g.y - 124 + Phaser.Math.Between(0, 20), 0xc8e8ff));
+    await this.sleep(2300);
+  }
+
+  /** Drei Schwalle auf den Tresen, dann ein Sabberfaden. */
+  private async puke() {
+    const g = this.glanz;
+    if (!g) return;
+    this.tweens.killTweensOf(g);
+    g.setAngle(0).setScale(TOD_S);
+    this.setSick(100);
+    const waves: [number, number][] = [[900, 1], [650, 0.8], [1500, 1.25]];
+    for (const [dur, power] of waves) {
+      // Würgen: er zuckt nach vorn, die Backen blähen sich
+      audio.sfx('retch');
+      this.tweens.add({ targets: g, y: TOD_Y + 4, scaleX: TOD_S * 1.06, scaleY: TOD_S * 0.96, duration: 110, yoyo: true, repeat: 1 });
+      await this.sleep(480);
+      this.spew(dur, power);
+      await this.sleep(dur + 350);
+    }
+    this.spew(600, 0.25);
+    await this.sleep(1000);
+  }
+
+  /** Ein Schwall: Strahl aus dem Mund, Brocken mit Schwerkraft, Spritzer und wachsende Pfütze. */
+  private spew(dur: number, power: number) {
+    const g = this.glanz;
+    if (!g) return;
+    const [mx, my] = this.mouthPos();
+    const landX = mx + 10;
+    if (!this.puddle.r) this.puddle.x = landX;
+    if (power > 0.5) {
+      audio.sfx('puke');
+      this.cameras.main.shake(dur, 0.005 * power);
+      this.cameras.main.flash(120, 110, 150, 30);
+    } else audio.sfx('gurgle');
+    this.stream.on = true;
+    this.stream.width = 7 * power;
+    // Kopf ruckt beim Kotzen leicht vor und zurück
+    const jerk = this.tweens.add({ targets: g, y: TOD_Y + 2, duration: 90, yoyo: true, repeat: -1 });
+
+    const TINTS = [0xb8c840, 0x8a9a2a, 0xd8c060, 0x7a5a2a, 0xe0d890, 0xa0b030];
+    const chunks = this.add.particles(mx, my, 'chunk', {
+      speedX: { min: -30, max: 70 }, speedY: { min: 30, max: 150 * power }, gravityY: 520,
+      lifespan: 2600, frequency: 28, quantity: Math.max(1, Math.round(3 * power)),
+      scale: { min: 0.6, max: 1.7 }, tint: TINTS, bounce: 0.2, alpha: { start: 1, end: 0.5 },
+    }).setDepth(516);
+    chunks.addParticleBounds(-200, -200, W + 400, COUNTER_TOP + 204, false, false, false, true);
+    const splash = this.add.particles(landX, COUNTER_TOP + 2, 'chunk', {
+      speedX: { min: -110, max: 110 }, speedY: { min: -150 * power, max: -40 }, gravityY: 600,
+      lifespan: 700, frequency: 45, quantity: 2, scale: { min: 0.5, max: 1.2 }, tint: TINTS,
+    }).setDepth(517);
+    this.todObjs.push(chunks, splash);
+    this.tweens.add({ targets: this.puddle, r: Math.min(70, this.puddle.r + 26 * power), duration: dur });
+    // Brocken in der Pfütze
+    for (let i = 0; i < 8 * power; i++) this.puddle.chunks.push([Phaser.Math.Between(-30, 30), Phaser.Math.Between(-2, 2), Phaser.Utils.Array.GetRandom(TINTS)]);
+    // über die Tresenkante tropfen
+    for (let i = 0; i < 3 * power; i++) {
+      this.time.delayedCall(Phaser.Math.Between(200, dur), () => {
+        const x = this.puddle.x + Phaser.Math.Between(-this.puddle.r * 0.8, this.puddle.r * 0.8);
+        const drip = this.add.rectangle(x, COUNTER_TOP + 6, Phaser.Math.Between(2, 3), 2, 0x9aac30).setOrigin(0.5, 0).setDepth(521);
+        this.todObjs.push(drip);
+        this.tweens.add({ targets: drip, scaleY: Phaser.Math.Between(5, 17), duration: 1400, ease: 'Sine.easeOut' });
+      });
+    }
+    this.time.delayedCall(dur, () => {
+      this.stream.on = false;
+      chunks.stop();
+      splash.stop();
+      jerk.stop();
+      g.setY(TOD_Y);
+      // Sabberfaden am Kinn
+      for (let i = 0; i < 3; i++) this.time.delayedCall(i * 200, () => this.glanz && this.drop(...this.mouthPos(), 0xb8c840, 40));
+    });
+  }
+
+  /** Augen verdrehen, Zuckungen, Schaum vor dem Mund, dann mit dem Gesicht voran in die Pfütze. */
+  private async collapse() {
+    const g = this.glanz, face = this.face;
+    if (!g || !face) return;
+    this.tweens.killTweensOf(g);
+    g.setAngle(0).setScale(TOD_S).setY(TOD_Y);
+    // nur noch das Weiße der Augen, mit Äderchen
+    for (const ex of [-10, 10]) {
+      face.add(this.add.rectangle(ex, -139, 8, 6, 0xf0ecd8));
+      face.add(this.add.rectangle(ex + (ex < 0 ? -2 : 2), -137, 2, 1, 0xd04040));
+    }
+    audio.sfx('gurgle');
+    this.cameras.main.shake(1600, 0.003);
+    const twitch = this.tweens.add({ targets: g, angle: { from: -5, to: 5 }, duration: 55, yoyo: true, repeat: -1 });
+    const [mx, my] = this.mouthPos();
+    const foam = this.add.particles(mx, my, 'chunk', {
+      speedX: { min: -25, max: 25 }, speedY: { min: -10, max: 35 }, gravityY: 90,
+      lifespan: 1100, frequency: 40, quantity: 2, scale: { start: 0.6, end: 1.6 },
+      tint: [0xffffff, 0xe8f0d0, 0xd0e8a0], alpha: { start: 1, end: 0 },
+    }).setDepth(516);
+    this.todObjs.push(foam);
+    this.time.delayedCall(800, () => audio.sfx('gurgle'));
+    await this.sleep(1700);
+    foam.stop();
+    twitch.stop();
+    g.setAngle(0);
+    this.spew(380, 0.5);
+    await this.sleep(700);
+
+    // Kopf voran in die eigene Pfütze
+    await new Promise<void>((res) => this.tweens.add({ targets: g, y: TOD_Y + 82, angle: 7, scaleY: TOD_S * 0.92, duration: 420, ease: 'Quad.easeIn', onComplete: () => res() }));
+    audio.sfx('thud');
+    audio.sfx('splash');
+    this.cameras.main.shake(350, 0.014);
+    const burst = this.add.particles(this.puddle.x, COUNTER_TOP + 2, 'chunk', {
+      speedX: { min: -160, max: 160 }, speedY: { min: -220, max: -60 }, gravityY: 620,
+      lifespan: 900, scale: { min: 0.6, max: 1.8 }, tint: [0xb8c840, 0x8a9a2a, 0xd8c060, 0x7a5a2a], emitting: false,
+    }).setDepth(517);
+    this.todObjs.push(burst);
+    burst.explode(46);
+    this.tweens.add({ targets: this.puddle, r: this.puddle.r + 16, duration: 300 });
+    await this.sleep(900);
+
+    // Blubbernde Blasen aus der Pfütze, letzte Zuckung, letzter Laut
+    for (let i = 0; i < 3; i++) {
+      const b = this.add.circle(this.puddle.x + Phaser.Math.Between(-20, 20), COUNTER_TOP + 3, 2, 0xc8d870).setStrokeStyle(1, 0x7a8a20).setDepth(522);
+      this.todObjs.push(b);
+      this.tweens.add({ targets: b, scale: 2.4, delay: i * 450, duration: 380, onStart: () => audio.sfx('gurgle'), onComplete: () => b.destroy() });
+    }
+    await this.sleep(1500);
+    this.tweens.add({ targets: g, y: TOD_Y + 79, duration: 60, yoyo: true });
+    audio.sfx('fart');
+    this.bang('prrrt', this.puddle.x + 40, COUNTER_TOP - 16, '#a8b860', 8);
+    await this.sleep(900);
+    this.flies();
+    await this.sleep(1400);
+  }
+
+  /** Fliegen finden die Pfütze. */
+  private flies() {
+    for (let i = 0; i < 5; i++) {
+      const f = this.add.rectangle(W + 20, 120, 2, 2, 0x101010).setDepth(523);
+      this.todObjs.push(f);
+      const phase = Math.random() * Math.PI * 2, speed = 0.004 + Math.random() * 0.004, start = this.time.now;
+      const ev = this.time.addEvent({
+        delay: 16, loop: true,
+        callback: () => {
+          if (!f.active) return ev.remove();
+          const t = this.time.now - start, k = Math.min(1, t / 1200);
+          const tx = this.puddle.x + Math.cos(phase + t * speed) * 22, ty = COUNTER_TOP - 10 + Math.sin(phase + t * speed * 1.7) * 7;
+          f.setPosition(Phaser.Math.Linear(W + 20, tx, k), Phaser.Math.Linear(120, ty, k));
+        },
+      });
+    }
+  }
+
+  /** Kotzstrahl, Pfütze und Gesichts-Überlagerungen jedes Bild neu zeichnen. */
+  private updateDeath(time: number) {
+    const g = this.glanz;
+    if (!g || !g.active) return;
+    this.face?.setPosition(g.x, g.y).setRotation(g.rotation).setScale(g.scaleX, g.scaleY);
+    const sg = this.streamG;
+    if (sg) {
+      sg.clear();
+      if (this.stream.on) {
+        const [mx, my] = this.mouthPos();
+        const lx = mx + 10, ly = COUNTER_TOP + 3, n = 16, w = this.stream.width;
+        for (let i = 0; i < n; i++) {
+          const t = i / n, t2 = (i + 1) / n;
+          const x = mx + (lx - mx) * t + Math.sin(t * Math.PI) * 9 + Math.sin(time * 0.04 + i * 1.3) * 1.5 * t;
+          const y = my + (ly - my) * t, y2 = my + (ly - my) * t2;
+          const ww = Math.max(2, w * (0.55 + 0.7 * t));
+          sg.fillStyle(0x8a9a2a).fillRect(Math.round(x - ww / 2), Math.round(y), Math.round(ww), Math.ceil(y2 - y) + 1);
+          sg.fillStyle(0xc8d050).fillRect(Math.round(x - ww / 2) + 1, Math.round(y), Math.max(1, Math.round(ww / 3)), Math.ceil(y2 - y) + 1);
+          if ((i + Math.floor(time / 60)) % 3 === 0) sg.fillStyle(0x7a5a2a).fillRect(Math.round(x), Math.round(y), 2, 2);
+        }
+      }
+    }
+    const pg = this.puddleG;
+    if (pg && this.puddle.r > 0) {
+      const { x, r } = this.puddle;
+      pg.clear();
+      const py = COUNTER_TOP + 3;
+      pg.fillStyle(0x6a7a1a).fillEllipse(x, py + 1, r * 2 + 4, Math.max(4, r * 0.32) + 2);
+      pg.fillStyle(0x9aac30).fillEllipse(x, py, r * 2, Math.max(3, r * 0.3));
+      pg.fillStyle(0xc8d050).fillEllipse(x - r * 0.3, py - 1, r * 0.8, Math.max(2, r * 0.12));
+      for (const [cx, cy, c] of this.puddle.chunks) if (Math.abs(cx) < r * 0.85) pg.fillStyle(c).fillRect(Math.round(x + cx), Math.round(COUNTER_TOP + 3 + cy * 0.5), 2, 2);
+    }
+  }
+
   update(time: number) {
+    this.updateDeath(time);
     if (!this.rain) return;
     this.rain.clear().lineStyle(1, 0x8aa0d0, 0.45);
     for (let i = 0; i < 70; i++) {

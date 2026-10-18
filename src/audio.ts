@@ -6,12 +6,13 @@ export type Track = 'title' | 'bar' | 'alley' | 'tension' | 'monster' | 'none';
 export const SFX_NAMES = [
   'click', 'coin', 'kaching', 'error', 'step', 'glug', 'lighter', 'refuse', 'sting', 'chime',
   'thud', 'slap', 'siren', 'bell', 'phone', 'splash', 'thunder', 'rumble', 'roar', 'growl',
-  'meow', 'chomp', 'rummage', 'clang', 'blip', 'scream', 'gameover', 'angry',
+  'meow', 'chomp', 'rummage', 'clang', 'blip', 'scream', 'gameover', 'angry', 'retch', 'puke', 'gurgle', 'fart',
 ] as const;
 export type Sfx =
   | 'click' | 'coin' | 'kaching' | 'error' | 'step' | 'glug' | 'lighter' | 'refuse' | 'sting' | 'chime'
   | 'thud' | 'slap' | 'siren' | 'bell' | 'phone' | 'splash' | 'thunder' | 'rumble' | 'roar' | 'growl'
-  | 'meow' | 'chomp' | 'rummage' | 'clang' | 'blip' | 'scream' | 'gameover' | 'angry';
+  | 'meow' | 'chomp' | 'rummage' | 'clang' | 'blip' | 'scream' | 'gameover' | 'angry'
+  | 'retch' | 'puke' | 'gurgle' | 'fart';
 
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
@@ -259,6 +260,22 @@ class AudioEngine {
         this.tone('square', 300, t, 0.3, 0.1, B);
         this.tone('triangle', 1170, t, 0.6, 0.08, B);
         this.noise(t, 0.2, 0.2, B, 'highpass', 2500);
+        break;
+      case 'retch': // Würgen: tiefes, kehliges Aufbäumen
+        this.tone('sawtooth', 95, t, 0.35, 0.22, B, { slide: 140, vibrato: 30, attack: 0.04 });
+        this.noise(t, 0.35, 0.18, B, 'bandpass', 500, 900);
+        break;
+      case 'puke': // Schwall: nasses Rauschen, das plätschernd ausläuft
+        this.tone('sawtooth', 130, t, 0.5, 0.16, B, { slide: 70, vibrato: 40 });
+        this.noise(t, 1.1, 0.4, B, 'lowpass', 1400, 300);
+        for (let i = 0; i < 6; i++) this.noise(t + 0.5 + i * 0.11, 0.08, 0.16, B, 'bandpass', 900 + Math.random() * 1600);
+        break;
+      case 'gurgle': // Magen und Kehle blubbern
+        for (let i = 0; i < 7; i++) this.tone('sine', 140 + Math.random() * 160, t + i * 0.07, 0.08, 0.16, B, { slide: 60 + Math.random() * 80 });
+        break;
+      case 'fart':
+        this.tone('sawtooth', 70, t, 0.7, 0.2, B, { slide: 50, vibrato: 22 });
+        this.noise(t, 0.7, 0.12, B, 'lowpass', 260, 120);
         break;
       case 'scream': this.tone('sawtooth', 950, t, 0.6, 0.08, B, { slide: 600, vibrato: 30 }); break;
       case 'gameover': [67, 63, 60, 55].forEach((n, i) => this.tone('square', midi(n), t + i * 0.25, 0.3, 0.1, B)); break;

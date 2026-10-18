@@ -3,11 +3,11 @@
 export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon';
 
 export type Step =
-  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' }
+  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' }
   | { t: 'caption'; text: string }
   | { t: 'title'; text: string; sub: string }
   | { t: 'say'; who: Who; text: string; look?: number }
-  | { t: 'fx'; kind: 'thunder' | 'shake' | 'bell' | 'phone' | 'splash' | 'bulldozer' | 'monster' | 'roar' | 'flee' }
+  | { t: 'fx'; kind: 'thunder' | 'shake' | 'bell' | 'phone' | 'splash' | 'bulldozer' | 'monster' | 'roar' | 'flee' | 'queasy' | 'puke' | 'collapse' }
   | { t: 'wait'; ms: number }
   | { t: 'pause' };
 
@@ -63,6 +63,18 @@ export const STORY: Record<string, Step[]> = {
   ],
 
   kapitel4: [
+    // Von Glanz stirbt am Tresen
+    { t: 'bg', key: 'tod' },
+    { t: 'say', who: 'glanz', look: 4, text: 'Horst ... das Zeug ... war gut. Rischtig gut. Mir is nur so ... warm.' },
+    { t: 'fx', kind: 'queasy' },
+    { t: 'say', who: 'glanz', look: 4, text: 'Horst ... hasse ma ... nen Eimer? Isch glaub isch muss ... HHRRK' },
+    { t: 'say', who: 'wirt', text: 'Nicht auf den Tre—' },
+    { t: 'fx', kind: 'puke' },
+    { t: 'say', who: 'glanz', look: 4, text: '... *keuch* ... schon besser. Viel bess—' },
+    { t: 'fx', kind: 'collapse' },
+    { t: 'say', who: 'wirt', text: '...' },
+    { t: 'say', who: 'wirt', text: '(Dr. Friedrich von Glanz. Erstickt an Fusel, Kotze und Hochmut.)' },
+    { t: 'say', who: 'wirt', text: '(Den Tresen wisch ich morgen.)' },
     { t: 'bg', key: 'eyes' },
     { t: 'fx', kind: 'thunder' },
     { t: 'say', who: 'katze', text: 'Endlich. Er ist gar.' },

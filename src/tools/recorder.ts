@@ -34,6 +34,12 @@ const SLOTS: { group: string; items: [Sfx, string, string][] }[] = [
     ['roar', 'Brüllen', 'Das Monster brüllt.'],
     ['gameover', 'Game Over', 'Verloren.'],
   ] },
+  { group: 'Glanz stirbt', items: [
+    ['retch', 'Würgen', 'Er würgt.'],
+    ['puke', 'Kotzen', 'Der Schwall auf den Tresen.'],
+    ['gurgle', 'Gurgeln', 'Magen und Kehle blubbern.'],
+    ['fart', 'Letzter Furz', 'Der allerletzte Laut.'],
+  ] },
   { group: 'Cutscenes', items: [
     ['thunder', 'Donner', 'Blitz und Donner.'],
     ['bell', 'Türglocke', 'Jemand betritt die Kneipe.'],
