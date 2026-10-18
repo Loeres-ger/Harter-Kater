@@ -116,7 +116,55 @@ function drawFist(c: Ctx) {
   outline(c, 0, 0, 32, 48);
 }
 
+// ---------------------------------------------------------------- Kampf-Effekte
+
+/** Comic-Explosion (Zacken-Stern) hinter „BAM!“ */
+function drawBurst(c: Ctx) {
+  const pts = (rOut: number, rIn: number, n: number) => {
+    c.beginPath();
+    for (let i = 0; i < n * 2; i++) {
+      const a = (i / (n * 2)) * Math.PI * 2 - Math.PI / 2;
+      const rad = i % 2 ? rIn : rOut;
+      const x = 32 + Math.cos(a) * rad, y = 32 + Math.sin(a) * rad;
+      i ? c.lineTo(x, y) : c.moveTo(x, y);
+    }
+    c.closePath();
+  };
+  c.fillStyle = '#120c0b'; pts(32, 15, 11); c.fill();
+  c.fillStyle = '#f8b020'; pts(29, 13, 11); c.fill();
+  c.fillStyle = '#fff4a0'; pts(19, 9, 11); c.fill();
+}
+
+/** Rote Ränder: Schaden / wenig Leben */
+function drawVignette(c: Ctx) {
+  const g = c.createRadialGradient(240, 135, 90, 240, 135, 290);
+  g.addColorStop(0, 'rgba(160,0,0,0)');
+  g.addColorStop(0.6, 'rgba(160,0,0,0.25)');
+  g.addColorStop(1, 'rgba(120,0,0,0.85)');
+  c.fillStyle = g;
+  c.fillRect(0, 0, 480, 270);
+}
+
+function fightFx(scene: Phaser.Scene) {
+  tex(scene, 'burst', 64, 64, drawBurst);
+  tex(scene, 'vignette', 480, 270, drawVignette);
+  tex(scene, 'spark', 4, 4, (c) => { r(c, 1, 0, 2, 4, '#ffffff'); r(c, 0, 1, 4, 2, '#ffffff'); });
+  tex(scene, 'sweat', 4, 6, (c) => { r(c, 1, 0, 2, 2, '#bfe8ff'); r(c, 0, 2, 4, 3, '#8fd0ff'); p(c, 1, 2, '#ffffff'); });
+  tex(scene, 'dust', 8, 8, (c) => blob(c, 4, 4, 3.5, 3.5, '#c8b898'));
+  tex(scene, 'star', 7, 7, (c) => {
+    r(c, 3, 0, 1, 7, '#f8e070'); r(c, 0, 3, 7, 1, '#f8e070'); r(c, 2, 2, 3, 3, '#fff4a0');
+  });
+  // Verletzungen fürs Brustbild (Maßstab 1 : Bild wird ×2 gezeichnet)
+  tex(scene, 'bruise', 8, 6, (c) => { blob(c, 4, 3, 3.5, 2.5, '#6a3a7a'); blob(c, 4, 3, 2, 1.4, '#8a4a9a'); });
+  tex(scene, 'bandaid', 12, 5, (c) => {
+    r(c, 0, 1, 12, 3, '#e8c090'); r(c, 4, 0, 4, 5, '#f4dcb8');
+    p(c, 5, 2, '#c89a70'); p(c, 7, 2, '#c89a70');
+    outline(c, 0, 0, 12, 5);
+  });
+}
+
 export function makeGuestTextures(scene: Phaser.Scene) {
+  if (!scene.textures.exists('burst')) fightFx(scene);
   if (scene.textures.exists('fist')) return;
   for (const g of GUESTS) {
     humanSheet(scene, `guest_${g.id}`, g.pal);
