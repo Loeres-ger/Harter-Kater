@@ -174,6 +174,11 @@ export class Btn {
     this.label.y = down ? 2 : 0;
   }
 
+  setColor(color: number) {
+    this.color = color;
+    if (this.enabled) this.bg.setFillStyle(color);
+  }
+
   setLabel(text: string) {
     this.label.setText(text);
   }

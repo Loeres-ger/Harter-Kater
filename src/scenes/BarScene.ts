@@ -7,7 +7,7 @@ import { T, TileInfo, TopDown } from './TopDown';
 // rein kommt man durch die Klappe (F).
 const MAP = [
   '##################',
-  '#SSSSSS##WW###WW##',
+  '#SSSSSS##WW##MNO##',
   '#......C.........#',
   '#CCCCCFC.........#',
   '#.s.s............#',
@@ -40,6 +40,9 @@ const KALLE = [
   'Kalle: „Sie nennen sie die Königskatze, Chef. Aber das ist kein König. Das ist ... die Pest.“',
   'Kalle: „In der Gasse läuft jetzt ein Bulle Streife. Pass auf seine Taschenlampe auf.“',
   'Kalle: „Lass den Lackaffen nicht warten, Chef. Ungeduldige Gäste werden misstrauisch.“',
+  'Kalle: „Die Automaten da hinten? Die Risikoleiter hat mich mein Haus gekostet, Chef.“',
+  'Kalle: „Buch der Ratte ... drei Bücher, Chef. Dann geht die Post ab.“',
+  'Kalle: „Setz nie auf Schnecke. Ich weiß, wovon ich rede.“',
   'Kalle: „Mülltonnen, Chef. Da liegt oft noch Fusel drin.“',
   'Kalle: „Knapp bei Kasse? Die Damen in der Gasse haben Bares. Aber lass keine Leichen rumliegen, Chef.“',
 ];
@@ -60,7 +63,7 @@ export class BarScene extends TopDown {
   }
 
   protected mapRows() { return MAP; }
-  protected isWall(ch: string) { return '#SWD'.includes(ch); }
+  protected isWall(ch: string) { return '#SWDMNO'.includes(ch); }
   protected darkness() { return 0.3; }
   protected floorKey(x: number, y: number) {
     return this.rows[y][x] === 'r' ? 'rug' : `floor${(x * 7 + y * 3) % 3}`;
@@ -72,6 +75,9 @@ export class BarScene extends TopDown {
       case 'S': return { key: 'shelf', solid: true };
       case 'W': return { key: 'window', solid: true };
       case 'D': return { key: 'doorBottom', solid: true };
+      case 'M': return { key: 'cab_sahne', solid: true };
+      case 'N': return { key: 'cab_ratte', solid: true };
+      case 'O': return { key: 'cab_derby', solid: true };
       case 'C': return { key: 'counter', solid: true, object: true };
       case 'F': return { key: 'counterFlap', solid: false };
       case 't': return { key: 'table', solid: true, object: true };
@@ -139,6 +145,27 @@ export class BarScene extends TopDown {
       },
     });
     this.interacts.push({ x: kalle.x, y: kalle.y - 4, r: 20, label: () => 'Kalle wecken', act: () => this.toast(Phaser.Utils.Array.GetRandom(KALLE)) });
+
+    // Spielautomaten in der rechten oberen Ecke
+    const machines: [number, string, string, number][] = [
+      [13, 'Sahne', 'ALLES SAHNE spielen', 0xff4040],
+      [14, 'Ratte', 'BUCH DER RATTE spielen', 0xf0c040],
+      [15, 'Derby', 'KLEPPER-DERBY wetten', 0x40ff60],
+    ];
+    for (const [col, key, label, color] of machines) {
+      const l = this.add.image(col * T + 8, 2 * T + 2, 'light').setBlendMode(Phaser.BlendModes.ADD).setDepth(5001).setScale(0.35).setTint(color).setAlpha(0.7);
+      this.tweens.add({ targets: l, alpha: 0.3, duration: 300 + col * 40, yoyo: true, repeat: -1 });
+      this.interacts.push({
+        x: col * T + 8, y: 2 * T + 6, r: 12,
+        label: () => label,
+        act: () => {
+          audio.sfx('click');
+          this.scene.launch(key, { resume: 'Bar' });
+          this.scene.bringToTop(key);
+          this.scene.pause();
+        },
+      });
+    }
 
     this.interacts.push({ x: 16 * T + 8, y: 6 * T + 12, r: 20, label: () => 'Jukebox', act: () => this.toast(Phaser.Utils.Array.GetRandom(SCHLAGER)) });
     this.interacts.push({ x: 4 * T + 8, y: 10 * T, r: 18, label: () => 'Raus in die Gasse', act: () => this.go('Alley', { spawn: [2, 2] }) });

@@ -13,6 +13,9 @@ import { HudScene } from './scenes/HudScene';
 import { CutsceneScene } from './scenes/CutsceneScene';
 import { ShopScene } from './scenes/ShopScene';
 import { PauseScene } from './scenes/PauseScene';
+import { SahneScene } from './casino/SahneScene';
+import { RatteScene } from './casino/RatteScene';
+import { DerbyScene } from './casino/DerbyScene';
 
 async function boot() {
   // Pixel-Font laden, bevor Texte erzeugt werden
@@ -31,7 +34,7 @@ async function boot() {
     roundPixels: true,
     backgroundColor: '#0d0b0a',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [TitleScene, BarScene, AlleyScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, PauseScene],
+    scene: [TitleScene, BarScene, AlleyScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, PauseScene],
   });
 
   if (import.meta.env.DEV) {

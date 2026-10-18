@@ -2,10 +2,10 @@ import Phaser from 'phaser';
 
 // Alle Grafiken werden hier prozedural als Pixel-Art auf Canvas-Texturen gemalt.
 
-type Ctx = CanvasRenderingContext2D;
+export type Ctx = CanvasRenderingContext2D;
 const OUTLINE = '#120c0b';
 
-function rng(seed: number) {
+export function rng(seed: number) {
   return () => {
     seed |= 0;
     seed = (seed + 0x6d2b79f5) | 0;
@@ -15,15 +15,15 @@ function rng(seed: number) {
   };
 }
 
-function r(c: Ctx, x: number, y: number, w: number, h: number, col: string) {
+export function r(c: Ctx, x: number, y: number, w: number, h: number, col: string) {
   c.fillStyle = col;
   c.fillRect(x, y, w, h);
 }
-function p(c: Ctx, x: number, y: number, col: string) {
+export function p(c: Ctx, x: number, y: number, col: string) {
   r(c, x, y, 1, 1, col);
 }
 
-function tex(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: Ctx) => void) {
+export function tex(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: Ctx) => void) {
   if (scene.textures.exists(key)) scene.textures.remove(key);
   const t = scene.textures.createCanvas(key, w, h)!;
   const c = t.getContext();
@@ -34,7 +34,7 @@ function tex(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: C
 }
 
 /** Zieht eine dunkle Kontur um alle undurchsichtigen Pixel im Bereich. */
-function outline(c: Ctx, x0: number, y0: number, w: number, h: number, col = OUTLINE) {
+export function outline(c: Ctx, x0: number, y0: number, w: number, h: number, col = OUTLINE) {
   const img = c.getImageData(x0, y0, w, h);
   const d = img.data;
   const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 0;
@@ -899,7 +899,7 @@ function drawBrenninger(c: Ctx, ox: number, open: boolean, prop: number) {
 }
 
 /** Pixelgenaue gefüllte Ellipse (ohne Kantenglättung). */
-function blob(c: Ctx, cx: number, cy: number, rx: number, ry: number, col: string) {
+export function blob(c: Ctx, cx: number, cy: number, rx: number, ry: number, col: string) {
   c.fillStyle = col;
   for (let y = Math.floor(cy - ry); y <= cy + ry; y++)
     for (let x = Math.floor(cx - rx); x <= cx + rx; x++)
