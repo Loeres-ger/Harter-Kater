@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { state } from '../state';
+import { bulky, state } from '../state';
 import { H, W, floatText, txt } from '../ui';
 import { GuestDef, guestById } from './data';
 import { roster } from './roster';
@@ -175,7 +175,7 @@ export class FightScene extends Phaser.Scene {
   private hit(x: number, y: number) {
     if (this.over) return;
     const now = this.time.now;
-    this.hits++;
+    this.hits += bulky() ? 2 : 1;
     this.taps.push(now);
     this.combo = now - this.lastHit < COMBO_GAP ? this.combo + 1 : 1;
     this.lastHit = now;
@@ -305,12 +305,13 @@ export class FightScene extends Phaser.Scene {
       audio.sfx('clang');
       this.fists.forEach((f, i) => this.tweens.add({ targets: f, y: FIST_HOME[i][1] - 40, duration: 80, yoyo: true }));
     } else {
-      this.hp = Math.max(0, this.hp - this.g.damage);
+      const dmg = bulky() ? Math.ceil(this.g.damage / 2) : this.g.damage;
+      this.hp = Math.max(0, this.hp - dmg);
       this.cameras.main.shake(260, 0.02);
       this.vignette.setAlpha(1);
       this.tweens.add({ targets: this.vignette, alpha: (1 - this.hp / PLAYER_HP) * 0.55, duration: 450 });
       audio.sfx('thud');
-      floatText(this, W / 2, 210, `-${this.g.damage}`, '#ff4040');
+      floatText(this, W / 2, 210, `-${dmg}`, '#ff4040');
       this.fists.forEach((f, i) => this.tweens.add({ targets: f, y: FIST_HOME[i][1] + 30, x: FIST_HOME[i][0] + (i ? 20 : -20), duration: 90, yoyo: true }));
       if (Math.random() < 0.35) this.say(Phaser.Utils.Array.GetRandom(this.g.fight));
       this.combo = 0;

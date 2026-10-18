@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { state } from '../state';
+import { bulky, state } from '../state';
 import { H, W, txt } from '../ui';
 import { Choice, DialogAction, DialogNode, SPEAKERS, portraitOf } from './data';
 
@@ -60,7 +60,7 @@ export class DialogScene extends Phaser.Scene {
     this.background(sp.bg);
 
     // Wirt links, Gegenüber rechts (die Katze sitzt als Figur in der Mitte rechts)
-    this.left = this.add.image(-80, BOX_Y + 6, 'bustWirt').setOrigin(0.5, 1).setDepth(500);
+    this.left = this.add.image(-80, BOX_Y + 6, bulky() ? 'bustWirtBulk' : 'bustWirt').setOrigin(0.5, 1).setDepth(500);
     this.tweens.add({ targets: this.left, x: 76, duration: 300, ease: 'Quad.easeOut' });
     if (sp.bg === 'cat') {
       this.right = this.add.image(W + 80, BOX_Y - 4, 'cat', 0).setOrigin(0.5, 1).setScale(3.5).setDepth(500);
@@ -68,7 +68,7 @@ export class DialogScene extends Phaser.Scene {
       this.tweens.add({ targets: this.right, scaleY: 3.65, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.time.addEvent({ delay: 500, loop: true, callback: () => this.right.setFrame(this.right.frame.name === '0' ? 1 : 0) });
     } else {
-      this.right = this.add.image(W + 80, BOX_Y + 6, portraitOf(data.who)).setOrigin(0.5, 1).setDepth(500);
+      this.right = this.add.image(W + 80, BOX_Y + 6 + (sp.drop ?? 0), portraitOf(data.who)).setOrigin(0.5, 1).setDepth(500);
       this.tweens.add({ targets: this.right, x: W - 76, duration: 300, ease: 'Quad.easeOut' });
     }
 

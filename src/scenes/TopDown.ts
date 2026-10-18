@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { lookStage, state } from '../state';
+import { bulky, lookStage, speedy, state } from '../state';
 import { fadeTo, floatText } from '../ui';
 import { hud, toast } from './HudScene';
 import { touch } from '../touch';
@@ -40,6 +40,7 @@ export abstract class TopDown extends Phaser.Scene {
   protected leaving = false;
   /** nach einem Gespräch kurz keine neue Aktion, sonst öffnet Weiterdrücken gleich das nächste */
   private actBlockedUntil = 0;
+  private ghostT = 0;
   /** langsamer laufen (z. B. beim Tragen) */
   protected slow = false;
   private stepT = 0;
@@ -217,12 +218,26 @@ export abstract class TopDown extends Phaser.Scene {
     vx += touch.vx;
     vy += touch.vy;
     const len = Math.hypot(vx, vy) || 1;
-    const speed = (state.carrying || this.slow ? 46 : 74) * (delta / 1000);
+    const speed = (state.carrying || this.slow ? 46 : 74) * (speedy() ? 1.5 : 1) * (delta / 1000);
     const dx = (vx / len) * speed, dy = (vy / len) * speed;
     const p = this.player;
     const feetY = p.y - 3;
     if (dx && !this.blocked(p.x + dx, feetY)) p.x += dx;
     if (dy && !this.blocked(p.x, feetY + dy)) p.y += dy;
+
+    // rote Pille: breit wie ein Schrank
+    if (bulky()) p.setScale(0.76, 0.54);
+    else p.setScale(0.5);
+    // blaue Pille: Nachbilder hinter dem Wirt
+    if (speedy() && (vx || vy)) {
+      this.ghostT -= delta;
+      if (this.ghostT <= 0) {
+        this.ghostT = 70;
+        const g = this.add.image(p.x, p.y, p.texture.key, p.frame.name).setOrigin(0.5, 1).setScale(p.scaleX, p.scaleY).setFlipX(p.flipX)
+          .setTint(0x60c8ff).setAlpha(0.5).setDepth(p.y - 1);
+        this.tweens.add({ targets: g, alpha: 0, duration: 260, onComplete: () => g.destroy() });
+      }
+    }
 
     if (vx || vy) {
       if (vx) this.facing = 'side';

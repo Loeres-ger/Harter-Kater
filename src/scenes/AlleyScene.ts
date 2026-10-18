@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { item, lookStage, state } from '../state';
+import { bulky, item, lookStage, PILLS, state } from '../state';
 import { BAR_BACK_SPAWN, BAR_DOOR_SPAWN } from './BarScene';
+import type { DialogAction } from '../dialog/data';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
@@ -272,6 +273,7 @@ export class AlleyScene extends TopDown {
 
   /** Fassade, Straßenmöbel und Lichter rund ums Haus. */
   private buildStreet(dx: number, dy: number, qx: number, qy: number) {
+    this.addLeonard(dx);
     // Schild über dem Eingang, Außenlampe, Lichtschein der Fenster auf dem Gehweg
     this.add.image(dx * T + 8, (dy - 1) * T + 7, 'barSign').setScale(0.5).setDepth(2);
     this.addLight(dx * T + 8, (dy - 1) * T + 6, 0.55, 0.45).setTint(0xff6ab4);
@@ -300,6 +302,53 @@ export class AlleyScene extends TopDown {
           }).setDepth(4000);
         }
       }
+  }
+
+  /** Der kräftige Leonard lehnt an der Laterne, die dem Eingang am nächsten steht. */
+  private addLeonard(doorX: number) {
+    let best: [number, number] | null = null;
+    for (let y = 0; y < this.rows.length; y++)
+      for (let x = 0; x < this.rows[y].length; x++)
+        if (this.rows[y][x] === 'l' && (!best || Math.abs(x - doorX) < Math.abs(best[0] - doorX))) best = [x, y];
+    if (!best) return;
+    const [lx, ly] = best;
+    const x = lx * T + 2, y = (ly + 1) * T - 1;
+    const leo = this.add.sprite(x, y, 'leonard', 0).setOrigin(0.5, 1).setScale(0.5).setAngle(9).setDepth(y);
+    const shadow = this.add.image(x, y - 1, 'shadow').setDepth(1).setScale(1.1, 0.8);
+    this.npcs.push(leo, shadow);
+    // atmet schwer, ab und zu wird gepost
+    this.tweens.add({ targets: leo, scaleX: 0.53, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.time.addEvent({
+      delay: 3200, loop: true,
+      callback: () => {
+        if (!leo.active) return;
+        leo.setFrame(1).setAngle(0);
+        this.time.delayedCall(900, () => leo.active && leo.setFrame(0).setAngle(9));
+      },
+    });
+    this.interacts.push({
+      x, y: y - 4, r: 18,
+      label: () => (leo.active && !state.carrying ? 'Mit Leonard reden' : null),
+      act: () => this.talk('leonard', (a) => this.leonardSells(a)),
+    });
+  }
+
+  private leonardSells(a?: DialogAction) {
+    if (a !== 'speed' && a !== 'bulk') return;
+    const price = PILLS[a];
+    if (state.money < price) return this.toast('Leonard: „Kein Geld, keine Muckis.“');
+    state.money -= price;
+    state.boost[a] = state.time + PILLS.duration;
+    audio.sfx('glug');
+    this.float(`-${price}€`, '#ff8a6a');
+    if (a === 'speed') {
+      this.toast('Die Blauen knallen. Dein Herz rast. Deine Beine auch.');
+      this.cameras.main.flash(200, 80, 160, 255);
+    } else {
+      this.toast('Die Roten wirken. Dein Hemd platzt aus allen Nähten.');
+      this.cameras.main.shake(300, 0.01);
+      audio.sfx('growl');
+    }
   }
 
   private addDame(tx: number, ty: number, variant: number) {
@@ -334,7 +383,7 @@ export class AlleyScene extends TopDown {
       {
         if (away() || this.corpse || state.carrying) return;
         if (this.copSees(this.player.x, this.player.y) || this.copSees(dame.x, dame.y)) return this.bust('Vor den Augen der Polizei? Mutig. Und dumm.');
-        if (Math.random() < 0.25) {
+        if (!bulky() && Math.random() < 0.25) {
           // Sie wehrt sich
           const lost = Math.min(state.money, 3);
           state.money -= lost;

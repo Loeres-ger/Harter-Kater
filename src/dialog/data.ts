@@ -1,12 +1,12 @@
 import { GUESTS } from '../guests/data';
-import { lookStage, state } from '../state';
+import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
 // Ein Knoten hat Zeilen der Figur (mit „W:“ davor spricht der Wirt) und Antworten zur Auswahl.
 
 export type DialogBg = 'bar' | 'street' | 'cat';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
-export type DialogAction = 'shop' | 'kill' | 'tresen';
+export type DialogAction = 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk';
 
 export interface Choice {
   text: string;
@@ -26,6 +26,8 @@ export interface Speaker {
   color: string;
   portrait: string;
   bg: DialogBg;
+  /** Porträt tiefer setzen (Leonard ist sehr klein) */
+  drop?: number;
   /** Knoten werden beim Öffnen erzeugt, damit sie den aktuellen Spielstand kennen */
   tree: () => Record<string, DialogNode>;
 }
@@ -214,6 +216,36 @@ function dame(): Record<string, DialogNode> {
   };
 }
 
+function leonard(): Record<string, DialogNode> {
+  const buy: Choice[] = [
+    { text: `Die Blauen. (${PILLS.speed}€)`, action: 'speed' },
+    { text: `Die Roten. (${PILLS.bulk}€)`, action: 'bulk' },
+  ];
+  return {
+    start: {
+      lines: [bulky()
+        ? 'Ey. Jetzt siehst du aus wie ich. Nur größer. Das verzeih ich dir nie.'
+        : pick(['Ich lehn hier nicht. Die Laterne lehnt an MIR.', 'Na, Wirt. Ich bin der kräftige Leonard. Das „kräftig“ ist kein Spitzname.', 'Guckst du auf meine Waden? Jeder guckt auf meine Waden.'])],
+      choices: [
+        { text: 'Was verkaufst du?', next: 'ware' },
+        { text: 'Warum bist du so ... kompakt?', next: 'klein' },
+        { text: 'Tschüss, Leonard.' },
+      ],
+    },
+    ware: {
+      lines: [
+        'Medikamente. Rein medizinisch. Steht nix drauf, weil nix draufstehen darf.',
+        'Die Blauen machen dich schnell. Die Roten machen dich BREIT. Jeweils eine Minute. Danach tut alles weh.',
+      ],
+      choices: [...buy, { text: 'Lieber nicht.' }],
+    },
+    klein: {
+      lines: ['Kompakt? Ich bin 1,38 Meter pure Dichte, Freundchen.', 'Mein Arzt hat gesagt, ich soll aufhören. Mein Arzt ist jetzt Frührentner.'],
+      choices: [{ text: 'Was verkaufst du?', next: 'ware' }, BYE],
+    },
+  };
+}
+
 function cat(): Record<string, DialogNode> {
   return {
     start: {
@@ -236,6 +268,7 @@ export const SPEAKERS: Record<string, Speaker> = {
   cop: { name: 'POLIZIST', color: '#7aa8ff', portrait: 'nbust_cop', bg: 'street', tree: cop },
   dame0: { name: 'CHANTAL', color: '#ff7ac0', portrait: 'nbust_dame0', bg: 'street', tree: dame },
   dame1: { name: 'JACKY', color: '#d090ff', portrait: 'nbust_dame1', bg: 'street', tree: dame },
+  leonard: { name: 'KRÄFTIGER LEONARD', color: '#ff9a50', portrait: 'nbust_leonard', bg: 'street', drop: 30, tree: leonard },
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };

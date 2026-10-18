@@ -55,10 +55,19 @@ function freshState() {
     caughtBy: 'zeit' as 'zeit' | 'bulle',
     /** bereits gezeigte Story-Zwischenspiele */
     story: { kapitel2: false, kapitel3: false },
+    /** Leonards Pillen: bis wann sie wirken (Spielzeit) */
+    boost: { speed: 0, bulk: 0 },
   };
 }
 
 export let state = freshState();
+
+/** Leonards Pillen: Preis und Wirkdauer */
+export const PILLS = { speed: 12, bulk: 18, duration: 60 };
+/** Blaue Pille: 1,5-mal so schnell */
+export const speedy = () => state.time < state.boost.speed;
+/** Rote Pille: der Wirt ist richtig breit */
+export const bulky = () => state.time < state.boost.bulk;
 
 export function resetState() {
   state = freshState();
