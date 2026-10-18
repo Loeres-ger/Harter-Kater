@@ -6,8 +6,10 @@ import { BustLook, GUESTS } from './data';
 
 const BW = 64, BH = 96;
 
-/** Brustbild eines Gastes in Kampfstimmung (wütend). */
-function drawBust(c: Ctx, L: BustLook) {
+export type Mood = 'angry' | 'neutral';
+
+/** Brustbild: wütend (Kampf) oder freundlich (Gespräch). */
+export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
   const cx = 32;
   // Oberkörper
   r(c, cx - 22, 52, 44, 44, L.top);
@@ -44,6 +46,11 @@ function drawBust(c: Ctx, L: BustLook) {
       r(c, cx - 2, 51, 4, 22, L.accent);
       r(c, cx - 22, 66, 8, 1, L.top2); r(c, cx + 14, 66, 8, 1, L.top2); // Ärmelfalten
       break;
+    case 'jacket': // offene Jacke über einem Top, Kette
+      r(c, cx - 7, 48, 14, 28, L.accent);
+      r(c, cx - 10, 50, 3, 30, L.top2); r(c, cx + 7, 50, 3, 30, L.top2);
+      for (let i = 0; i < 7; i++) p(c, cx - 3 + i, 50 + Math.abs(i - 3), '#f0d040');
+      break;
     case 'cardigan':
       r(c, cx - 6, 48, 12, 30, '#f4f0e8');
       for (let y = 56; y < 92; y += 8) p(c, cx + 7, y, '#e8d0a0');
@@ -75,7 +82,7 @@ function drawBust(c: Ctx, L: BustLook) {
       break;
     case 'cap':
       r(c, cx - 11, 14, 22, 3, h);
-      r(c, cx - 12, 7, 24, 9, L.top); r(c, cx - 2, 15, 18, 3, L.top2); r(c, cx - 1, 9, 3, 3, L.accent);
+      r(c, cx - 12, 7, 24, 9, L.hat ?? L.top); r(c, cx - 2, 15, 18, 3, L.hat ? '#0a0a14' : L.top2); r(c, cx - 1, 9, 3, 3, L.accent);
       break;
     case 'bun':
       r(c, cx - 11, 10, 22, 8, h); r(c, cx - 12, 14, 3, 10, h); r(c, cx + 9, 14, 3, 10, h);
@@ -83,8 +90,9 @@ function drawBust(c: Ctx, L: BustLook) {
       for (let i = 0; i < 6; i++) p(c, cx - 9 + i * 3, 11, '#b0b0b0');
       break;
   }
-  // wütende Augenbrauen
-  for (let i = 0; i < 5; i++) { p(c, cx - 9 + i, 21 + Math.floor(i / 2), '#2a1a10'); p(c, cx + 8 - i, 21 + Math.floor(i / 2), '#2a1a10'); }
+  // Augenbrauen: wütend schräg oder entspannt gerade
+  if (mood === 'angry') for (let i = 0; i < 5; i++) { p(c, cx - 9 + i, 21 + Math.floor(i / 2), '#2a1a10'); p(c, cx + 8 - i, 21 + Math.floor(i / 2), '#2a1a10'); }
+  else { r(c, cx - 8, 22, 5, 1, '#2a1a10'); r(c, cx + 3, 22, 5, 1, '#2a1a10'); p(c, cx - 8, 23, '#2a1a10'); p(c, cx + 7, 23, '#2a1a10'); }
   // Augen
   r(c, cx - 7, 25, 4, 3, '#f8f8f0'); r(c, cx + 3, 25, 4, 3, '#f8f8f0');
   r(c, cx - 5, 25, 2, 2, '#1c120a'); r(c, cx + 4, 25, 2, 2, '#1c120a');
@@ -92,11 +100,19 @@ function drawBust(c: Ctx, L: BustLook) {
     for (const gx of [cx - 9, cx + 2]) { r(c, gx, 24, 7, 1, '#1a1a1a'); r(c, gx, 29, 7, 1, '#1a1a1a'); r(c, gx, 24, 1, 6, '#1a1a1a'); r(c, gx + 6, 24, 1, 6, '#1a1a1a'); }
     r(c, cx - 2, 26, 4, 1, '#1a1a1a');
   }
-  // rote Wutbacken, Nase, brüllender Mund
-  r(c, cx - 9, 31, 3, 2, '#e07060'); r(c, cx + 6, 31, 3, 2, '#e07060');
   r(c, cx - 1, 28, 3, 5, '#00000018');
-  r(c, cx - 4, 35, 8, 4, '#3a0e0a');
-  r(c, cx - 3, 35, 6, 1, '#f4f0e0');
+  if (mood === 'angry') {
+    // rote Wutbacken, brüllender Mund
+    r(c, cx - 9, 31, 3, 2, '#e07060'); r(c, cx + 6, 31, 3, 2, '#e07060');
+    r(c, cx - 4, 35, 8, 4, '#3a0e0a');
+    r(c, cx - 3, 35, 6, 1, '#f4f0e0');
+  } else {
+    // leichtes Lächeln
+    const m = L.lips ?? '#7a3a30';
+    r(c, cx - 3, 36, 6, 1, m); p(c, cx - 4, 35, m); p(c, cx + 3, 35, m);
+    if (L.lips) r(c, cx - 2, 37, 4, 1, m);
+  }
+  if (L.earrings) { r(c, cx - 13, 31, 2, 2, L.earrings); r(c, cx + 11, 31, 2, 2, L.earrings); }
   if (L.beard) for (let y = 31; y < 43; y++) for (let x = cx - 11; x < cx + 11; x++) {
     if (y < 34 && Math.abs(x - cx) < 6) continue;
     if (y >= 34 && y <= 39 && Math.abs(x - cx) < 5) continue;
@@ -163,6 +179,21 @@ function fightFx(scene: Phaser.Scene) {
   });
 }
 
+/** Brustbild in doppelter Auflösung mit Strähnen, Falten, Augenglanz und Seitenlicht. */
+export function bust(scene: Phaser.Scene, key: string, L: BustLook, mood: Mood) {
+  tex2x(scene, key, BW, BH, (c) => drawBust(c, L, mood), {
+    detail: (c) => { strands(c, L.hair); strands(c, L.beard); folds(c, L.top); eyeShine(c, ['#1c120a']); sideLight(c); },
+  });
+}
+
+/** Brustbilder für Gespräche mit den Leuten draußen */
+const NPC_BUSTS: Record<string, BustLook> = {
+  dealer: { skin: '#b07a50', hair: '#1a1a1a', style: 'cap', outfit: 'hoodie', top: '#2d3b2d', top2: '#223022', accent: '#8a9a8a', hat: '#1e2a1e', beard: '#2a1a10' },
+  cop: { skin: '#f0c090', hair: '#2a2018', style: 'cap', outfit: 'shirt', top: '#9ab0e0', top2: '#7a90c0', accent: '#0a1430', hat: '#14244a' },
+  dame0: { skin: '#f0c4a0', hair: '#f8e070', style: 'long', outfit: 'jacket', top: '#ff3a9a', top2: '#d02a7a', accent: '#1a1a1a', lips: '#e0103a', earrings: '#f0d040' },
+  dame1: { skin: '#a8724c', hair: '#c0301a', style: 'long', outfit: 'jacket', top: '#b040e0', top2: '#8a2ab8', accent: '#c8c8d8', lips: '#ff2a6a', earrings: '#e8e8f0' },
+};
+
 export function makeGuestTextures(scene: Phaser.Scene) {
   if (!scene.textures.exists('burst')) fightFx(scene);
   if (scene.textures.exists('fist')) return;
@@ -171,10 +202,9 @@ export function makeGuestTextures(scene: Phaser.Scene) {
     const k = `guest_${g.id}`;
     scene.anims.create({ key: `${k}_down`, frames: [1, 0, 2, 0].map((f) => ({ key: k, frame: f })), frameRate: 8, repeat: -1 });
     scene.anims.create({ key: `${k}_side`, frames: [7, 6, 8, 6].map((f) => ({ key: k, frame: f })), frameRate: 8, repeat: -1 });
-    const L = g.bust;
-    tex2x(scene, `gbust_${g.id}`, BW, BH, (c) => drawBust(c, L), {
-      detail: (c) => { strands(c, L.hair); strands(c, L.beard); folds(c, L.top); eyeShine(c, ['#1c120a']); sideLight(c); },
-    });
+    bust(scene, `gbust_${g.id}`, g.bust, 'angry');
+    bust(scene, `gbustN_${g.id}`, g.bust, 'neutral');
   }
+  for (const [id, L] of Object.entries(NPC_BUSTS)) bust(scene, `nbust_${id}`, L, 'neutral');
   tex2x(scene, 'fist', 32, 48, drawFist);
 }

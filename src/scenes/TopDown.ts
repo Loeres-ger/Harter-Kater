@@ -4,6 +4,7 @@ import { lookStage, state } from '../state';
 import { fadeTo, floatText } from '../ui';
 import { hud, toast } from './HudScene';
 import { touch } from '../touch';
+import type { DialogAction } from '../dialog/data';
 
 export const T = 16;
 const ZOOM = 2;
@@ -37,6 +38,8 @@ export abstract class TopDown extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private current: Interact | null = null;
   protected leaving = false;
+  /** nach einem Gespräch kurz keine neue Aktion, sonst öffnet Weiterdrücken gleich das nächste */
+  private actBlockedUntil = 0;
   /** langsamer laufen (z. B. beim Tragen) */
   protected slow = false;
   private stepT = 0;
@@ -52,6 +55,7 @@ export abstract class TopDown extends Phaser.Scene {
   init() {
     this.interacts = [];
     this.leaving = false;
+    this.actBlockedUntil = 0;
     this.carried = undefined;
     this.current = null;
     this.slow = false;
@@ -105,8 +109,8 @@ export abstract class TopDown extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,E,R,SPACE') as Record<string, Phaser.Input.Keyboard.Key>;
-    this.keys.E.on('down', () => this.current?.act());
-    this.keys.SPACE.on('down', () => this.current?.act());
+    this.keys.E.on('down', () => this.act());
+    this.keys.SPACE.on('down', () => this.act());
     this.keys.R.on('down', () => this.current?.alt?.());
 
     hud.prompt = '';
@@ -114,7 +118,7 @@ export abstract class TopDown extends Phaser.Scene {
     hud.alert = '';
     this.scene.run('Hud');
     this.scene.bringToTop('Hud');
-    touch.onAction = () => this.scene.isActive() && this.current?.act();
+    touch.onAction = () => this.scene.isActive() && this.act();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scene.sleep('Hud');
       touch.onAction = null;
@@ -135,6 +139,21 @@ export abstract class TopDown extends Phaser.Scene {
 
   protected float(s: string, color = '#f8e070') {
     floatText(this, this.player.x, this.player.y - 24, s, color);
+  }
+
+  private act() {
+    if (this.time.now < this.actBlockedUntil) return;
+    this.current?.act();
+  }
+
+  /** Gespräch unter vier Augen öffnen; diese Szene pausiert so lange. */
+  protected talk(who: string, onDone?: (action?: DialogAction) => void) {
+    if (this.leaving) return;
+    hud.prompt = '';
+    this.events.once(Phaser.Scenes.Events.RESUME, () => (this.actBlockedUntil = this.time.now + 450));
+    this.scene.launch('Dialog', { who, resume: this.scene.key, onDone });
+    this.scene.bringToTop('Dialog');
+    this.scene.pause();
   }
 
   protected go(key: string, data?: object) {

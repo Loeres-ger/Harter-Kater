@@ -3,7 +3,7 @@ import type { Pal } from '../gfx';
 // Die Stammgäste der Kneipe: Aussehen (Draufsicht + Brustbild), Sprüche und Kampfwerte.
 
 export type HairStyle = 'short' | 'long' | 'bald' | 'helmet' | 'cap' | 'bun';
-export type Outfit = 'vest' | 'hoodie' | 'leather' | 'jersey' | 'shirt' | 'cardigan';
+export type Outfit = 'vest' | 'hoodie' | 'leather' | 'jersey' | 'shirt' | 'cardigan' | 'jacket';
 
 export interface BustLook {
   skin: string;
@@ -15,6 +15,10 @@ export interface BustLook {
   accent: string;
   glasses?: boolean;
   beard?: string;
+  /** Mützen-/Kappenfarbe (sonst Oberteilfarbe) */
+  hat?: string;
+  lips?: string;
+  earrings?: string;
 }
 
 export interface GuestDef {

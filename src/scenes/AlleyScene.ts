@@ -55,15 +55,6 @@ const VIEW_LEN = 96, VIEW_NEAR = 16, VIEW_SPREAD = 0.45, VIEW_CLOSE = 24;
 /** Streife: Reihe und Strecke (in Kacheln) in der Gasse hinter dem Haus */
 const COP_ROW = 3, COP_FROM = 8, COP_TO = 30;
 
-const CAT_LINES = [
-  'Das glühende Auge folgt dir. Das blinde auch.',
-  'Sie riecht nach Tod und nassem Keller.',
-  'Du ziehst die Hand zurück. Da bewegt sich was unter dem Fell.',
-  'Ein Geräusch wie ein Lachen. Katzen lachen nicht.',
-];
-
-const DEALER_LINES = ['Psst. Pillen 10, Zeug 20. Keine Fragen.', 'Für deinen schicken Freund? Hehe.', 'Bar oder gar nicht, Bruder.'];
-
 export class AlleyScene extends TopDown {
   private cat!: Phaser.GameObjects.Sprite;
   private corpse?: Phaser.GameObjects.Sprite;
@@ -79,6 +70,7 @@ export class AlleyScene extends TopDown {
   private cone!: Phaser.GameObjects.Graphics;
   private busted = false;
   private dealerPos: [number, number] = [0, 0];
+  private copSpot?: Interact;
 
   constructor() {
     super('Alley');
@@ -225,13 +217,18 @@ export class AlleyScene extends TopDown {
     this.interacts.push({
       x: dealer.x, y: dealer.y - 4, r: 22,
       label: () => (this.dealDangerous() ? 'Dealer ansprechen (DER BULLE GUCKT!)' : 'Dealer ansprechen'),
-      act: () => (this.dealDangerous() ? this.bust('Drogenkauf? Direkt vor meiner Nase?!') : this.openShop('dealer')),
+      act: () => {
+        if (this.dealDangerous()) return this.bust('Drogenkauf? Direkt vor meiner Nase?!');
+        this.talk('dealer', (a) => a === 'shop' && (this.dealDangerous() ? this.bust('Drogenkauf? Direkt vor meiner Nase?!') : this.openShop('dealer')));
+      },
     });
     this.addLight(dealer.x, dealer.y - 10, 0.6, 0.35);
 
     // Streifenpolizist läuft die Gasse auf und ab
     this.cop = this.add.sprite(COP_FROM * T, COP_ROW * T + 14, 'polizist', 6).setOrigin(0.5, 1).setScale(0.5);
     this.cop.play('polizist_side');
+    this.copSpot = { x: this.cop.x, y: this.cop.y - 4, r: 20, label: () => (this.copGone || this.busted || state.carrying || this.corpseCarried ? null : 'Polizist ansprechen'), act: () => this.talk('cop') };
+    this.interacts.push(this.copSpot);
     this.npcs.push(this.cop);
     this.cone = this.add.graphics().setDepth(5001).setBlendMode(Phaser.BlendModes.ADD);
 
@@ -250,8 +247,8 @@ export class AlleyScene extends TopDown {
     this.buzz(this.cat.x, this.cat.y - 8, 4, 10);
     this.interacts.push({
       x: this.cat.x, y: this.cat.y - 4, r: 24,
-      label: () => (state.gameOver ? null : state.carrying ? 'Der Katze servieren' : 'Die Katze ... anfassen?'),
-      act: () => (state.carrying ? this.feed() : (audio.sfx('meow'), this.toast(Phaser.Utils.Array.GetRandom(CAT_LINES)))),
+      label: () => (state.gameOver ? null : state.carrying ? 'Der Katze servieren' : 'Mit der Katze ... reden?'),
+      act: () => (state.carrying ? this.feed() : (audio.sfx('meow'), this.talk('katze'))),
     });
 
     // Lampen an der Wand
@@ -330,8 +327,11 @@ export class AlleyScene extends TopDown {
 
     spot = {
       x: dame.x, y: dame.y - 4, r: 20,
-      label: () => (dame.active && dame.visible && !away() && !this.corpse && !state.carrying ? (this.copSees(this.player.x, this.player.y) ? 'Umlegen (DER BULLE GUCKT!)' : 'Umlegen') : null),
-      act: () => {
+      label: () => (dame.active && dame.visible && !away() && !this.corpse && !state.carrying ? (this.copSees(this.player.x, this.player.y) ? 'Ansprechen (DER BULLE GUCKT!)' : 'Ansprechen') : null),
+      act: () => !away() && !this.corpse && !state.carrying && this.talk(`dame${variant}`, (a) => a === 'kill' && kill()),
+    };
+    const kill = () => {
+      {
         if (away() || this.corpse || state.carrying) return;
         if (this.copSees(this.player.x, this.player.y) || this.copSees(dame.x, dame.y)) return this.bust('Vor den Augen der Polizei? Mutig. Und dumm.');
         if (Math.random() < 0.25) {
@@ -372,7 +372,7 @@ export class AlleyScene extends TopDown {
             audio.sfx('thud');
           },
         });
-      },
+      }
     };
     this.interacts.push(spot);
   }
@@ -439,6 +439,7 @@ export class AlleyScene extends TopDown {
       }
     }
     c.setFlipX(this.copDir < 0).setDepth(c.y);
+    if (this.copSpot) { this.copSpot.x = c.x; this.copSpot.y = c.y - 4; }
     // Taschenlampe
     const ex = c.x + this.copDir * VIEW_LEN, far = VIEW_NEAR + VIEW_LEN * VIEW_SPREAD;
     this.cone.clear().fillStyle(0xfff0a0, 0.12);
@@ -458,7 +459,6 @@ export class AlleyScene extends TopDown {
 
   private openShop(shop: 'automat' | 'dealer') {
     audio.sfx('click');
-    if (shop === 'dealer') this.toast(Phaser.Utils.Array.GetRandom(DEALER_LINES));
     this.scene.launch('Shop', { shop, resume: 'Alley' });
     this.scene.bringToTop('Shop');
     this.scene.pause();

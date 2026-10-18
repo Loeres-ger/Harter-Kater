@@ -57,21 +57,6 @@ export function resetBar() {
 }
 
 const SCHLAGER = ['„Atemlos durch die Nacht“ läuft. Schon wieder.', '„Ein Bett im Kornfeld“. Kalle summt mit.', '„Griechischer Wein“. Irgendwer weint.', 'Die Jukebox frisst deine Münze nicht. Glück gehabt.'];
-const KALLE = [
-  'Kalle: „Zzz ... noch ein Korn, Chef ... zzz“',
-  'Kalle: „Der Lackaffe da? Gib ihm, was er will. Dann zahlt er.“',
-  'Kalle: „Nicht zu hastig, Chef. Sonst merkt er was.“',
-  'Kalle: „Hinten in der Gasse steht einer, der hat ... Spezielles.“',
-  'Kalle: „Die Katze draußen? Hat nur noch ein Auge. Das andere glüht. Die frisst alles. ALLES.“',
-  'Kalle: „Sie nennen sie die Königskatze, Chef. Aber das ist kein König. Das ist ... die Pest.“',
-  'Kalle: „In der Gasse läuft jetzt ein Bulle Streife. Pass auf seine Taschenlampe auf.“',
-  'Kalle: „Lass den Lackaffen nicht warten, Chef. Ungeduldige Gäste werden misstrauisch.“',
-  'Kalle: „Die Automaten da hinten? Die Risikoleiter hat mich mein Haus gekostet, Chef.“',
-  'Kalle: „Buch der Ratte ... drei Bücher, Chef. Dann geht die Post ab.“',
-  'Kalle: „Setz nie auf Schnecke. Ich weiß, wovon ich rede.“',
-  'Kalle: „Mülltonnen, Chef. Da liegt oft noch Fusel drin.“',
-  'Kalle: „Knapp bei Kasse? Die Damen in der Gasse haben Bares. Aber lass keine Leichen rumliegen, Chef.“',
-];
 
 export class BarScene extends TopDown {
   private victim?: Phaser.GameObjects.Sprite;
@@ -168,11 +153,11 @@ export class BarScene extends TopDown {
     this.interacts.push({
       x: vx * T + 8, y: vy * T + 10, r: 18,
       label: () => {
-        if (!state.dead) return `${VICTIM}`;
+        if (!state.dead) return `Mit ${VICTIM} reden`;
         return this.body?.active ? 'Leiche schultern' : null;
       },
       act: () => {
-        if (!state.dead) return this.toast('Ein Wirt bedient von HINTER dem Tresen. Rein durch die Klappe.');
+        if (!state.dead) return this.talk('glanz', (a) => a === 'tresen' && this.go('Tresen'));
         if (this.body?.active) {
           this.body.destroy();
           state.carrying = true;
@@ -194,7 +179,7 @@ export class BarScene extends TopDown {
         this.tweens.add({ targets: z, x: z.x + 8, y: z.y - 14, alpha: 0, duration: 1800, onComplete: () => z.destroy() });
       },
     });
-    this.interacts.push({ x: kalle.x, y: kalle.y - 4, r: 20, label: () => 'Kalle wecken', act: () => this.toast(Phaser.Utils.Array.GetRandom(KALLE)) });
+    this.interacts.push({ x: kalle.x, y: kalle.y - 4, r: 20, label: () => 'Mit Kalle reden', act: () => this.talk('kalle') });
 
     // Spielautomaten in der rechten oberen Ecke
     const machines: [number, string, string, number][] = [
@@ -294,8 +279,8 @@ export class BarScene extends TopDown {
     this.guestViews.set(g.id, view);
     this.interacts.push({
       x, y: y - 4, r: 18,
-      label: () => (sprite.active && !g.rowdy && roster.guests.includes(g) ? `Mit ${def.name} plaudern` : null),
-      act: () => this.toast(`${def.name.split(' ').pop()}: „${Phaser.Utils.Array.GetRandom(def.calm)}“`),
+      label: () => (sprite.active && !g.rowdy && roster.guests.includes(g) ? `Mit ${def.name.split(' ').pop()} reden` : null),
+      act: () => this.talk(g.id),
     });
     if (g.rowdy) this.setRowdy(view, true);
   }
