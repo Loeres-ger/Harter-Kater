@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Sound-Studio – Die Königskatze</title>
+    <style>
+      :root {
+        --bg: #0d0b0a;
+        --panel: #1a1210;
+        --panel2: #241914;
+        --line: #3a2a1e;
+        --text: #e8dcc4;
+        --muted: #a89878;
+        --accent: #f0c030;
+        --rec: #e0403a;
+        --ok: #7ac05a;
+        --wave: #9ae09a;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      .pixel { font-family: 'Press Start 2P', monospace; }
+      header { padding: 18px 20px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+      header h1 { margin: 0; font-size: 16px; color: var(--accent); }
+      header p { margin: 0; color: var(--muted); font-size: 13px; }
+      header a { color: var(--wave); margin-left: auto; font-size: 13px; }
+      .layout { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - 62px); }
+      @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+
+      /* Liste der Sound-Plätze */
+      aside { border-right: 1px solid var(--line); padding: 12px; overflow-y: auto; max-height: calc(100vh - 62px); }
+      @media (max-width: 760px) { aside { max-height: 260px; border-right: 0; border-bottom: 1px solid var(--line); } }
+      .group { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 6px 6px; }
+      .slot { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; margin: 2px 0; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+      .slot:hover { background: var(--panel); }
+      .slot.active { background: var(--panel2); border-color: var(--accent); }
+      .dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--muted); flex: none; }
+      .slot.has .dot { background: var(--ok); border-color: var(--ok); }
+      .slot small { color: var(--muted); margin-left: auto; font-size: 11px; }
+
+      main { padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 880px; }
+      .title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .title-row h2 { margin: 0; font-size: 14px; color: var(--accent); }
+      .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); border: 1px solid var(--line); }
+      .badge.has { color: var(--ok); border-color: #3a5a2a; }
+      .desc { color: var(--muted); margin: 0; }
+
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      button.btn { font: 600 13px system-ui, sans-serif; padding: 9px 14px; border-radius: 6px; border: 1px solid #000; background: #4a3a30; color: #fff; cursor: pointer; box-shadow: 0 2px 0 #00000080; }
+      button.btn:hover:not(:disabled) { filter: brightness(1.15); }
+      button.btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+      button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      button.rec { background: var(--rec); min-width: 150px; }
+      button.rec.on { animation: pulse 1s infinite; }
+      @keyframes pulse { 50% { background: #8a1a14; } }
+      button.save { background: #3a6a2a; }
+      button.danger { background: #5a2a20; }
+      button.ghost { background: transparent; border-color: var(--line); color: var(--text); box-shadow: none; }
+      label.file { cursor: pointer; }
+      label.file input { display: none; }
+
+      .meter { flex: 1; min-width: 120px; height: 10px; background: #0a0806; border-radius: 5px; overflow: hidden; border: 1px solid var(--line); }
+      .meter div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--ok), var(--accent) 70%, var(--rec)); transition: width 0.05s; }
+      .time { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 52px; text-align: right; }
+
+      .wave-wrap { position: relative; }
+      canvas#wave { width: 100%; height: 150px; display: block; background: #0a0806; border-radius: 6px; border: 1px solid var(--line); touch-action: none; cursor: ew-resize; }
+      .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+      .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; pointer-events: none; }
+
+      .fx { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 18px; }
+      .fx label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+      .fx label span { display: flex; justify-content: space-between; color: var(--muted); }
+      .fx input[type='range'] { accent-color: var(--accent); }
+      .toggles { display: flex; gap: 8px; flex-wrap: wrap; }
+      .toggle { padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; font: inherit; }
+      .toggle[aria-pressed='true'] { background: var(--accent); color: #1a1212; border-color: var(--accent); }
+      .status { min-height: 20px; font-size: 13px; }
+      .status.ok { color: var(--ok); }
+      .status.err { color: var(--rec); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 class="pixel">SOUND-STUDIO</h1>
+      <p>Eigene Sounds aufnehmen und direkt ins Spiel übernehmen</p>
+      <a href="./index.html" target="_blank">Spiel öffnen ↗</a>
+    </header>
+    <div class="layout">
+      <aside id="slots"></aside>
+      <main>
+        <div class="title-row">
+          <h2 class="pixel" id="slotTitle">–</h2>
+          <span class="badge" id="slotBadge"></span>
+        </div>
+        <p class="desc" id="slotDesc"></p>
+
+        <div class="card">
+          <div class="row">
+            <button class="btn rec" id="recBtn">● Aufnehmen</button>
+            <div class="meter" aria-label="Pegel"><div id="meter"></div></div>
+            <span class="time" id="recTime">0,0 s</span>
+          </div>
+          <div class="row" style="margin-top: 10px">
+            <label class="btn ghost file">📂 Datei laden<input type="file" id="fileIn" accept="audio/*" /></label>
+            <button class="btn ghost" id="synthBtn">▶ Spiel-Original (Synth)</button>
+            <button class="btn ghost" id="savedBtn">▶ Gespeicherte Aufnahme</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="wave-wrap">
+            <canvas id="wave" width="1600" height="300"></canvas>
+            <div class="empty" id="waveEmpty">Noch nichts aufgenommen</div>
+          </div>
+          <div class="hint">Ränder ziehen = zuschneiden · Leertaste = anhören · R = aufnehmen</div>
+        </div>
+
+        <div class="card">
+          <div class="fx">
+            <label><span>Tonhöhe <b id="pitchV">0</b></span><input type="range" id="pitch" min="-12" max="12" step="1" value="0" /></label>
+            <label><span>Lautstärke <b id="volV">100 %</b></span><input type="range" id="vol" min="10" max="200" step="5" value="100" /></label>
+          </div>
+          <div class="toggles" style="margin-top: 12px">
+            <button class="toggle" data-fx="reverse" aria-pressed="false">⇆ Rückwärts</button>
+            <button class="toggle" data-fx="crush" aria-pressed="false">👾 8-Bit</button>
+            <button class="toggle" data-fx="echo" aria-pressed="false">🕳 Echo</button>
+            <button class="toggle" data-fx="monster" aria-pressed="false">🧟 Monster</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn" id="playBtn" disabled>▶ Anhören</button>
+          <button class="btn save" id="saveBtn" disabled>💾 Ins Spiel übernehmen</button>
+          <button class="btn ghost" id="dlBtn" disabled>⬇ WAV herunterladen</button>
+          <button class="btn danger" id="delBtn">🗑 Aufnahme löschen</button>
+        </div>
+        <div class="status" id="status" role="status"></div>
+      </main>
+    </div>
+    <script type="module" src="/src/tools/recorder.ts"></script>
+  </body>
+</html>
