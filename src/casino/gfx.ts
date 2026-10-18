@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import { Ctx, blob, outline, p, r, tex } from '../gfx';
+import { Ctx, blob, outline, p, r, tex2x } from '../gfx';
 
 // Pixel-Grafiken für die drei Spielautomaten: Wandgehäuse, Walzensymbole, Pferde.
 
 const S = 16; // Symbolgröße
 
 function sym(scene: Phaser.Scene, key: string, draw: (c: Ctx) => void) {
-  tex(scene, key, S, S, (c) => {
+  tex2x(scene, key, S, S, (c) => {
     draw(c);
     outline(c, 0, 0, S, S);
   });
@@ -14,7 +14,7 @@ function sym(scene: Phaser.Scene, key: string, draw: (c: Ctx) => void) {
 
 /** Kartenwert als Pixel-Schrift (10, J, Q, K, A) */
 function card(scene: Phaser.Scene, key: string, label: string, col: string, dark: string) {
-  tex(scene, key, S, S, (c) => {
+  tex2x(scene, key, S, S, (c) => {
     c.font = '8px "Press Start 2P"';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
@@ -139,7 +139,7 @@ export const JOCKEY_COLORS = ['#e02828', '#2860e0', '#f0c030', '#30a040', '#a040
 
 function horses(scene: Phaser.Scene) {
   JOCKEY_COLORS.forEach((jc, i) => {
-    const t = tex(scene, `horse${i}`, 48, 20, (c) => {
+    const t = tex2x(scene, `horse${i}`, 48, 20, (c) => {
       for (let f = 0; f < 2; f++) {
         const o = f * 24;
         const coat = ['#7a4a2a', '#3a2a1a', '#a87a4a', '#5a3a2a', '#e8e0d0', '#2a2018'][i];
@@ -168,8 +168,8 @@ function horses(scene: Phaser.Scene) {
         outline(c, o, 0, 24, 20);
       }
     });
-    t.add(0, 0, 0, 0, 24, 20);
-    t.add(1, 0, 24, 0, 24, 20);
+    t.add(0, 0, 0, 0, 48, 40);
+    t.add(1, 0, 48, 0, 48, 40);
     scene.anims.create({ key: `horse${i}_run`, frames: [{ key: `horse${i}`, frame: 0 }, { key: `horse${i}`, frame: 1 }], frameRate: 10, repeat: -1 });
   });
 }
@@ -177,7 +177,7 @@ function horses(scene: Phaser.Scene) {
 // ---------------------------------------------------------------- Wandgehäuse in der Bar (16x16, wie Wandkacheln)
 
 function cabinet(scene: Phaser.Scene, key: string, body: string, trim: string, screen: (c: Ctx) => void) {
-  tex(scene, key, 16, 16, (c) => {
+  tex2x(scene, key, 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#4a2c2c'); // Ziegelwand dahinter
     r(c, 0, 0, 16, 2, '#1f1616');
     r(c, 1, 1, 14, 15, body);

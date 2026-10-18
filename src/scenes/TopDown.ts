@@ -74,23 +74,23 @@ export abstract class TopDown extends Phaser.Scene {
           const below = this.rows[y + 1]?.[x];
           const front = below !== undefined && !this.isWall(below);
           const key = front ? info.key : info.key.replace('Front', 'Top');
-          this.add.image(px, py, this.textures.exists(key) ? key : info.key).setOrigin(0).setDepth(front ? 1 : 0);
+          this.add.image(px, py, this.textures.exists(key) ? key : info.key).setOrigin(0).setScale(0.5).setDepth(front ? 1 : 0);
           this.solid[y][x] = true;
           continue;
         }
-        this.add.image(px, py, this.floorKey(x, y)).setOrigin(0).setDepth(0);
-        if (info.key) this.add.image(px, py, info.key).setOrigin(0).setDepth(info.object ? py + T : 0.5);
+        this.add.image(px, py, this.floorKey(x, y)).setOrigin(0).setScale(0.5).setDepth(0);
+        if (info.key) this.add.image(px, py, info.key).setOrigin(0).setScale(0.5).setDepth(info.object ? py + T : 0.5);
         this.solid[y][x] = info.solid;
       }
     }
 
     const [sx, sy] = data?.spawn ?? [2, 2];
     this.shadow = this.add.image(0, 0, 'shadow').setDepth(1);
-    this.player = this.add.sprite(sx * T + 8, sy * T + 14, 'wirt', 0).setOrigin(0.5, 1);
+    this.player = this.add.sprite(sx * T + 8, sy * T + 14, 'wirt', 0).setOrigin(0.5, 1).setScale(0.5);
 
     this.setupWorld();
 
-    if (state.carrying) this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90);
+    if (state.carrying) this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5);
 
     // Stimmung: Abdunkeln, Lichter liegen darüber (addLight)
     this.add.rectangle(-T, -T, (mw + 2) * T, (mh + 2) * T, 0x0a0610, this.darkness()).setOrigin(0).setDepth(5000);
@@ -154,7 +154,7 @@ export abstract class TopDown extends Phaser.Scene {
   }
 
   protected spawnCoin(tx: number, ty: number) {
-    const c = this.add.image(tx * T + 8, ty * T + 10, 'coin').setDepth(ty * T + 10);
+    const c = this.add.image(tx * T + 8, ty * T + 10, 'coin').setScale(0.5).setDepth(ty * T + 10);
     this.tweens.add({ targets: c, y: c.y - 2, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.interacts.push({
       x: c.x, y: c.y, r: 12,

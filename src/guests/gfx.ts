@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Ctx, blob, humanSheet, outline, p, r, tex } from '../gfx';
+import { Ctx, blob, eyeShine, folds, humanSheet, outline, p, r, sideLight, strands, tex, tex2x } from '../gfx';
 import { BustLook, GUESTS } from './data';
 
 // Grafiken der Stammgäste: Draufsicht-Figuren, Brustbilder für den Kampf, Fäuste des Wirts.
@@ -87,7 +87,7 @@ function drawBust(c: Ctx, L: BustLook) {
   for (let i = 0; i < 5; i++) { p(c, cx - 9 + i, 21 + Math.floor(i / 2), '#2a1a10'); p(c, cx + 8 - i, 21 + Math.floor(i / 2), '#2a1a10'); }
   // Augen
   r(c, cx - 7, 25, 4, 3, '#f8f8f0'); r(c, cx + 3, 25, 4, 3, '#f8f8f0');
-  r(c, cx - 5, 25, 2, 2, '#2a1a10'); r(c, cx + 4, 25, 2, 2, '#2a1a10');
+  r(c, cx - 5, 25, 2, 2, '#1c120a'); r(c, cx + 4, 25, 2, 2, '#1c120a');
   if (L.glasses) {
     for (const gx of [cx - 9, cx + 2]) { r(c, gx, 24, 7, 1, '#1a1a1a'); r(c, gx, 29, 7, 1, '#1a1a1a'); r(c, gx, 24, 1, 6, '#1a1a1a'); r(c, gx + 6, 24, 1, 6, '#1a1a1a'); }
     r(c, cx - 2, 26, 4, 1, '#1a1a1a');
@@ -155,8 +155,8 @@ function fightFx(scene: Phaser.Scene) {
     r(c, 3, 0, 1, 7, '#f8e070'); r(c, 0, 3, 7, 1, '#f8e070'); r(c, 2, 2, 3, 3, '#fff4a0');
   });
   // Verletzungen fürs Brustbild (Maßstab 1 : Bild wird ×2 gezeichnet)
-  tex(scene, 'bruise', 8, 6, (c) => { blob(c, 4, 3, 3.5, 2.5, '#6a3a7a'); blob(c, 4, 3, 2, 1.4, '#8a4a9a'); });
-  tex(scene, 'bandaid', 12, 5, (c) => {
+  tex2x(scene, 'bruise', 8, 6, (c) => { blob(c, 4, 3, 3.5, 2.5, '#6a3a7a'); blob(c, 4, 3, 2, 1.4, '#8a4a9a'); });
+  tex2x(scene, 'bandaid', 12, 5, (c) => {
     r(c, 0, 1, 12, 3, '#e8c090'); r(c, 4, 0, 4, 5, '#f4dcb8');
     p(c, 5, 2, '#c89a70'); p(c, 7, 2, '#c89a70');
     outline(c, 0, 0, 12, 5);
@@ -171,7 +171,10 @@ export function makeGuestTextures(scene: Phaser.Scene) {
     const k = `guest_${g.id}`;
     scene.anims.create({ key: `${k}_down`, frames: [1, 0, 2, 0].map((f) => ({ key: k, frame: f })), frameRate: 8, repeat: -1 });
     scene.anims.create({ key: `${k}_side`, frames: [7, 6, 8, 6].map((f) => ({ key: k, frame: f })), frameRate: 8, repeat: -1 });
-    tex(scene, `gbust_${g.id}`, BW, BH, (c) => drawBust(c, g.bust));
+    const L = g.bust;
+    tex2x(scene, `gbust_${g.id}`, BW, BH, (c) => drawBust(c, L), {
+      detail: (c) => { strands(c, L.hair); strands(c, L.beard); folds(c, L.top); eyeShine(c, ['#1c120a']); sideLight(c); },
+    });
   }
-  tex(scene, 'fist', 32, 48, drawFist);
+  tex2x(scene, 'fist', 32, 48, drawFist);
 }

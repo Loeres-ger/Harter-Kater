@@ -72,7 +72,7 @@ export class FightScene extends Phaser.Scene {
     // ---------------------------------------------------------------- Kulisse
     this.add.image(0, 0, 'tresenBg').setOrigin(0);
     // Kalle feuert im Hintergrund an
-    const kalle = this.add.image(432, 210, 'bustPenner').setOrigin(0.5, 1);
+    const kalle = this.add.image(432, 210, 'bustPenner').setOrigin(0.5, 1).setScale(0.5);
     this.tweens.add({ targets: kalle, y: 202, duration: 220, yoyo: true, repeat: -1, ease: 'Quad.easeOut' });
     this.time.addEvent({ delay: 2600, loop: true, callback: () => !this.over && floatText(this, 432, 112, Phaser.Utils.Array.GetRandom(KALLE_CHEERS), '#f8e070') });
     this.add.image(0, 186, 'counterFront').setOrigin(0);
@@ -80,10 +80,10 @@ export class FightScene extends Phaser.Scene {
     this.add.image(FOE_X, 100, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.6).setAlpha(0.4); // Spot auf den Gegner
 
     // ---------------------------------------------------------------- Gegner + Verletzungen
-    this.foe = this.add.image(0, 0, `gbust_${this.g.id}`).setOrigin(0.5, 1).setScale(2);
+    this.foe = this.add.image(0, 0, `gbust_${this.g.id}`).setOrigin(0.5, 1).setScale(1);
     this.foeC = this.add.container(FOE_X, FOE_Y, [this.foe]);
     const injury = (at: number, key: string, x: number, y: number, angle = 0) => {
-      const img = this.add.image(x, y, key).setScale(2).setAngle(angle).setAlpha(0);
+      const img = this.add.image(x, y, key).setScale(1).setAngle(angle).setAlpha(0);
       this.foeC.add(img);
       this.injuries.push({ at, img });
     };
@@ -105,7 +105,7 @@ export class FightScene extends Phaser.Scene {
     }).setDepth(26);
 
     // ---------------------------------------------------------------- Fäuste + Anzeigen
-    FIST_HOME.forEach(([x, y], i) => this.fists.push(this.add.image(x, y, 'fist').setOrigin(0.5, 1).setScale(2).setFlipX(i === 1).setDepth(20)));
+    FIST_HOME.forEach(([x, y], i) => this.fists.push(this.add.image(x, y, 'fist').setOrigin(0.5, 1).setScale(1).setFlipX(i === 1).setDepth(20)));
     this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setDepth(28).setAlpha(0);
 
     this.add.rectangle(W / 2, 14, 236, 30, 0x120c0b, 0.85).setOrigin(0.5, 0).setStrokeStyle(1, 0xc04040).setDepth(30);
@@ -186,10 +186,10 @@ export class FightScene extends Phaser.Scene {
     const f = this.fists[i];
     const [hx, hy] = FIST_HOME[i];
     this.tweens.killTweensOf(f);
-    f.setPosition(hx, hy).setScale(2).setAngle(0);
+    f.setPosition(hx, hy).setScale(1).setAngle(0);
     // nur bis zum Kinn: die Faust soll das Gesicht nicht verdecken
     const tx = Phaser.Math.Linear(hx, x, 0.55), ty = Math.max(232, y + 130);
-    this.tweens.add({ targets: f, x: tx, y: ty, scale: 2.25, angle: i ? -12 : 12, duration: 65, yoyo: true, ease: 'Quad.easeOut', onComplete: () => f.setPosition(hx, hy).setScale(2).setAngle(0) });
+    this.tweens.add({ targets: f, x: tx, y: ty, scale: 1.125, angle: i ? -12 : 12, duration: 65, yoyo: true, ease: 'Quad.easeOut', onComplete: () => f.setPosition(hx, hy).setScale(1).setAngle(0) });
 
     // Einschlag: Explosion, Wort, Funken
     const b = this.add.image(x, y, 'burst').setDepth(22).setScale(0.3).setAngle(Phaser.Math.Between(0, 360));
@@ -237,8 +237,8 @@ export class FightScene extends Phaser.Scene {
     const prog = this.hits / this.g.hits;
     for (const inj of this.injuries) {
       if (prog >= inj.at && inj.img.alpha === 0) {
-        inj.img.setAlpha(1).setScale(3);
-        this.tweens.add({ targets: inj.img, scale: 2, duration: 160, ease: 'Back.easeOut' });
+        inj.img.setAlpha(1).setScale(1.5);
+        this.tweens.add({ targets: inj.img, scale: 1, duration: 160, ease: 'Back.easeOut' });
       }
     }
     if (prog >= 0.85 && !this.dizzy.length) {

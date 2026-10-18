@@ -62,7 +62,7 @@ export class SahneScene extends Machine {
     txt(this, 380, 62, '3 GLEICHE', '#f0c030').setOrigin(0.5, 0);
     [...SAHNE_SYMBOLS].reverse().forEach((s, i) => {
       const y = 82 + i * 15;
-      this.add.image(336, y, s);
+      this.add.image(336, y, s).setScale(0.5);
       txt(this, 432, y - 4, `${SAHNE_PAY[s]}x`, '#f4ead0').setOrigin(1, 0);
     });
 

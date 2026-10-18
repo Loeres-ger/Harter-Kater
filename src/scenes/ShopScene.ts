@@ -73,7 +73,7 @@ export class ShopScene extends Phaser.Scene {
     const bg = this.add.rectangle(0, 0, CARD_W, CARD_H, 0x2a1e16).setStrokeStyle(1, 0x5a4430);
     const shelf = this.add.rectangle(0, -CARD_H / 2 + 34, CARD_W - 10, 52, 0x140e0a);
     const glow = this.add.image(0, -CARD_H / 2 + 34, 'light').setScale(0.5).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD);
-    const icon = this.add.image(0, -CARD_H / 2 + 34, `icon_${def.id}`).setScale(3);
+    const icon = this.add.image(0, -CARD_H / 2 + 34, `icon_${def.id}`).setScale(1.5);
     this.tweens.add({ targets: icon, y: icon.y - 2, duration: 900 + idx * 120, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     const name = txt(this, 0, -CARD_H / 2 + 60, def.name.toUpperCase(), '#f4ead0').setOrigin(0.5, 0);
     // Preisschild

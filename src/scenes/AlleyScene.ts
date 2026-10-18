@@ -158,10 +158,10 @@ export class AlleyScene extends TopDown {
 
     // Dealer
     const [xx, xy] = this.find('X');
-    const dealer = this.add.sprite(xx * T + 8, xy * T + 14, 'dealer', 6).setOrigin(0.5, 1).setDepth(xy * T + 14).setFlipX(true);
+    const dealer = this.add.sprite(xx * T + 8, xy * T + 14, 'dealer', 6).setOrigin(0.5, 1).setScale(0.5).setDepth(xy * T + 14).setFlipX(true);
     this.npcs.push(dealer, this.add.image(dealer.x, dealer.y - 1, 'shadow').setDepth(1));
     this.dealerPos = [dealer.x, dealer.y];
-    this.tweens.add({ targets: dealer, scaleY: 0.96, duration: 900, yoyo: true, repeat: -1 });
+    this.tweens.add({ targets: dealer, scaleY: 0.48, duration: 900, yoyo: true, repeat: -1 });
     this.interacts.push({
       x: dealer.x, y: dealer.y - 4, r: 22,
       label: () => (this.dealDangerous() ? 'Dealer ansprechen (DER BULLE GUCKT!)' : 'Dealer ansprechen'),
@@ -170,7 +170,7 @@ export class AlleyScene extends TopDown {
     this.addLight(dealer.x, dealer.y - 10, 0.6, 0.35);
 
     // Streifenpolizist läuft die Gasse auf und ab
-    this.cop = this.add.sprite(4 * T, 4 * T + 14, 'polizist', 6).setOrigin(0.5, 1);
+    this.cop = this.add.sprite(4 * T, 4 * T + 14, 'polizist', 6).setOrigin(0.5, 1).setScale(0.5);
     this.cop.play('polizist_side');
     this.npcs.push(this.cop);
     this.cone = this.add.graphics().setDepth(5001).setBlendMode(Phaser.BlendModes.ADD);
@@ -182,7 +182,7 @@ export class AlleyScene extends TopDown {
 
     // Die Katze
     const [kx, ky] = this.find('K');
-    this.cat = this.add.sprite(kx * T + 8, ky * T + 12, 'cat', 0).setOrigin(0.5, 1).setDepth(ky * T + 12);
+    this.cat = this.add.sprite(kx * T + 8, ky * T + 12, 'cat', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(ky * T + 12);
     this.cat.play('cat_idle');
     this.add.image(this.cat.x, this.cat.y, 'shadow').setDepth(1).setScale(0.8);
     // fauliger Schimmer und Fliegen
@@ -205,8 +205,8 @@ export class AlleyScene extends TopDown {
       lifespan: 1200,
       speedY: { min: 200, max: 260 },
       speedX: -30,
-      scaleX: 0.15,
-      scaleY: 0.6,
+      scaleX: 0.075,
+      scaleY: 0.3,
       alpha: 0.25,
       tint: 0x8aa0c8,
       frequency: 12,
@@ -215,7 +215,7 @@ export class AlleyScene extends TopDown {
 
   private addDame(tx: number, ty: number, variant: number) {
     const key = `${tx},${ty}`;
-    const dame = this.add.sprite(tx * T + 8, ty * T + 14, `dame${variant}`, 0).setOrigin(0.5, 1);
+    const dame = this.add.sprite(tx * T + 8, ty * T + 14, `dame${variant}`, 0).setOrigin(0.5, 1).setScale(0.5);
     const shadow = this.add.image(dame.x, dame.y - 1, 'shadow').setDepth(1);
     this.npcs.push(dame, shadow);
     // langsam auf und ab schlendern
@@ -266,7 +266,7 @@ export class AlleyScene extends TopDown {
         dameReady.set(key, Number.POSITIVE_INFINITY);
         state.bodyDeadline = state.time + 20;
         this.corpseKey = key;
-        const corpse = this.add.sprite(dame.x, dame.y - 4, `dame${variant}`, 0).setDepth(dame.y);
+        const corpse = this.add.sprite(dame.x, dame.y - 4, `dame${variant}`, 0).setScale(0.5).setDepth(dame.y);
         this.tweens.add({ targets: corpse, angle: dame.x < this.player.x ? -90 : 90, duration: 250, ease: 'Quad.easeIn' });
         this.corpse = corpse;
         this.interacts.push({
@@ -293,7 +293,7 @@ export class AlleyScene extends TopDown {
     this.corpse = undefined;
     state.bodyDeadline = null;
     dameReady.set(this.corpseKey, state.time + 60); // irgendwann steht eine Neue da
-    this.tweens.add({ targets: corpse, x, y, scale: 0.3, alpha: 0, duration: 350, ease: 'Quad.easeIn', onComplete: () => corpse.destroy() });
+    this.tweens.add({ targets: corpse, x, y, scale: 0.15, alpha: 0, duration: 350, ease: 'Quad.easeIn', onComplete: () => corpse.destroy() });
     this.cameras.main.shake(120, 0.005);
     this.float('ENTSORGT', '#9ae09a');
     audio.sfx('clang');
@@ -456,7 +456,7 @@ export class AlleyScene extends TopDown {
       // Trümmer fliegen
       this.add.particles(x, y - 4, 'coin', {
         speed: { min: 60, max: 160 }, angle: { min: 200, max: 340 }, gravityY: 300, lifespan: 900,
-        scale: { min: 0.3, max: 0.6 }, tint: [0x5a5a62, 0x3a3a40, 0x6a4a2a], emitting: false,
+        scale: { min: 0.15, max: 0.3 }, tint: [0x5a5a62, 0x3a3a40, 0x6a4a2a], emitting: false,
       }).setDepth(my + 20).explode(36);
       // Umgebung reagiert: Tonnen kippen, Kisten fliegen, Container verrutscht
       for (const r of rattle) {
@@ -470,9 +470,9 @@ export class AlleyScene extends TopDown {
 
       // Schatten + Monster wachsen aus der Katze heraus nach vorn auf das Pflaster
       const shadow = this.add.image(x, y, 'shadow').setDepth(2).setScale(1, 1).setAlpha(0.9);
-      const m = this.add.sprite(x, y + 4, 'mutant', 0).setOrigin(0.5, 1).setDepth(my).setScale(0.15);
+      const m = this.add.sprite(x, y + 4, 'mutant', 0).setOrigin(0.5, 1).setDepth(my).setScale(0.075);
       m.play('mutant_idle');
-      this.tweens.add({ targets: m, scale: 1, y: my, duration: 1400, ease: 'Back.easeOut' });
+      this.tweens.add({ targets: m, scale: 0.5, y: my, duration: 1400, ease: 'Back.easeOut' });
       this.tweens.add({ targets: shadow, scaleX: 6.5, scaleY: 3, y: my - 2, duration: 1400, ease: 'Back.easeOut' });
       this.tweens.add({ targets: groundGlow, scaleX: 1.6, scaleY: 0.6, alpha: 0.55, duration: 1400 });
       const aura = this.addLight(mx + 14, my - 40, 1.2, 0.45).setTint(0x60ff40);
@@ -499,7 +499,7 @@ export class AlleyScene extends TopDown {
     state.gameOver = 'win';
     state.running = false;
     this.carried?.destroy();
-    const body = this.add.sprite(this.cat.x - 16, this.cat.y - 2, `schnoesel${lookStage()}`, 0).setAngle(90).setDepth(this.cat.depth - 1);
+    const body = this.add.sprite(this.cat.x - 16, this.cat.y - 2, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5).setDepth(this.cat.depth - 1);
     this.cameras.main.stopFollow();
     this.cameras.main.pan(this.cat.x, this.cat.y - 10, 600, 'Sine.easeInOut');
     this.cameras.main.zoomTo(3.5, 800);
@@ -513,7 +513,7 @@ export class AlleyScene extends TopDown {
         this.cat.x += Phaser.Math.Between(-2, 2);
       },
     });
-    this.tweens.add({ targets: body, alpha: 0, scaleX: 0.4, delay: 600, duration: 3200 });
+    this.tweens.add({ targets: body, alpha: 0, scaleX: 0.2, delay: 600, duration: 3200 });
     this.time.delayedCall(4300, () => this.mutate(chomp));
   }
 }

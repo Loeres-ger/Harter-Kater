@@ -117,13 +117,13 @@ export class BarScene extends TopDown {
     audio.music('bar');
     const [vx, vy] = VICTIM_TILE;
     if (!state.dead) {
-      this.victim = this.add.sprite(vx * T + 8, vy * T + 12, `schnoesel${lookStage()}`, 3).setOrigin(0.5, 1).setDepth(vy * T + 12);
+      this.victim = this.add.sprite(vx * T + 8, vy * T + 12, `schnoesel${lookStage()}`, 3).setOrigin(0.5, 1).setScale(0.5).setDepth(vy * T + 12);
       this.add.image(this.victim.x, this.victim.y - 1, 'shadow').setDepth(1);
-      this.wishIcon = this.add.image(0, 0, 'icon_bier').setScale(0.6);
-      this.wishBubble = this.add.container(this.victim.x + 9, this.victim.y - 26, [this.add.image(0, 0, 'bubble'), this.wishIcon]).setDepth(4000);
+      this.wishIcon = this.add.image(0, 0, 'icon_bier').setScale(0.3);
+      this.wishBubble = this.add.container(this.victim.x + 9, this.victim.y - 26, [this.add.image(0, 0, 'bubble').setScale(0.5), this.wishIcon]).setDepth(4000);
       this.tweens.add({ targets: this.wishBubble, y: this.wishBubble.y - 2, duration: 700, yoyo: true, repeat: -1 });
     } else if (!state.carrying && !state.bodyInAlley) {
-      this.body = this.add.sprite(vx * T + 8, (vy + 1) * T + 6, `schnoesel${lookStage()}`, 0).setAngle(90).setDepth((vy + 1) * T);
+      this.body = this.add.sprite(vx * T + 8, (vy + 1) * T + 6, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5).setDepth((vy + 1) * T);
     }
 
     // Bedienen: nur von hinter dem Tresen
@@ -143,7 +143,7 @@ export class BarScene extends TopDown {
         if (this.body?.active) {
           this.body.destroy();
           state.carrying = true;
-          this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90);
+          this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5);
           this.toast('Uff. Schwerer als er aussah.');
           audio.sfx('thud');
         }
@@ -152,7 +152,7 @@ export class BarScene extends TopDown {
 
     // Stammgast Kalle pennt am Tisch
     const [kx, ky] = KALLE_TILE;
-    const kalle = this.add.sprite(kx * T + 6, ky * T + 12, 'penner', 6).setOrigin(0.5, 1).setDepth(ky * T + 12);
+    const kalle = this.add.sprite(kx * T + 6, ky * T + 12, 'penner', 6).setOrigin(0.5, 1).setScale(0.5).setDepth(ky * T + 12);
     this.tweens.add({ targets: kalle, angle: 8, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.time.addEvent({
       delay: 2200, loop: true,
@@ -212,7 +212,7 @@ export class BarScene extends TopDown {
     const [tx, ty, facing] = SEATS[g.seat];
     const x = tx * T + 8 + (facing === 'right' ? 2 : -2), y = ty * T + 13;
     const shadow = this.add.image(x, y - 1, 'shadow').setDepth(1);
-    const sprite = this.add.sprite(x, y, `guest_${g.id}`, 6).setOrigin(0.5, 1).setDepth(y).setFlipX(facing === 'left');
+    const sprite = this.add.sprite(x, y, `guest_${g.id}`, 6).setOrigin(0.5, 1).setScale(0.5).setDepth(y).setFlipX(facing === 'left');
     const view: GuestView = { g, def, sprite, shadow, baseX: x, baseY: y, nextTaunt: 0 };
     this.guestViews.set(g.id, view);
     this.interacts.push({

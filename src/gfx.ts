@@ -33,8 +33,249 @@ export function tex(scene: Phaser.Scene, key: string, w: number, h: number, draw
   return t;
 }
 
+// ---------------------------------------------------------------- Hochauflösende Texturen (×2)
+//
+// Die Motive werden weiter in einfacher Auflösung gemalt, dann:
+//   1. mit Scale2x verdoppelt (glättet schräge Kanten statt Klötzchen),
+//   2. mit 1 px feiner Kontur versehen (statt der alten 2 px),
+//   3. an den Rändern beleuchtet (Licht oben links, Schatten unten rechts),
+//   4. mit leichter Materialstruktur versehen,
+//   5. optional mit handgemalten Details in voller Auflösung ergänzt.
+// Angezeigt werden sie mit halber Skalierung: gleiche Größe, doppelte Detailtiefe.
+
+/** Konturen werden während der ×2-Erzeugung nur vorgemerkt und nach dem Hochskalieren fein gezogen. */
+let outlineQueue: [number, number, number, number, string][] | null = null;
+
+/** Scale2x / EPX: verdoppelt Pixel-Art und rundet Diagonalen ab. */
+function scale2x(src: ImageData, w: number, h: number, dst: ImageData) {
+  const s = new Uint32Array(src.data.buffer), d = new Uint32Array(dst.data.buffer);
+  const at = (x: number, y: number) => s[Math.min(h - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))];
+  const W2 = w * 2;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const P = s[y * w + x], A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1);
+      const i = y * 2 * W2 + x * 2;
+      d[i] = C === A && C !== D && A !== B ? A : P;
+      d[i + 1] = A === B && A !== C && B !== D ? B : P;
+      d[i + W2] = D === C && D !== B && C !== A ? C : P;
+      d[i + W2 + 1] = B === D && B !== A && D !== C ? D : P;
+    }
+}
+
+function hashKey(k: string) {
+  let h = 2166136261;
+  for (let i = 0; i < k.length; i++) h = Math.imul(h ^ k.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** Randlicht, Randschatten und Materialrauschen (in voller Auflösung). */
+function shade(c: Ctx, w: number, h: number, seed: number, rim: boolean, grain: number) {
+  const img = c.getImageData(0, 0, w, h);
+  const d = img.data;
+  const rnd = rng(seed);
+  const [or, og, ob] = [0x12, 0x0c, 0x0b];
+  const edge = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false; // Bildrand zählt nicht (Kacheln)
+    const i = (y * w + x) * 4;
+    return d[i + 3] === 0 || (d[i] === or && d[i + 1] === og && d[i + 2] === ob);
+  };
+  const out = new Uint8ClampedArray(d);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (d[i + 3] === 0 || (d[i] === or && d[i + 1] === og && d[i + 2] === ob)) continue;
+      let f = 1 + (rnd() - 0.5) * grain;
+      if (rim) {
+        if (edge(x - 1, y) || edge(x, y - 1)) f *= 1.22;
+        else if (edge(x + 1, y) || edge(x, y + 1)) f *= 0.78;
+        else if (edge(x + 1, y + 1)) f *= 0.9;
+      }
+      out[i] = d[i] * f;
+      out[i + 1] = d[i + 1] * f;
+      out[i + 2] = d[i + 2] * f;
+    }
+  img.data.set(out);
+  c.putImageData(img, 0, 0);
+}
+
+export interface HdOptions {
+  /** Randlicht/-schatten (Standard: an) */
+  rim?: boolean;
+  /** Stärke der Materialstruktur, 0..0.2 (Standard 0.06) */
+  grain?: number;
+  /** Zusätzliche Details in doppelter Auflösung */
+  detail?: (c: Ctx) => void;
+}
+
+/** Handgemachte Details für bestimmte Texturen (nach Name). */
+function detailFor(key: string): ((c: Ctx) => void) | undefined {
+  const n = Number(key.replace(/\D/g, '')) || 0;
+  if (key.startsWith('floor')) return (c) => { grain(c, '#6b4a2f', n + 3); bevel(c, '#4f3520', 0.14); };
+  if (key.startsWith('cobble')) return (c) => bevel(c, '#2c2c34', 0.26);
+  if (key.startsWith('bust') && key.length === 5) {
+    const pal = SCHNOESEL_PALS[n];
+    return (c) => { strands(c, pal.hair); strands(c, pal.beard); folds(c, pal.coat); eyeShine(c, ['#2a4a7a', '#0a0a14']); sideLight(c); };
+  }
+  switch (key) {
+    case 'wallFront': return (c) => bevel(c, '#2e1a1a');
+    case 'brickFront': return (c) => bevel(c, '#2e1c16');
+    case 'counter': case 'counterFlap': return (c) => grain(c, '#9a6a3e', 7);
+    case 'table': return (c) => grain(c, '#7a5032', 5);
+    case 'crate': return (c) => { grain(c, '#8a6234', 9); bevel(c, '#5a3e1e'); };
+    case 'chair': return (c) => grain(c, '#6a4228', 4);
+    case 'bustPenner': return (c) => { strands(c, '#8a3030'); strands(c, '#7a6450'); folds(c, '#6a6640'); eyeShine(c, ['#3a2a1a']); sideLight(c); };
+    case 'bustWirt': return (c) => { folds(c, '#2a2a30'); folds(c, '#e8e8e2'); sideLight(c); };
+    case 'brennPhone': case 'brennMega': return (c) => { folds(c, '#3a3a46'); eyeShine(c, ['#2a3a5a']); sideLight(c, 0.18); };
+    case 'cat': return (c) => strands(c, '#565c4a');
+  }
+  return undefined;
+}
+
+/** Erzeugt eine Textur in doppelter Auflösung (Anzeige mit Skalierung 0.5). */
+export function tex2x(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: Ctx) => void, o: HdOptions = {}) {
+  const lo = document.createElement('canvas');
+  lo.width = w;
+  lo.height = h;
+  const lc = lo.getContext('2d', { willReadFrequently: true })!;
+  lc.imageSmoothingEnabled = false;
+  outlineQueue = [];
+  draw(lc);
+  const queue = outlineQueue;
+  outlineQueue = null;
+
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  const t = scene.textures.createCanvas(key, w * 2, h * 2)!;
+  const c = t.getContext();
+  c.imageSmoothingEnabled = false;
+  const big = c.createImageData(w * 2, h * 2);
+  scale2x(lc.getImageData(0, 0, w, h), w, h, big);
+  c.putImageData(big, 0, 0);
+  // Details zuerst: sie erkennen Flächen an den exakten Palettenfarben
+  (o.detail ?? detailFor(key))?.(c);
+  shade(c, w * 2, h * 2, hashKey(key), o.rim ?? true, o.grain ?? 0.06);
+  for (const [x, y, ww, hh, col] of queue) outline(c, x * 2, y * 2, ww * 2, hh * 2, col);
+  t.refresh();
+  return t;
+}
+
+// ---------------------------------------------------------------- Detail-Durchgänge (arbeiten auf exakten Palettenfarben)
+
+function rgbOf(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1, 7), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Bearbeitet alle Pixel einer (oder mehrerer) Farben. fn bekommt x, y und einen Helligkeits-Setter. */
+function onColor(c: Ctx, hexes: string | string[], fn: (x: number, y: number, k: (f: number) => void, set: (hex: string) => void, is: (x: number, y: number) => boolean) => void) {
+  const { width: w, height: h } = c.canvas;
+  const img = c.getImageData(0, 0, w, h);
+  const d = img.data;
+  const src = new Uint8ClampedArray(d);
+  const cols = (Array.isArray(hexes) ? hexes : [hexes]).map(rgbOf);
+  const match = (i: number) => src[i + 3] > 0 && cols.some(([r0, g0, b0]) => src[i] === r0 && src[i + 1] === g0 && src[i + 2] === b0);
+  const is = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && match((y * w + x) * 4);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (!match(i)) continue;
+      fn(
+        x, y,
+        (f) => { d[i] = src[i] * f; d[i + 1] = src[i + 1] * f; d[i + 2] = src[i + 2] * f; },
+        (hex) => { const [r0, g0, b0] = rgbOf(hex); d[i] = r0; d[i + 1] = g0; d[i + 2] = b0; },
+        is,
+      );
+    }
+  img.data.set(d);
+  c.putImageData(img, 0, 0);
+}
+
+/** Haarsträhnen: feine dunkle/helle Linien, leicht gewellt. */
+export function strands(c: Ctx, hair: string | undefined) {
+  if (!hair) return;
+  onColor(c, hair, (x, y, k) => {
+    const v = (x + Math.floor(y / 3 + Math.sin(x * 0.7))) % 4;
+    if (v === 0) k(0.78);
+    else if ((x * 3 + y) % 11 === 0) k(1.2);
+  });
+}
+
+/** Stofffalten: diagonale Schattenlinien und vereinzelte Lichtkanten. */
+export function folds(c: Ctx, cloth: string | undefined) {
+  if (!cloth) return;
+  onColor(c, cloth, (x, y, k) => {
+    const v = (x * 1.4 + y) % 15;
+    if (v < 1) k(0.82);
+    else if (v < 2) k(1.1);
+  });
+}
+
+/** Lichtpunkt oben links in jeder Pupille. */
+export function eyeShine(c: Ctx, pupils: string[]) {
+  onColor(c, pupils, (x, y, _k, set, is) => {
+    if (!is(x - 1, y) && !is(x, y - 1) && is(x + 1, y + 1)) set('#ffffff');
+  });
+}
+
+/** Holzmaserung mit gelegentlichem Astloch. */
+export function grain(c: Ctx, wood: string, seed = 1) {
+  const rnd = rng(seed);
+  const knots: [number, number][] = Array.from({ length: 2 }, () => [Math.floor(rnd() * c.canvas.width), Math.floor(rnd() * c.canvas.height)]);
+  onColor(c, wood, (x, y, k) => {
+    const wave = Math.floor(Math.sin(x * 0.35 + y * 0.9) * 1.5);
+    if ((y + wave) % 5 === 0) k(0.86);
+    for (const [kx, ky] of knots) {
+      const dd = (x - kx) ** 2 / 4 + (y - ky) ** 2;
+      if (dd < 2) k(0.62);
+      else if (dd < 5) k(0.8);
+    }
+  });
+}
+
+/** 3D-Kanten: Flächen neben einer Fugenfarbe bekommen oben/links Licht und unten/rechts Schatten. */
+export function bevel(c: Ctx, gap: string, amount = 0.22) {
+  const { width: w, height: h } = c.canvas;
+  const img = c.getImageData(0, 0, w, h);
+  const d = img.data;
+  const src = new Uint8ClampedArray(d);
+  const [gr, gg, gb] = rgbOf(gap);
+  const isGap = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    const i = (y * w + x) * 4;
+    return src[i] === gr && src[i + 1] === gg && src[i + 2] === gb;
+  };
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (src[i + 3] === 0 || isGap(x, y)) continue;
+      let f = 1;
+      if (isGap(x, y - 1) || isGap(x - 1, y)) f = 1 + amount;
+      else if (isGap(x, y + 1) || isGap(x + 1, y)) f = 1 - amount;
+      if (f !== 1) { d[i] = src[i] * f; d[i + 1] = src[i + 1] * f; d[i + 2] = src[i + 2] * f; }
+    }
+  c.putImageData(img, 0, 0);
+}
+
+/** Licht von links: rechte Seite eines großen Motivs etwas dunkler. */
+export function sideLight(c: Ctx, strength = 0.22) {
+  const { width: w, height: h } = c.canvas;
+  const img = c.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (d[i + 3] === 0) continue;
+      const f = 1 + strength * (0.45 - x / w) - 0.06 * (y / h);
+      d[i] *= f; d[i + 1] *= f; d[i + 2] *= f;
+    }
+  c.putImageData(img, 0, 0);
+}
+
 /** Zieht eine dunkle Kontur um alle undurchsichtigen Pixel im Bereich. */
 export function outline(c: Ctx, x0: number, y0: number, w: number, h: number, col = OUTLINE) {
+  if (outlineQueue) {
+    outlineQueue.push([x0, y0, w, h, col]);
+    return;
+  }
   const img = c.getImageData(x0, y0, w, h);
   const d = img.data;
   const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && d[(y * w + x) * 4 + 3] > 0;
@@ -145,10 +386,10 @@ function drawHuman(c: Ctx, ox: number, dir: number, step: number, pal: Pal) {
 }
 
 export function humanSheet(scene: Phaser.Scene, key: string, pal: Pal) {
-  const t = tex(scene, key, 16 * 9, 20, (c) => {
+  const t = tex2x(scene, key, 16 * 9, 20, (c) => {
     for (let d = 0; d < 3; d++) for (let s = 0; s < 3; s++) drawHuman(c, (d * 3 + s) * 16, d, s, pal);
-  });
-  for (let i = 0; i < 9; i++) t.add(i, 0, i * 16, 0, 16, 20);
+  }, { detail: (c) => { strands(c, pal.hair); strands(c, pal.beard); folds(c, pal.coat); eyeShine(c, ['#1a1212']); } });
+  for (let i = 0; i < 9; i++) t.add(i, 0, i * 32, 0, 32, 40);
 }
 
 export const PLAYER_PAL: Pal = {
@@ -188,7 +429,7 @@ function noise(c: Ctx, w: number, h: number, cols: string[], n: number, seed: nu
 function tiles(scene: Phaser.Scene) {
   // Holzboden (drei Varianten)
   for (let v = 0; v < 3; v++)
-    tex(scene, `floor${v}`, 16, 16, (c) => {
+    tex2x(scene, `floor${v}`, 16, 16, (c) => {
       r(c, 0, 0, 16, 16, '#6b4a2f');
       for (let y = 3; y < 16; y += 4) r(c, 0, y, 16, 1, '#4f3520');
       const off = (v * 5) % 16;
@@ -198,17 +439,17 @@ function tiles(scene: Phaser.Scene) {
       r(c, (off + 11) % 16, 12, 1, 3, '#4f3520');
       noise(c, 16, 16, ['#7a5636', '#5e4129'], 10, 11 + v);
     });
-  tex(scene, 'rug', 16, 16, (c) => {
+  tex2x(scene, 'rug', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#7a2228');
     noise(c, 16, 16, ['#8e2a30', '#661a20', '#a8763a'], 18, 4);
     r(c, 0, 7, 16, 2, '#a8763a');
   });
   // Wände: Oberseite und Vorderseite
-  tex(scene, 'wallTop', 16, 16, (c) => {
+  tex2x(scene, 'wallTop', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#1f1616');
     noise(c, 16, 16, ['#2a1e1e', '#181111'], 14, 2);
   });
-  tex(scene, 'wallFront', 16, 16, (c) => {
+  tex2x(scene, 'wallFront', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#4a2c2c');
     for (let y = 0; y < 16; y += 4) {
       r(c, 0, y + 3, 16, 1, '#2e1a1a');
@@ -219,7 +460,7 @@ function tiles(scene: Phaser.Scene) {
     noise(c, 16, 16, ['#5a3636', '#3e2424'], 10, 3);
     r(c, 0, 0, 16, 2, '#1f1616');
   });
-  tex(scene, 'shelf', 16, 16, (c) => {
+  tex2x(scene, 'shelf', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#3a2418');
     r(c, 0, 0, 16, 2, '#1f1616');
     r(c, 0, 8, 16, 2, '#7a5032');
@@ -233,7 +474,7 @@ function tiles(scene: Phaser.Scene) {
       p(c, x, row + 1, '#ffffff55');
     }
   });
-  tex(scene, 'window', 16, 16, (c) => {
+  tex2x(scene, 'window', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#4a2c2c');
     r(c, 0, 0, 16, 2, '#1f1616');
     r(c, 2, 3, 12, 11, '#2a1a12');
@@ -244,7 +485,7 @@ function tiles(scene: Phaser.Scene) {
     p(c, 10, 10, '#f0d070');
     p(c, 11, 5, '#7090c0');
   });
-  tex(scene, 'counter', 16, 16, (c) => {
+  tex2x(scene, 'counter', 16, 16, (c) => {
     r(c, 0, 0, 16, 11, '#9a6a3e');
     r(c, 0, 0, 16, 1, '#b8834e');
     noise(c, 16, 11, ['#a8764a', '#8a5c34'], 10, 5);
@@ -252,7 +493,7 @@ function tiles(scene: Phaser.Scene) {
     r(c, 0, 11, 16, 1, '#3a2412');
     r(c, 0, 14, 16, 1, '#c9a24a');
   });
-  tex(scene, 'counterFlap', 16, 16, (c) => {
+  tex2x(scene, 'counterFlap', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#6b4a2f');
     r(c, 0, 0, 16, 3, '#9a6a3e');
     r(c, 0, 3, 16, 1, '#4a2e18');
@@ -260,7 +501,7 @@ function tiles(scene: Phaser.Scene) {
     r(c, 0, 12, 16, 1, '#4a2e18');
     p(c, 1, 1, '#c9a24a'); p(c, 14, 14, '#c9a24a');
   });
-  tex(scene, 'table', 16, 16, (c) => {
+  tex2x(scene, 'table', 16, 16, (c) => {
     c.fillStyle = '#7a5032';
     c.beginPath();
     c.arc(8, 7, 6.5, 0, Math.PI * 2);
@@ -270,31 +511,31 @@ function tiles(scene: Phaser.Scene) {
     r(c, 9, 7, 2, 3, '#c8a03a');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'stool', 16, 16, (c) => {
+  tex2x(scene, 'stool', 16, 16, (c) => {
     r(c, 5, 6, 6, 5, '#7a1a22');
     r(c, 5, 6, 6, 1, '#9a2a32');
     r(c, 7, 11, 2, 3, '#555');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'chair', 16, 16, (c) => {
+  tex2x(scene, 'chair', 16, 16, (c) => {
     r(c, 5, 5, 6, 6, '#6a4228');
     r(c, 5, 3, 6, 2, '#4a2e18');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'jukebox', 16, 16, (c) => {
+  tex2x(scene, 'jukebox', 16, 16, (c) => {
     r(c, 2, 1, 12, 15, '#7a2a6a');
     r(c, 3, 2, 10, 5, '#f0c050');
     r(c, 4, 8, 8, 4, '#2a1a2a');
     for (let x = 4; x < 12; x += 2) p(c, x, 13, '#60e0ff');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'doorBottom', 16, 16, (c) => {
+  tex2x(scene, 'doorBottom', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#1f1616');
     r(c, 2, 0, 12, 16, '#3a2a1a');
     r(c, 3, 4, 10, 8, '#8a5a30');
     noise(c, 10, 8, ['#7a4a26'], 6, 9);
   });
-  tex(scene, 'doorFront', 16, 16, (c) => {
+  tex2x(scene, 'doorFront', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#4a2c2c');
     r(c, 0, 0, 16, 2, '#1f1616');
     r(c, 2, 2, 12, 14, '#5a3a1e');
@@ -304,7 +545,7 @@ function tiles(scene: Phaser.Scene) {
   });
   // Gasse
   for (let v = 0; v < 3; v++)
-    tex(scene, `cobble${v}`, 16, 16, (c) => {
+    tex2x(scene, `cobble${v}`, 16, 16, (c) => {
       r(c, 0, 0, 16, 16, '#2c2c34');
       const rnd = rng(40 + v);
       for (let y = 0; y < 16; y += 4)
@@ -315,7 +556,7 @@ function tiles(scene: Phaser.Scene) {
         }
       if (v === 2) { r(c, 9, 2, 2, 1, '#2a4a2a'); p(c, 3, 11, '#c0c0a0'); }
     });
-  tex(scene, 'brickFront', 16, 16, (c) => {
+  tex2x(scene, 'brickFront', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#5a3428');
     for (let y = 0; y < 16; y += 4) {
       r(c, 0, y + 3, 16, 1, '#2e1c16');
@@ -326,11 +567,11 @@ function tiles(scene: Phaser.Scene) {
     noise(c, 16, 16, ['#6a4030', '#4a2a20', '#3a5a3a'], 12, 21);
     r(c, 0, 0, 16, 2, '#1a1414');
   });
-  tex(scene, 'brickTop', 16, 16, (c) => {
+  tex2x(scene, 'brickTop', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#1a1414');
     noise(c, 16, 16, ['#241c1c', '#121010'], 14, 22);
   });
-  tex(scene, 'puddle', 16, 16, (c) => {
+  tex2x(scene, 'puddle', 16, 16, (c) => {
     c.fillStyle = '#26364e';
     c.beginPath();
     c.ellipse(8, 9, 7, 4, 0, 0, Math.PI * 2);
@@ -338,7 +579,7 @@ function tiles(scene: Phaser.Scene) {
     r(c, 5, 8, 3, 1, '#4a6a90');
     p(c, 10, 10, '#4a6a90');
   });
-  tex(scene, 'dumpster', 16, 16, (c) => {
+  tex2x(scene, 'dumpster', 16, 16, (c) => {
     r(c, 0, 2, 16, 13, '#2e5a3a');
     r(c, 0, 2, 16, 3, '#3e7a4a');
     r(c, 0, 5, 16, 1, '#1e3a24');
@@ -347,7 +588,7 @@ function tiles(scene: Phaser.Scene) {
     r(c, 12, 15, 2, 1, '#111');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'trash', 16, 16, (c) => {
+  tex2x(scene, 'trash', 16, 16, (c) => {
     r(c, 3, 4, 10, 11, '#6a6e74');
     r(c, 2, 3, 12, 2, '#8a8e94');
     for (let x = 5; x < 12; x += 3) r(c, x, 6, 1, 8, '#55595e');
@@ -355,7 +596,7 @@ function tiles(scene: Phaser.Scene) {
     p(c, 9, 1, '#a04040');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'automat', 16, 16, (c) => {
+  tex2x(scene, 'automat', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#5a3428');
     r(c, 0, 0, 16, 2, '#1a1414');
     r(c, 2, 1, 12, 15, '#a01e24');
@@ -364,14 +605,14 @@ function tiles(scene: Phaser.Scene) {
     r(c, 4, 10, 8, 2, '#222');
     r(c, 11, 13, 2, 2, '#f0d050');
   });
-  tex(scene, 'crate', 16, 16, (c) => {
+  tex2x(scene, 'crate', 16, 16, (c) => {
     r(c, 1, 2, 14, 13, '#8a6234');
     r(c, 1, 2, 14, 2, '#a87a44');
     r(c, 1, 8, 14, 1, '#5a3e1e');
     r(c, 7, 4, 2, 11, '#5a3e1e');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'lampWall', 16, 16, (c) => {
+  tex2x(scene, 'lampWall', 16, 16, (c) => {
     r(c, 0, 0, 16, 16, '#5a3428');
     r(c, 0, 0, 16, 2, '#1a1414');
     noise(c, 16, 16, ['#6a4030', '#4a2a20'], 10, 23);
@@ -384,7 +625,7 @@ function tiles(scene: Phaser.Scene) {
 // ---------------------------------------------------------------- Kleinkram
 
 function items(scene: Phaser.Scene) {
-  tex(scene, 'icon_bier', 16, 16, (c) => {
+  tex2x(scene, 'icon_bier', 16, 16, (c) => {
     r(c, 6, 1, 4, 2, '#d8b040');
     r(c, 6, 3, 4, 3, '#5a2e0e');
     r(c, 5, 6, 6, 9, '#6a3612');
@@ -393,7 +634,7 @@ function items(scene: Phaser.Scene) {
     p(c, 6, 6, '#a86a3a');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'icon_kippe', 16, 16, (c) => {
+  tex2x(scene, 'icon_kippe', 16, 16, (c) => {
     r(c, 3, 4, 10, 11, '#f0ece0');
     r(c, 3, 4, 10, 4, '#c02020');
     r(c, 4, 10, 8, 3, '#222');
@@ -402,7 +643,7 @@ function items(scene: Phaser.Scene) {
     p(c, 5, 1, '#c87030');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'icon_schnaps', 16, 16, (c) => {
+  tex2x(scene, 'icon_schnaps', 16, 16, (c) => {
     r(c, 7, 1, 2, 4, '#c0c0c0');
     r(c, 5, 5, 6, 10, '#cfe6ee');
     r(c, 6, 6, 4, 8, '#e8f6fa');
@@ -410,7 +651,7 @@ function items(scene: Phaser.Scene) {
     p(c, 6, 6, '#ffffff');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'icon_fusel', 16, 16, (c) => {
+  tex2x(scene, 'icon_fusel', 16, 16, (c) => {
     r(c, 7, 1, 2, 5, '#2a5a2a');
     r(c, 5, 6, 6, 9, '#2e6a30');
     r(c, 5, 9, 5, 3, '#c8b890');
@@ -418,7 +659,7 @@ function items(scene: Phaser.Scene) {
     p(c, 6, 7, '#5aa05a');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'icon_pillen', 16, 16, (c) => {
+  tex2x(scene, 'icon_pillen', 16, 16, (c) => {
     r(c, 4, 2, 8, 3, '#f0f0f0');
     r(c, 4, 5, 8, 10, '#e08020');
     r(c, 5, 8, 6, 4, '#f8f0e0');
@@ -427,7 +668,7 @@ function items(scene: Phaser.Scene) {
     r(c, 5, 6, 1, 8, '#f0a040');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'icon_zeug', 16, 16, (c) => {
+  tex2x(scene, 'icon_zeug', 16, 16, (c) => {
     r(c, 3, 4, 10, 10, '#d8d0e8');
     r(c, 3, 4, 10, 2, '#9a3ac0');
     r(c, 5, 8, 6, 4, '#ffffff');
@@ -435,7 +676,7 @@ function items(scene: Phaser.Scene) {
     r(c, 7, 2, 2, 2, '#9a3ac0');
     outline(c, 0, 0, 16, 16);
   });
-  tex(scene, 'coin', 8, 8, (c) => {
+  tex2x(scene, 'coin', 8, 8, (c) => {
     r(c, 1, 1, 6, 6, '#e8c040');
     r(c, 2, 2, 4, 4, '#f8e070');
     p(c, 3, 3, '#b08a20');
@@ -455,14 +696,14 @@ function items(scene: Phaser.Scene) {
     c.fillStyle = g;
     c.fillRect(0, 0, 128, 128);
   });
-  tex(scene, 'bubble', 12, 12, (c) => {
+  tex2x(scene, 'bubble', 12, 12, (c) => {
     r(c, 1, 0, 10, 9, '#f4f0e4');
     r(c, 0, 1, 12, 7, '#f4f0e4');
     r(c, 4, 9, 3, 2, '#f4f0e4');
     p(c, 4, 11, '#f4f0e4');
     outline(c, 0, 0, 12, 12);
   });
-  tex(scene, 'crown', 12, 8, (c) => {
+  tex2x(scene, 'crown', 12, 8, (c) => {
     r(c, 1, 3, 10, 4, '#f0c030');
     p(c, 1, 1, '#f0c030'); p(c, 1, 2, '#f0c030');
     p(c, 5, 0, '#f0c030'); r(c, 5, 1, 2, 2, '#f0c030'); p(c, 6, 0, '#f0c030');
@@ -472,7 +713,7 @@ function items(scene: Phaser.Scene) {
     outline(c, 0, 0, 12, 8);
   });
   // Die Pestkatze: räudig, kahle Stellen mit Wunden, ein glühendes und ein blindes Auge. 2 Frames.
-  const cat = tex(scene, 'cat', 32, 14, (c) => {
+  const cat = tex2x(scene, 'cat', 32, 14, (c) => {
     for (let f = 0; f < 2; f++) {
       const o = f * 16;
       const fur = '#565c4a', fur2 = '#43483a', skin = '#c4887a';
@@ -498,8 +739,8 @@ function items(scene: Phaser.Scene) {
       outline(c, o, 0, 16, 14);
     }
   });
-  cat.add(0, 0, 0, 0, 16, 14);
-  cat.add(1, 0, 16, 0, 16, 14);
+  cat.add(0, 0, 0, 0, 32, 28);
+  cat.add(1, 0, 32, 0, 32, 28);
 }
 
 // ---------------------------------------------------------------- Tresen-Ansicht (groß)
@@ -1010,26 +1251,26 @@ export function makeAllTextures(scene: Phaser.Scene) {
   humanSheet(scene, 'polizist', COP_PAL);
   DAME_PALS.forEach((pal, i) => humanSheet(scene, `dame${i}`, pal));
   SCHNOESEL_PALS.forEach((pal, i) => humanSheet(scene, `schnoesel${i}`, pal));
-  for (let s = 0; s < 5; s++) tex(scene, `bust${s}`, BW, BH, (c) => drawSchnoeselBust(c, s));
-  tex(scene, 'bustPenner', BW, BH, drawPennerBust);
-  tex(scene, 'bustWirt', BW, BH, drawWirtBust);
+  for (let s = 0; s < 5; s++) tex2x(scene, `bust${s}`, BW, BH, (c) => drawSchnoeselBust(c, s));
+  tex2x(scene, 'bustPenner', BW, BH, drawPennerBust);
+  tex2x(scene, 'bustWirt', BW, BH, drawWirtBust);
   tex(scene, 'tresenBg', 480, 200, drawTresenBg);
   tex(scene, 'counterFront', 480, 84, drawCounter);
   tex(scene, 'csStreet', 480, 270, drawStreet);
-  tex(scene, 'bulldozer', 72, 44, drawBulldozer);
-  const mutant = tex(scene, 'mutant', 192, 72, (c) => {
+  tex2x(scene, 'bulldozer', 72, 44, drawBulldozer);
+  const mutant = tex2x(scene, 'mutant', 192, 72, (c) => {
     drawMutant(c, 0, 0);
     drawMutant(c, 96, 1);
   });
-  mutant.add(0, 0, 0, 0, 96, 72);
-  mutant.add(1, 0, 96, 0, 96, 72);
+  mutant.add(0, 0, 0, 0, 192, 144);
+  mutant.add(1, 0, 192, 0, 192, 144);
   for (const [key, prop] of [['brennPhone', 0], ['brennMega', 1]] as const) {
-    const t = tex(scene, key, 128, 96, (c) => {
+    const t = tex2x(scene, key, 128, 96, (c) => {
       drawBrenninger(c, 0, false, prop);
       drawBrenninger(c, 64, true, prop);
     });
-    t.add(0, 0, 0, 0, 64, 96);
-    t.add(1, 0, 64, 0, 64, 96);
+    t.add(0, 0, 0, 0, 128, 192);
+    t.add(1, 0, 128, 0, 128, 192);
   }
 
   const a = scene.anims;

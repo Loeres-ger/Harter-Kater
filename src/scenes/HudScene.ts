@@ -35,7 +35,7 @@ export class HudScene extends Phaser.Scene {
     this.money = txt(this, 6, 7, '', '#f8e070');
     ITEMS.forEach((it, i) => {
       const x = 62 + i * 30;
-      this.icons.push(this.add.image(x, 11, `icon_${it.id}`));
+      this.icons.push(this.add.image(x, 11, `icon_${it.id}`).setScale(0.5));
       this.counts.push(txt(this, x + 6, 12, ''));
     });
     this.status = txt(this, W - 6, 7, '', '#e0b0b0').setOrigin(1, 0);

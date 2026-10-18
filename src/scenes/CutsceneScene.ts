@@ -220,7 +220,7 @@ export class CutsceneScene extends Phaser.Scene {
       this.bg.add(neon);
     } else if (key === 'bar') {
       this.bg.add(this.add.image(0, 0, 'tresenBg').setOrigin(0));
-      const kalle = this.add.image(428, 202, 'bustPenner').setOrigin(0.5, 1).setAngle(14);
+      const kalle = this.add.image(428, 202, 'bustPenner').setOrigin(0.5, 1).setScale(0.5).setAngle(14);
       this.bg.add(kalle);
       this.bg.add(this.add.image(0, 186, 'counterFront').setOrigin(0));
       for (const x of [112, 312]) this.bg.add(this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5));
@@ -281,7 +281,7 @@ export class CutsceneScene extends Phaser.Scene {
     this.hideInset(false);
     const X = 12, Y = 30, PW = 150, PH = 128;
     const frame = this.add.rectangle(0, 0, PW, PH, 0x0a0a12).setOrigin(0).setStrokeStyle(2, 0xc04040);
-    const img = this.add.image(PW / 2, 192 - 4, key, 0).setOrigin(0.5, 1).setScale(2);
+    const img = this.add.image(PW / 2, 192 - 4, key, 0).setOrigin(0.5, 1).setScale(1);
     const mask = this.make.graphics({}, false).fillRect(X, Y, PW, PH).createGeometryMask();
     img.setMask(mask);
     const bar = this.add.rectangle(0, PH - 14, PW, 14, 0xc04040).setOrigin(0);
@@ -330,7 +330,7 @@ export class CutsceneScene extends Phaser.Scene {
       p.setTint(0xffffff);
     } else {
       p?.destroy();
-      p = this.add.image(side === 'left' ? -80 : W + 80, BOX_Y + 6, key).setOrigin(0.5, 1).setScale(2).setDepth(500);
+      p = this.add.image(side === 'left' ? -80 : W + 80, BOX_Y + 6, key).setOrigin(0.5, 1).setScale(1).setDepth(500);
       this.tweens.add({ targets: p, x, duration: 300, ease: 'Quad.easeOut' });
       this.portraits[side] = p;
     }
@@ -412,7 +412,7 @@ export class CutsceneScene extends Phaser.Scene {
         return;
       case 'bulldozer': {
         audio.sfx('rumble');
-        this.bulldozer = this.add.image(W + 80, 236, 'bulldozer').setOrigin(0.5, 1).setScale(2).setDepth(300);
+        this.bulldozer = this.add.image(W + 80, 236, 'bulldozer').setOrigin(0.5, 1).setScale(1).setDepth(300);
         this.tweens.add({ targets: this.bulldozer, x: 370, duration: 2000, ease: 'Sine.easeOut' });
         const rumble = this.time.addEvent({ delay: 120, repeat: 15, callback: () => cam.shake(100, 0.003) });
         await this.sleep(2100);
@@ -437,11 +437,11 @@ export class CutsceneScene extends Phaser.Scene {
         // Trümmer aus der Tür
         this.add.particles(DOOR_X, DOOR_Y, 'coin', {
           speed: { min: 80, max: 200 }, angle: { min: 190, max: 350 }, gravityY: 320, lifespan: 1200,
-          scale: { min: 0.4, max: 0.9 }, tint: [0x4a2c2c, 0x6e4826, 0x331c1c, 0x8a8a90], emitting: false,
+          scale: { min: 0.2, max: 0.45 }, tint: [0x4a2c2c, 0x6e4826, 0x331c1c, 0x8a8a90], emitting: false,
         }).setDepth(220).explode(50);
         // Schatten auf dem Gehweg, Monster passend zum Morgenlicht eingefärbt
         const shadow = this.add.image(MX, FEET - 2, 'shadow').setDepth(199).setScale(1.5, 1).setAlpha(0.85);
-        const m = this.add.sprite(DOOR_X, DOOR_Y + 40, 'mutant', 0).setOrigin(0.5, 1).setScale(0.3).setDepth(200).play('mutant_idle');
+        const m = this.add.sprite(DOOR_X, DOOR_Y + 40, 'mutant', 0).setOrigin(0.5, 1).setScale(0.15).setDepth(200).play('mutant_idle');
         m.setTint(0xffd8b0);
         const glow = this.add.image(MX + 20, FEET - 70, 'light').setScale(3).setTint(0x50e030).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(201);
         const floorGlow = this.add.image(MX, FEET - 4, 'light').setScale(2.6, 0.5).setTint(0x60ff30).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD).setDepth(198);
@@ -449,7 +449,7 @@ export class CutsceneScene extends Phaser.Scene {
           lifespan: 2400, speed: { min: 10, max: 50 }, angle: { min: 200, max: 340 }, scale: { start: 0.08, end: 0.5 },
           alpha: { start: 0.45, end: 0 }, tint: [0x60c030, 0x90e040, 0x406020], frequency: 70, blendMode: 'ADD',
         }).setDepth(210);
-        this.tweens.add({ targets: m, scale: 2, x: MX, y: FEET, duration: 1500, ease: 'Back.easeOut' });
+        this.tweens.add({ targets: m, scale: 1, x: MX, y: FEET, duration: 1500, ease: 'Back.easeOut' });
         this.tweens.add({ targets: shadow, scaleX: 13, scaleY: 3, duration: 1500, ease: 'Back.easeOut' });
         this.tweens.add({ targets: [glow, floorGlow], alpha: 0.55, duration: 1500 });
         // jeder Atemzug lässt den Boden beben

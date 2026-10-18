@@ -45,7 +45,7 @@ export class TitleScene extends Phaser.Scene {
 
     // Die Pestkatze: fauliges Glimmen, glühendes Auge, Fliegen
     this.add.image(W / 2, 120, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.6).setTint(0x40a020).setAlpha(0.45);
-    const cat = this.add.sprite(W / 2, 156, 'cat', 0).setScale(5).play('cat_idle');
+    const cat = this.add.sprite(W / 2, 156, 'cat', 0).setScale(2.5).play('cat_idle');
     const eye = this.add.image(W / 2 - 40 + 11 * 5 + 2, 156 - 70 + 4 * 5 + 2, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(0.25).setTint(0xff3010);
     this.tweens.add({ targets: eye, alpha: 0.3, duration: 500, yoyo: true, repeat: -1 });
     for (let i = 0; i < 5; i++) {
@@ -53,8 +53,8 @@ export class TitleScene extends Phaser.Scene {
       const sp = 250 + i * 60, ph = i * 1.3;
       this.events.on(Phaser.Scenes.Events.UPDATE, (t: number) => f.setPosition(W / 2 + Math.cos(t / sp + ph) * 50, 115 + Math.sin(t / (sp * 0.7) + ph) * 25));
     }
-    this.add.image(W / 2 - 120, 146, 'bustWirt');
-    this.add.image(W / 2 + 120, 146, 'bust0');
+    this.add.image(W / 2 - 120, 146, 'bustWirt').setScale(0.5);
+    this.add.image(W / 2 + 120, 146, 'bust0').setScale(0.5);
     void cat;
 
     txt(this, W / 2, 206, `Du bist der Wirt. Mach deinen feinsten Gast,\n${VICTIM}, zum Wrack. Die Katze hat Hunger.`, '#f4ead0')

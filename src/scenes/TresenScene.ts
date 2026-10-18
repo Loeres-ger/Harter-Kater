@@ -58,7 +58,7 @@ export class TresenScene extends Phaser.Scene {
     }
 
     // Stammgast Kalle pennt hinten an der Theke
-    const kalle = this.add.image(428, COUNTER_Y + 10, 'bustPenner').setOrigin(0.5, 1).setAngle(14);
+    const kalle = this.add.image(428, COUNTER_Y + 10, 'bustPenner').setOrigin(0.5, 1).setScale(0.5).setAngle(14);
     this.tweens.add({ targets: kalle, angle: 18, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.time.addEvent({
       delay: 1600, loop: true,
@@ -69,11 +69,11 @@ export class TresenScene extends Phaser.Scene {
     });
 
     // Du: der Wirt
-    const wirt = this.add.image(PX, COUNTER_Y + 36, 'bustWirt').setOrigin(0.5, 1).setScale(2);
+    const wirt = this.add.image(PX, COUNTER_Y + 36, 'bustWirt').setOrigin(0.5, 1).setScale(1);
     this.tweens.add({ targets: wirt, y: COUNTER_Y + 35, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     this.shownStage = lookStage();
-    this.victim = this.add.image(VX, COUNTER_Y + 64, `bust${this.shownStage}`).setOrigin(0.5, 1).setScale(2);
+    this.victim = this.add.image(VX, COUNTER_Y + 64, `bust${this.shownStage}`).setOrigin(0.5, 1).setScale(1);
     this.tweens.add({ targets: this.victim, y: COUNTER_Y + 63, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // Fliegen ab Stufe 3
@@ -91,9 +91,9 @@ export class TresenScene extends Phaser.Scene {
     txt(this, VX, COUNTER_Y - 2, VICTIM.toUpperCase(), '#f4ead0').setOrigin(0.5, 0).setDepth(62).setStroke('#120c0b', 3).setAlpha(0.85);
 
     // Wunsch-Gedankenblase
-    this.wishIcon = this.add.image(0, -2, 'icon_bier');
+    this.wishIcon = this.add.image(0, -2, 'icon_bier').setScale(0.5);
     const dots = [this.add.circle(-24, 20, 2, 0xf4f0e4), this.add.circle(-16, 14, 3, 0xf4f0e4)];
-    this.wishC = this.add.container(VX + 84, 112, [...dots, this.add.image(0, 0, 'bubble').setScale(2.2), this.wishIcon]).setDepth(70);
+    this.wishC = this.add.container(VX + 84, 112, [...dots, this.add.image(0, 0, 'bubble').setScale(1.1), this.wishIcon]).setDepth(70);
     this.tweens.add({ targets: this.wishC, y: 108, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     this.buildUi();
@@ -120,7 +120,7 @@ export class TresenScene extends Phaser.Scene {
       const bg = this.add.rectangle(x, y, 36, 36, 0x120c0b, 0.75).setOrigin(0).setDepth(80).setStrokeStyle(1, 0x8a6a3a);
       bg.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.offer(it.id));
       bg.on('pointerover', () => bg.setStrokeStyle(1, 0xf8e070)).on('pointerout', () => bg.setStrokeStyle(1, 0x8a6a3a));
-      const icon = this.add.image(x + 18, y + 18, `icon_${it.id}`).setScale(1.5).setDepth(81);
+      const icon = this.add.image(x + 18, y + 18, `icon_${it.id}`).setScale(0.75).setDepth(81);
       const count = txt(this, x + 34, y + 27, '', '#f4ead0').setOrigin(1, 0).setDepth(82);
       const lock = txt(this, x + 34, y + 2, '', '#e05050').setOrigin(1, 0).setDepth(82);
       this.slots.push({ bg, icon, count, lock, id: it.id });
@@ -133,7 +133,7 @@ export class TresenScene extends Phaser.Scene {
     const back = new Btn(this, W - 112, 252, 140, 18, 'ZURÜCK', 0x4a3a30, () => this.leave());
     theke.box.setDepth(85);
     back.box.setDepth(85);
-    this.add.image(W - 172, 226, 'icon_bier').setDepth(86);
+    this.add.image(W - 172, 226, 'icon_bier').setScale(0.5).setDepth(86);
   }
 
   private addToPile(id: ItemId, animate = true) {
@@ -141,7 +141,7 @@ export class TresenScene extends Phaser.Scene {
     if (i >= 14) return;
     const x = VX - 56 + (i % 7) * 16 + Phaser.Math.Between(-2, 2);
     const y = COUNTER_Y - 4 - (i >= 7 ? 3 : 0);
-    const img = this.add.image(x, y, `icon_${id}`).setOrigin(0.5, 1).setDepth(61 + (i >= 7 ? 0 : 1)).setAngle(Phaser.Math.Between(-12, 12));
+    const img = this.add.image(x, y, `icon_${id}`).setOrigin(0.5, 1).setScale(0.5).setDepth(61 + (i >= 7 ? 0 : 1)).setAngle(Phaser.Math.Between(-12, 12));
     if (id !== 'kippe') img.setTint(0xb0a090); // leer
     if (animate) {
       img.y -= 30;

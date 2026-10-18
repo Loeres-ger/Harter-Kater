@@ -60,7 +60,7 @@ export class DerbyScene extends Machine {
 
     for (let i = 0; i < 6; i++) {
       txt(this, TRACK_X + 4, TRACK_Y + i * LANE + 6, String(i + 1), '#e8e0c0');
-      const sprite = this.add.sprite(START_X, TRACK_Y + i * LANE + LANE - 1, `horse${i}`, 0).setOrigin(0.5, 1).setDepth(10);
+      const sprite = this.add.sprite(START_X, TRACK_Y + i * LANE + LANE - 1, `horse${i}`, 0).setOrigin(0.5, 1).setScale(0.5).setDepth(10);
       this.runners.push({ sprite, finish: 0, marks: [] });
     }
     this.comment = txt(this, 240, TRACK_Y + LANE * 6 + 3, 'Setz auf einen Gaul!', '#f8e070').setOrigin(0.5, 0);

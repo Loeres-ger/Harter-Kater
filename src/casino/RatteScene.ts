@@ -46,7 +46,7 @@ export class RatteScene extends Machine {
     this.freeT = txt(this, 88, 78, '-', '#f4ead0', 16).setOrigin(0.5, 0);
     this.expandLabel = txt(this, 88, 104, 'SONDERSYMBOL', '#5a6a8a').setOrigin(0.5, 0);
     this.add.rectangle(88, 140, 40, 40, 0x1a2448).setStrokeStyle(1, 0xc8a040);
-    this.expandImg = this.add.image(88, 140, BOOK).setScale(2).setAlpha(0.25);
+    this.expandImg = this.add.image(88, 140, BOOK).setScale(1).setAlpha(0.25);
 
     // Walzen
     this.reels = new Reels(this, 150, 58, 5, 3, 36, RATTE_SYMBOLS);
@@ -54,13 +54,13 @@ export class RatteScene extends Machine {
 
     // Gewinnplan rechts
     this.add.rectangle(342, 58, 102, 112, 0x0a1028).setOrigin(0).setStrokeStyle(1, 0xc8a040);
-    this.add.image(356, 72, BOOK);
+    this.add.image(356, 72, BOOK).setScale(0.5);
     txt(this, 368, 64, 'JOKER', '#f8e070');
     txt(this, 368, 74, '3x=10 FREI', '#f8e070');
     txt(this, 393, 88, '5 GLEICHE', '#5a6a8a').setOrigin(0.5, 0);
     ['br_koenig', 'br_ratte', 'br_kaese', 'br_tonne'].forEach((s, i) => {
       const y = 108 + i * 16;
-      this.add.image(356, y, s);
+      this.add.image(356, y, s).setScale(0.5);
       txt(this, 438, y - 4, `${RATTE_PAY[s][5] / 10}x`, '#f4ead0').setOrigin(1, 0);
     });
 
@@ -176,7 +176,7 @@ export class RatteScene extends Machine {
       await this.wait(60 + i * 8);
     }
     this.expandImg.setTexture(choice);
-    this.tweens.add({ targets: this.expandImg, scale: 2.6, duration: 160, yoyo: true });
+    this.tweens.add({ targets: this.expandImg, scale: 1.3, duration: 160, yoyo: true });
     audio.sfx('chime');
     this.expand = choice;
     this.freeLeft = FREE_SPINS;

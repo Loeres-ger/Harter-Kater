@@ -17,7 +17,7 @@ export class Reels {
     private nRows: number,
     private cell: number,
     private symbols: string[],
-    private scale = 2,
+    private scale = 1,
   ) {
     this.width = nCols * cell;
     this.height = nRows * cell;
