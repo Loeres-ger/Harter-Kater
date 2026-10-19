@@ -35,15 +35,26 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    if (!this.textures.exists('wirt')) makeAllTextures(this);
-    makeCasinoTextures(this);
-    makeGuestTextures(this);
-    makeWorldTextures(this);
-    makeLeonardTextures(this);
-    makeAchievementIcons(this);
-    makeRoomTextures(this);
-    makeLadenTextures(this);
-    makeAnneTextures(this);
+    // Alle Grafiken werden hier einmalig gemalt. Jede Gruppe ist einzeln abgesichert: Scheitert eine
+    // (z. B. auf einem exotischen Handy-Browser), laufen die anderen trotzdem und die Konsole sagt, welche.
+    const groups: [string, () => void][] = [
+      ['Grundgrafiken', () => { if (!this.textures.exists('wirt')) makeAllTextures(this); }],
+      ['Spielautomaten', () => makeCasinoTextures(this)],
+      ['Stammgäste', () => makeGuestTextures(this)],
+      ['Außenwelt', () => makeWorldTextures(this)],
+      ['Leonard', () => { if (!this.textures.exists('leonard')) makeLeonardTextures(this); }],
+      ['Achievement-Symbole', () => { if (!this.textures.exists('ach_lock')) makeAchievementIcons(this); }],
+      ['Dachboden und Toiletten', () => makeRoomTextures(this)],
+      ['Feinkostladen', () => makeLadenTextures(this)],
+      ['Anne', () => makeAnneTextures(this)],
+    ];
+    for (const [name, make] of groups) {
+      try {
+        make();
+      } catch (err) {
+        console.error(`[Harter Kater] Grafiken „${name}“ konnten nicht erzeugt werden:`, err);
+      }
+    }
     // Achievement-Einblendungen laufen dauerhaft über allen Szenen
     if (!this.scene.isActive('Notify')) this.scene.launch('Notify');
     showLegalLinks(true);

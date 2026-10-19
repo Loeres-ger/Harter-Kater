@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { Ctx, blob, humanSheet, p, r, rng, tex, tex2x } from '../gfx';
+import { signText } from '../world/textures';
 import { bust } from '../guests/gfx';
 import type { BustLook } from '../guests/data';
 
@@ -148,11 +149,10 @@ export function makeLadenTextures(scene: Phaser.Scene) {
     r(c, 5, 4, 6, 5, '#f0d890'); // warmes Licht im Fenster
     r(c, 10, 10, 1, 2, '#f0d050');
   });
-  // Schild ohne Schrift, der Schriftzug kommt als Text darüber (AlleyScene)
-  tex2x(scene, 'ladenSign', 80, 13, (c) => {
-    r(c, 0, 0, 80, 13, '#2a6a3a'); r(c, 1, 1, 78, 11, '#f4f0e0');
-    r(c, 70, 5, 7, 3, '#c84a3a'); p(c, 70, 5, '#ffffff'); p(c, 76, 7, '#8a2a2a'); // Wurst
-  });
+  // Schild 44×8 Welt-Pixel, „FEINKOST“ in doppelter Auflösung (64 px) mit Rand
+  tex2x(scene, 'ladenSign', 44, 8, (c) => {
+    r(c, 0, 0, 44, 8, '#2a6a3a'); r(c, 1, 1, 42, 6, '#f4f0e0');
+  }, { rim: false, grain: 0, detail: (c) => signText(c, 'FEINKOST', 44, 8, '#b02020', '#e8d8c0') });
 
   // Maya: Figur (Dirndl) und Brustbilder
   humanSheet(scene, 'maya', MAYA_PAL);

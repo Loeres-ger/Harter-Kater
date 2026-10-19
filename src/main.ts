@@ -26,6 +26,22 @@ import { LadiesRoomScene } from './rooms/LadiesRoomScene';
 import { StallScene } from './rooms/StallScene';
 import { ShopRoomScene } from './rooms/ShopRoomScene';
 
+/** Unbehandelte Fehler sichtbar machen (einmal, nicht spammen), damit ein Ladefehler auf dem Handy nicht nur schwarz bleibt. */
+function showError(msg: string) {
+  const el = document.getElementById('error');
+  if (!el || el.classList.contains('show')) return;
+  el.textContent = `Da ist etwas schiefgelaufen: ${msg} – bitte die Seite neu laden.`;
+  el.classList.add('show');
+}
+window.addEventListener('error', (e) => {
+  console.error('[Harter Kater]', e.error ?? e.message);
+  showError(String(e.message || e.error));
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('[Harter Kater]', e.reason);
+  showError(String(e.reason?.message ?? e.reason));
+});
+
 async function boot() {
   // Pixel-Font laden, bevor Texte erzeugt werden
   try {
@@ -42,7 +58,8 @@ async function boot() {
     pixelArt: true,
     roundPixels: true,
     backgroundColor: '#0d0b0a',
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    // FIT: proportional einpassen, Balken wo nötig. Der Container bekommt seine Größe aus dem CSS.
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: false },
     scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PauseScene, AchievementsScene, NotifyScene],
   });
 
@@ -69,6 +86,23 @@ async function boot() {
   });
 
   game.events.on(Phaser.Core.Events.STEP, (_t: number, delta: number) => tick(Math.min(delta, 100) / 1000));
+
+  // Größe neu berechnen, wenn sich der sichtbare Bereich ändert: Drehen, Adressleiste ein/aus, Tab wieder sichtbar.
+  // Gebündelt auf einen Frame, damit nicht mehrere Skalierungen gegeneinander laufen.
+  let pending = 0;
+  const refresh = () => {
+    if (pending) return;
+    pending = requestAnimationFrame(() => {
+      pending = 0;
+      game.scale.refresh();
+    });
+  };
+  const container = document.getElementById('game');
+  if (container && 'ResizeObserver' in window) new ResizeObserver(refresh).observe(container);
+  window.visualViewport?.addEventListener('resize', refresh);
+  window.addEventListener('orientationchange', () => setTimeout(refresh, 250));
+  window.addEventListener('pageshow', refresh);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && refresh());
 }
 
 boot();

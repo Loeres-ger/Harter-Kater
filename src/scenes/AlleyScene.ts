@@ -305,13 +305,12 @@ export class AlleyScene extends TopDown {
           this.interacts.push({ x: x * T + 8, y: y * T + 8, r: 16, label: () => 'Bank', act: () => this.toast('Eingeritzt: „BRENNINGER STINKT“.') });
         } else if (ch === 'U') {
           // Mayas Feinkost: Schild über der Tür, warmes Licht, rein geht es (nicht mit Leiche)
-          this.add.image(x * T + 8, y * T - 4, 'ladenSign').setScale(0.5).setDepth(2);
-          this.add.text(x * T + 4, y * T - 4, 'FEINKOST', { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#b02020' }).setOrigin(0.5).setScale(0.5).setResolution(2).setDepth(3);
+          this.add.image(x * T + 8, y * T - 5, 'ladenSign').setScale(0.5).setDepth(2);
           this.addLight(x * T + 8, (y + 1) * T, 0.6, 0.6).setTint(0xffe0a0);
           this.interacts.push({
             x: x * T + 8, y: (y + 1) * T + 4, r: 16,
-            label: () => (state.carrying || this.corpseCarried ? null : 'Mayas Feinkost betreten'),
-            act: () => this.go('Laden', { spawn: LADEN_SPAWN }),
+            label: () => (state.carrying ? null : this.corpse ? 'Erst die Leiche loswerden!' : 'Mayas Feinkost betreten'),
+            act: () => (this.corpse ? this.toast('Mit einer Leiche in den Feinkostladen? Lieber nicht.') : this.go('Laden', { spawn: LADEN_SPAWN })),
           });
         } else if (ch === 'o') {
           // Dampf aus dem Gully

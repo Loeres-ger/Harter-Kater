@@ -6,6 +6,17 @@ import { Ctx, bevel, blob, grain, outline, p, r, rng, tex2x } from '../gfx';
 
 const T = 16;
 
+/** Schriftzug auf ein Schild in doppelter Auflösung (c ist die HD-Fläche, w/h die Schildgröße in Welt-Pixeln). */
+export function signText(c: Ctx, s: string, w: number, h: number, color: string, shadow: string) {
+  c.font = '8px "Press Start 2P"';
+  c.textBaseline = 'middle';
+  c.textAlign = 'center';
+  c.fillStyle = shadow;
+  c.fillText(s, w + 1, h + 1);
+  c.fillStyle = color;
+  c.fillText(s, w, h);
+}
+
 function speckle(c: Ctx, cols: string[], n: number, seed: number, w = T, h = T) {
   const rnd = rng(seed);
   for (let i = 0; i < n; i++) p(c, Math.floor(rnd() * w), Math.floor(rnd() * h), cols[Math.floor(rnd() * cols.length)]);
@@ -208,18 +219,12 @@ export function makeWorldTextures(scene: Phaser.Scene) {
   });
 
   // Schild über dem Eingang (Text in Pixel-Schrift)
-  tex2x(scene, 'barSign', 92, 14, (c) => {
-    r(c, 0, 0, 92, 14, '#2a1408');
-    r(c, 1, 1, 90, 12, '#140a04');
-    r(c, 0, 0, 92, 1, '#c8a050'); r(c, 0, 13, 92, 1, '#c8a050');
-    c.font = '8px "Press Start 2P"';
-    c.textBaseline = 'middle';
-    c.textAlign = 'center';
-    c.fillStyle = '#7a1a3a';
-    c.fillText('GOLDENER EIMER', 47, 8.5);
-    c.fillStyle = '#ff6ab4';
-    c.fillText('GOLDENER EIMER', 46, 7.5);
-  }, { rim: false, grain: 0 });
+  // Schild 66×10 Welt-Pixel; Schriftzug (8 px in doppelter Auflösung = 112 px) passt mit Rand hinein
+  tex2x(scene, 'barSign', 66, 10, (c) => {
+    r(c, 0, 0, 66, 10, '#2a1408');
+    r(c, 1, 1, 64, 8, '#140a04');
+    r(c, 0, 0, 66, 1, '#c8a050'); r(c, 0, 9, 66, 1, '#c8a050');
+  }, { rim: false, grain: 0, detail: (c) => signText(c, 'GOLDENER EIMER', 66, 10, '#ff6ab4', '#7a1a3a') });
 
   // ---------------------------------------------------------------- Straßenmöbel
   tex2x(scene, 'lampPost', T, 44, (c) => {

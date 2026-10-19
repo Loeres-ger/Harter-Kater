@@ -40,12 +40,13 @@ export class HudScene extends Phaser.Scene {
       this.icons.push(this.add.image(x, 11, `icon_${it.id}`).setScale(0.5));
       this.counts.push(txt(this, x + 6, 12, ''));
     });
-    this.status = txt(this, W - 6, 7, '', '#e0b0b0').setOrigin(1, 0);
+    // rechts Platz lassen: dort liegt der Pause-Knopf, wenn das Bild den ganzen Bildschirm füllt
+    this.status = txt(this, W - 26, 7, '', '#e0b0b0').setOrigin(1, 0);
     this.add.rectangle(0, H - 18, W, 18, 0x120c0b, 0.65).setOrigin(0);
     this.goal = txt(this, 6, H - 12, '', '#b8a888');
     this.prompt = txt(this, W / 2, H - 34, '', '#ffffff').setOrigin(0.5).setStroke('#120c0b', 4);
     this.alertT = txt(this, W / 2, 62, '', '#ff4040', 16).setOrigin(0.5).setStroke('#120c0b', 5);
-    this.boostT = txt(this, W - 6, 19, '', '#80d0ff').setOrigin(1, 0).setStroke('#120c0b', 3);
+    this.boostT = txt(this, W - 26, 19, '', '#80d0ff').setOrigin(1, 0).setStroke('#120c0b', 3);
     this.toastT = txt(this, W / 2, 40, '', '#f4ead0').setOrigin(0.5).setAlpha(0).setAlign('center').setWordWrapWidth(W - 40).setStroke('#120c0b', 4);
     addTouchControls(this);
   }

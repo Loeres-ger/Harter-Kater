@@ -84,8 +84,11 @@ export function stage(): number {
 }
 
 /** Ist er ungeduldig, weil er zu lange auf seinen Wunsch wartet? */
+/** ab dieser Sucht nimmt er unerfüllte Wünsche übel (vorher sind es nur Vorlieben) */
+export const WISH_PRESSURE = 8;
+
 export function impatient() {
-  return !!state.wish && !state.dead && state.time - state.wishSince > PATIENCE;
+  return !!state.wish && !state.dead && state.sucht >= WISH_PRESSURE && state.time - state.wishSince > PATIENCE;
 }
 
 /** Aussehen-Stufe 0..4, auch nach dem Tod. */
@@ -113,7 +116,7 @@ export function tick(dt: number) {
   if (state.time - state.lastGive > 8) state.wuerde = Math.min(100, state.wuerde + 0.12 * dt);
   state.misstrauen = Math.max(0, state.misstrauen - 0.6 * dt);
   // Ungeduld: wer zu lange auf seinen Wunsch wartet, wird misstrauisch
-  if (state.wish && state.time - state.wishSince > PATIENCE) {
+  if (impatient()) {
     state.misstrauen += 1.5 * dt;
     checkFlucht();
   }
@@ -123,13 +126,11 @@ export function tick(dt: number) {
     // Unerfüllter Wunsch bei starker Sucht: Entzug nagt an ihm
     if (state.wish && state.sucht >= 40) state.wuerde = Math.max(0, state.wuerde - 3);
     state.wishTimer = 10 + Math.random() * 5;
-    if (state.sucht >= 8) {
-      const ok = ITEMS.filter((i) => i.minSucht <= state.sucht);
-      state.wish = pick(ok.slice(-3)).id;
-      state.wishSince = state.time;
-    } else {
-      state.wish = null;
-    }
+    // Er wünscht sich immer etwas, das er gerade annehmen würde. Früher kam bei Sucht unter 8 gar kein
+    // Wunsch: Wer ihn noch nicht bedient hatte, sah nie, was er trinken will.
+    const ok = ITEMS.filter((i) => i.minSucht <= state.sucht);
+    state.wish = pick(ok.slice(-3)).id;
+    state.wishSince = state.time;
   }
 }
 

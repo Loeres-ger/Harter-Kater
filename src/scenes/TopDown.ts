@@ -107,6 +107,9 @@ export abstract class TopDown extends Phaser.Scene {
     cam.setZoom(ZOOM);
     cam.setBounds(0, -12, mw * T, mh * T + 22); // Platz für HUD-Leisten
     cam.startFollow(this.player, true, 0.15, 0.15);
+    // auf den Oberkörper statt auf die Füße zielen: so bleibt über dem Wirt mehr Platz, Schilder über Türen
+    // verschwinden nicht unter der oberen HUD-Leiste
+    cam.setFollowOffset(0, 14);
     cam.setRoundPixels(true);
     cam.setBackgroundColor('#0a0608');
     cam.fadeIn(260);
