@@ -15,10 +15,10 @@ export interface StoryFlags {
   /** Lily: weggeschickt oder wohnt jetzt auf dem Dachboden (leer = sitzt noch in der Gasse, falls freigeschaltet) */
   lily?: 'weg' | 'dach';
 
-  /** Kurdischer Kevin ist aus der Kabine gekommen */
-  kevinAuftritt?: boolean;
-  /** erstes Gespräch mit Kevin geführt */
-  kevinGesprochen?: boolean;
+  /** der Wirt hat in Kabine 2 an das Loch in der Wand geklopft */
+  kevinLoch?: boolean;
+  /** Kurdischer Kevin ist aus Kabine 1 gekommen und für immer aus der Kneipe geflüchtet */
+  kevinFlucht?: boolean;
 
   /** Spielzeit, zu der Leni sich übergeben hat */
   leniGekotzt?: number;

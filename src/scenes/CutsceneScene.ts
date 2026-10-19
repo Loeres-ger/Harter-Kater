@@ -25,15 +25,12 @@ const NAMES: Record<Who, [string, string]> = {
   telefon: ['BRENNINGER', '#ff6a6a'],
   borna: ['BEKIFFTER BORNA', '#a8d070'],
   lily: ['LILY', '#c8a0e0'],
-  kevin: ['KURDISCHER KEVIN', '#ff8a50'],
-  nebenan: ['STIMME VON NEBENAN', '#c0c0c0'],
 };
 
 /** Porträts der Nebenfiguren: Seite und Bild je nach look (0 = normal, 1 = glücklich) */
 const CAST: Partial<Record<Who, { side: 'left' | 'right'; key: (look: number) => string }>> = {
   borna: { side: 'left', key: (l) => (l ? 'nbust_bornaHappy' : 'nbust_borna') },
   lily: { side: 'right', key: (l) => (l ? 'nbust_lilyHappy' : 'nbust_lily') },
-  kevin: { side: 'right', key: () => 'nbust_kevin' },
 };
 
 const BAR_H = 22; // Kinobalken
@@ -274,12 +271,6 @@ export class CutsceneScene extends Phaser.Scene {
         this.bg.add(candle);
         this.tweens.add({ targets: candle, alpha: 0.3, duration: 140, yoyo: true, repeat: -1, repeatDelay: 400 });
       }
-    } else if (key === 'kabine') {
-      this.bg.add(this.add.image(0, 0, 'csKabine').setOrigin(0));
-      const tube = this.add.image(240, 8, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.5, 1).setTint(0xd0f0d0).setAlpha(0.35);
-      this.bg.add(tube);
-      // die Füße von nebenan wippen ungeduldig
-      this.time.addEvent({ delay: 130, loop: true, callback: () => tube.setAlpha(Math.random() < 0.1 ? 0.05 : 0.35) });
     } else if (key === 'tod') {
       this.bg.add(this.add.image(0, 0, 'tresenBg').setOrigin(0));
       for (const x of [112, 312]) this.bg.add(this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5));

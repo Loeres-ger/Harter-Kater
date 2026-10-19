@@ -23,6 +23,7 @@ import { AchievementsScene } from './scenes/AchievementsScene';
 import { AtticScene } from './rooms/AtticScene';
 import { MensRoomScene } from './rooms/MensRoomScene';
 import { LadiesRoomScene } from './rooms/LadiesRoomScene';
+import { StallScene } from './rooms/StallScene';
 
 async function boot() {
   // Pixel-Font laden, bevor Texte erzeugt werden
@@ -41,7 +42,7 @@ async function boot() {
     roundPixels: true,
     backgroundColor: '#0d0b0a',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, PauseScene, AchievementsScene, NotifyScene],
+    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PauseScene, AchievementsScene, NotifyScene],
   });
 
   if (import.meta.env.DEV) {

@@ -1,9 +1,9 @@
 // Die Storyline: Prolog, drei Kapitel-Zwischenspiele und der Epilog.
 
-export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'kevin' | 'nebenan';
+export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily';
 
 export type Step =
-  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'kabine' }
+  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' }
   | { t: 'caption'; text: string }
   | { t: 'title'; text: string; sub: string }
   | { t: 'say'; who: Who; text: string; look?: number }
@@ -52,19 +52,6 @@ export const STORY: Record<string, Step[]> = {
     { t: 'title', text: 'UNTERMIETER', sub: 'Auf dem Dachboden wohnen jetzt zwei.' },
   ],
 
-  /** Herrentoilette, Kabine 2: Der Nachbar meldet sich. */
-  kabine: [
-    { t: 'bg', key: 'kabine' },
-    { t: 'say', who: 'wirt', text: '(Endlich. Fünf Minuten Ruhe vor allen Irren dieser Kneipe.)' },
-    { t: 'wait', ms: 600 },
-    { t: 'say', who: 'nebenan', text: 'Psst. Bruder. Bist du das?' },
-    { t: 'say', who: 'wirt', text: 'Kommt drauf an, wer fragt.' },
-    { t: 'say', who: 'nebenan', text: 'Hast du Papier? Bei mir ist alle. Seit gestern.' },
-    { t: 'say', who: 'wirt', text: '(Seit GESTERN?)' },
-    { t: 'say', who: 'nebenan', text: 'Weißt du was? Egal. Ich komm raus. Mach dich bereit.' },
-    { t: 'fx', kind: 'shake' },
-    { t: 'say', who: 'wirt', text: '(Wofür bereit?!)' },
-  ],
 
   prolog: [
     { t: 'bg', key: 'street' },

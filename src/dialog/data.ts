@@ -1,6 +1,6 @@
 import { GUESTS } from '../guests/data';
 import { felixTree } from './felix';
-import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
+import { bornaTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
@@ -10,7 +10,7 @@ export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
-  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'kevinFertig';
+  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt';
 
 export interface Choice {
   text: string;
@@ -267,7 +267,6 @@ export const SPEAKERS: Record<string, Speaker> = {
   borna: { name: 'BEKIFFTER BORNA', color: '#a8d070', portrait: 'nbust_borna', bg: 'dach', tree: bornaTree },
   lily: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lily', bg: 'street', tree: lilyTree },
   lilyDach: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lilyHappy', bg: 'dach', tree: lilyDachTree },
-  kevin: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'wc', tree: kevinTree },
   leni: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniTree },
   leniDanach: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniDanachTree },
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },

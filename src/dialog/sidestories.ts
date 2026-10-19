@@ -1,8 +1,7 @@
 import { state } from '../state';
 import type { DialogNode } from './data';
 
-// Gespräche der Nebenhandlungen: Borna (Dachboden), Lily (Gasse/Dachboden), Kurdischer Kevin (Herrentoilette),
-// Leni (Damentoilette). Entscheidungen landen als Story-Flags in state.flags (siehe progress/flags.ts).
+// Gespräche der Nebenhandlungen: Borna (Dachboden), Lily (Gasse/Dachboden), Leni (Damentoilette). Entscheidungen landen als Story-Flags in state.flags (siehe progress/flags.ts).
 
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const f = () => state.flags;
@@ -153,39 +152,6 @@ export function lilyDachTree(): Record<string, DialogNode> {
     hier: {
       lines: ['Es zieht, es riecht nach Gras und die Matratze hat eine Vergangenheit.', 'Bester Platz, den ich seit Monaten hatte.'],
       choices: [{ text: 'Freut mich.' }],
-    },
-  };
-}
-
-// ---------------------------------------------------------------- Kurdischer Kevin
-
-export function kevinTree(): Record<string, DialogNode> {
-  const first = !state.flags.kevinGesprochen;
-  const more = [
-    { text: 'Was ist das für ein ... Outfit?', next: 'outfit' },
-    { text: 'Warum warst du so lange da drin?', next: 'drin' },
-    { text: 'Hast du jetzt Papier gefunden?', next: 'papier' },
-    { text: 'Ich geh dann mal.' },
-  ];
-  return {
-    start: {
-      onEnter: () => (state.flags.kevinGesprochen = true),
-      lines: first
-        ? ['Bruder. BRUDER. Entspann dich. Das ist Sportbekleidung.', 'Ich bin Kevin. Kurdischer Kevin. Den Namen merkt man sich, weil ich ihn jedem sage.', 'W:(Ich hab heute schon viel gesehen. Aber das ...)']
-        : [pick(['Bruder! Wieder da? Die Kabine hat dich vermisst.', 'Na, Wirt. Guck nicht so. Selbstbewusstsein ist das schönste Kleidungsstück.', 'Ich mach hier Dehnübungen. Die Fliesen sind kühl, das ist gut für die Haltung.'])],
-      choices: more,
-    },
-    outfit: {
-      lines: ['Das ist Nationalstolz und Bewegungsfreiheit in einem. Rot, Weiß, Grün, und die Sonne genau da, wo sie hingehört.', 'Hat meine Mama genäht. Sie ist sehr stolz. Auf das Teil. Bei mir ist sie noch unentschlossen.'],
-      choices: more.slice(1),
-    },
-    drin: {
-      lines: ['Meditation, Bruder. Und das Echo! Hör mal: AAAAH!', 'N:Das AAAAH hallt dreimal von den Fliesen zurück. Irgendwo fällt ein Seifenspender runter.', 'Wunderschön.'],
-      choices: [more[0], more[2], more[3]],
-    },
-    papier: {
-      lines: ['Nein. Aber ich hab Haltung gefunden. Die ist wichtiger.', 'Und ein Kassenbon von 2014. Der ist auch ziemlich weich.'],
-      choices: [more[0], more[1], more[3]],
     },
   };
 }
