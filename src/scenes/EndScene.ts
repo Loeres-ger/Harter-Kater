@@ -76,7 +76,7 @@ export class EndScene extends Phaser.Scene {
     }
 
     // Kalle im Hintergrund am Tisch, blass im Regenlicht
-    const KX = 404, TY = 218;
+    const KX = 444, TY = 218;
     const k = kalleAtTable(this, KX, TY, { depth: 8, tint: 0x8a90b8 });
     k.kalle.setAlpha(0.9);
     const rain = this.add.graphics().setDepth(20);
@@ -123,27 +123,29 @@ export class EndScene extends Phaser.Scene {
       },
     });
     const why = felix
-      ? 'Polizist Felix hatte\n„ein Gespür für so was“.\nSchlagstock. Handschellen. Aus.'
+      ? 'Polizist Felix hatte\n„ein Gespür für so was“.\nSchlagstock. Handschellen.\nAus.'
       : bulle
-        ? 'Polizist Felix hat alles gesehen.\nBlaulicht. Handschellen. Aus.'
+        ? 'Polizist Felix hat\nalles gesehen. Blaulicht.\nHandschellen. Aus.'
         : polizei
-          ? 'Jemand hat die Leiche\nin der Gasse gefunden.\nBlaulicht. Handschellen. Aus.'
-          : `${VICTIM} hat Lunte gerochen\nund ist zur Polizei gerannt.`;
+          ? 'Jemand hat die Leiche\nin der Gasse gefunden.\nBlaulicht. Handschellen.'
+          : `${VICTIM} hat\nLunte gerochen und ist\nzur Polizei gerannt.`;
+    // Textspalte bleibt links von Kalle (max. ~26 Zeichen pro Zeile)
     txt(this, TX, 74, why, '#f4ead0', 8).setDepth(40);
-    txt(this, TX, 120, 'Die Katze bleibt heute hungrig.', '#9ad070', 8).setDepth(40);
+    txt(this, TX, 124, 'Die Katze bleibt hungrig.', '#9ad070', 8).setDepth(40);
     const m = Math.floor(state.time / 60), s = Math.floor(state.time % 60);
-    txt(this, TX, 136, `ZEIT ${m}:${String(s).padStart(2, '0')}    KASSE €${state.money}`, '#8a8aa8', 8).setDepth(40);
+    txt(this, TX, 140, `ZEIT ${m}:${String(s).padStart(2, '0')}   KASSE €${state.money}`, '#8a8aa8', 8).setDepth(40);
     const tip = felix ? 'Felix urteilt nicht nach Taten. Leider.' : bulle ? 'Achte auf die Taschenlampe von Felix.' : polizei ? 'Leichen gehören in den Müll. Schnell.' : 'Gib ihm, was er will. Nicht zu schnell.';
-    txt(this, TX, 156, `TIPP: ${tip}`, '#c9a24a', 8).setDepth(40).setWordWrapWidth(300);
+    txt(this, TX, 158, `TIPP: ${tip}`, '#c9a24a', 8).setDepth(40).setWordWrapWidth(212);
 
     // Kalle meldet sich aus dem Hintergrund
     const kalleSays = felix || bulle
-      ? 'Hab ich doch gesagt,\nChef. Der Bulle.'
+      ? 'Hab ich doch\ngesagt, Chef.'
       : polizei
-        ? 'Leichen in den Müll,\nChef. Immer.'
-        : 'Nicht so hastig,\nChef. Hab ich gesagt.';
+        ? 'Leichen in den\nMüll, Chef.'
+        : 'Nicht so hastig,\nChef.';
     this.time.delayedCall(1400, () => {
-      const bubble = this.add.container(KX - 40, 34).setDepth(41).setScale(0);
+      // über Kalles Kopf, rechts neben dem Titel
+      const bubble = this.add.container(KX - 54, 22).setDepth(41).setScale(0);
       const label = txt(this, 0, 0, kalleSays, '#1a1212', 8).setOrigin(0.5).setAlign('center');
       const bw = label.width + 6, bh = label.height + 2;
       bubble.add(this.add.rectangle(0, 0, bw, bh, 0xf4ead0).setStrokeStyle(1, 0x1a1212));
