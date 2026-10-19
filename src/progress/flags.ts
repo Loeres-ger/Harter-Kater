@@ -27,6 +27,11 @@ export interface StoryFlags {
 
   /** Mayas Dialektpfad samt Zwischensequenz „Der deutsche Traum“ ist gelaufen */
   mayaTraum?: boolean;
+
+  /** wie oft der Wirt die Kneipe von draußen betreten hat */
+  lokalBetreten?: number;
+  /** Event „Anne“: läuft, Anne gefangen, oder Felix musste sie holen (Strafe bezahlt) */
+  anne?: 'laeuft' | 'gefangen' | 'felix';
 }
 
 /** Sitzt Lily gerade in der Hintergasse? */

@@ -70,7 +70,7 @@ export class DialogScene extends Phaser.Scene {
       this.tweens.add({ targets: this.right, scaleY: 3.65, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.time.addEvent({ delay: 500, loop: true, callback: () => this.right.setFrame(this.right.frame.name === '0' ? 1 : 0) });
     } else {
-      this.right = this.add.image(W + 80, BOX_Y + 6 + (sp.drop ?? 0), portraitOf(data.who)).setOrigin(0.5, 1).setDepth(500);
+      this.right = this.add.image(W + 80, BOX_Y + 6 + (sp.drop ?? 0), portraitOf(data.who)).setOrigin(0.5, 1).setScale(sp.scale ?? 1).setDepth(500);
       this.tweens.add({ targets: this.right, x: W - 76, duration: 300, ease: 'Quad.easeOut' });
     }
 

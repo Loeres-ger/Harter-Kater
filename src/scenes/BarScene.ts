@@ -6,6 +6,8 @@ import { floatText } from '../ui';
 import { GuestDef, guestById } from '../guests/data';
 import { BarGuest, SEATS, ensureGuests, removeGuest, resetRoster, roster } from '../guests/roster';
 import { ATTIC_SPAWN, DAMEN_SPAWN, HERREN_SPAWN } from '../rooms/spawns';
+import { AnneEvent, EventHost, anneDue } from '../events/anne';
+import { hud } from './HudScene';
 
 interface GuestView {
   g: BarGuest;
@@ -71,8 +73,13 @@ export class BarScene extends TopDown {
     super('Bar');
   }
 
+  /** Event „Anne“ (nur solange die Kneipe offen ist) */
+  private anneEvent?: AnneEvent;
+  private enteredAt = 0;
+
   init() {
     super.init();
+    this.anneEvent = undefined;
     this.victim = this.wishBubble = this.wishIcon = this.body = undefined;
     this.guestViews = new Map();
   }
@@ -138,6 +145,8 @@ export class BarScene extends TopDown {
 
   protected setupWorld() {
     audio.music('bar');
+    this.enteredAt = this.time.now;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.anneEvent?.destroy(); hud.alert = ''; });
     const [vx, vy] = VICTIM_TILE;
     if (!state.dead) {
       this.victim = this.add.sprite(vx * T + 8, vy * T + 12, `schnoesel${lookStage()}`, 3).setOrigin(0.5, 1).setScale(0.5).setDepth(vy * T + 12);
@@ -343,7 +352,8 @@ export class BarScene extends TopDown {
   }
 
   private updateGuests() {
-    if (this.leaving) return;
+    // während des Anne-Events pöbelt niemand
+    if (this.leaving || this.anneEvent?.active) return;
     const now = this.time.now;
     // ab und zu fängt einer an zu pöbeln
     const views = [...this.guestViews.values()];
@@ -364,8 +374,34 @@ export class BarScene extends TopDown {
     }
   }
 
+  /** Anne-Event: läuft es, wird es fortgeschrieben; steht es an, startet es, sobald der Wirt frei ist. */
+  private updateAnne(t: number, d: number) {
+    if (this.anneEvent) return this.anneEvent.update(t, d);
+    if (!anneDue() || this.leaving || state.carrying || state.gameOver || !state.running || this.time.now - this.enteredAt < 1200) return;
+    this.anneEvent = new AnneEvent(this.eventHost());
+    this.anneEvent.start();
+  }
+
+  private eventHost(): EventHost {
+    const [dx, dy] = this.find('D');
+    return {
+      scene: this,
+      player: this.player,
+      // Gastraum ohne Tresenbereich und Toilettenflur
+      walkable: (tx, ty) => ty >= 4 && ty < this.rows.length - 1 && tx > 0 && tx < this.rows[0].length - 1 && !(tx >= 16 && ty <= 7) && !this.solid[ty]?.[tx],
+      door: [dx, dy],
+      lock: (on) => { this.leaving = on; if (on) { this.player.anims.stop(); hud.prompt = ''; } },
+      blockActs: (on) => { this.actsBlocked = on; },
+      syncPlayer: () => { this.shadow.setPosition(this.player.x, this.player.y - 1); this.player.setDepth(this.player.y); },
+      toast: (s) => this.toast(s),
+      talk: (who, onDone) => this.talk(who, () => onDone()),
+      setAlert: (s) => { hud.alert = s; },
+    };
+  }
+
   update(t: number, d: number) {
     super.update(t, d);
+    this.updateAnne(t, d);
     this.updateGuests();
     if (this.victim && this.wishBubble && this.wishIcon) {
       this.victim.setTexture(`schnoesel${lookStage()}`, 3);

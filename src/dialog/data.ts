@@ -1,6 +1,7 @@
 import { GUESTS } from '../guests/data';
 import { felixTree } from './felix';
 import { mayaTree } from './maya';
+import { anneTree, felixAnneTree } from './anne';
 import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
@@ -11,7 +12,7 @@ export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
-  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum';
+  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum' | 'anneJagd';
 
 export interface Choice {
   text: string;
@@ -42,6 +43,8 @@ export interface Speaker {
   bg: DialogBg;
   /** Porträt tiefer setzen (Leonard ist sehr klein) */
   drop?: number;
+  /** Porträt verkleinern (Kinder) */
+  scale?: number;
   /** Knoten werden beim Öffnen erzeugt, damit sie den aktuellen Spielstand kennen */
   tree: () => Record<string, DialogNode>;
 }
@@ -272,6 +275,8 @@ export const SPEAKERS: Record<string, Speaker> = {
   leni: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniTree },
   leniDanach: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniDanachTree },
   maya: { name: 'MEISTERNUTTE MAYA', color: '#e05a7a', portrait: 'nbust_maya', bg: 'laden', tree: mayaTree },
+  anne: { name: 'ANNE', color: '#ff9ac0', portrait: 'nbust_anne', bg: 'bar', drop: 6, scale: 0.72, tree: anneTree },
+  felixAnne: { name: 'POLIZIST FELIX', color: '#7aa8ff', portrait: 'nbust_copAngry', bg: 'bar', tree: felixAnneTree },
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };

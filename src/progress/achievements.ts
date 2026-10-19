@@ -25,6 +25,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'untermieter', name: 'Untermieter', desc: 'Lily und Borna haben sich gefunden.', icon: 'ach_heart', hidden: true, hint: 'Auf dem Dachboden ist noch Platz.' },
   { id: 'bruderEntspann', name: 'Bruder, entspann dich', desc: 'Kevin ist panisch geflüchtet.', icon: 'ach_roll', hidden: true, hint: 'Die Herrentoilette hat Geheimnisse.' },
   { id: 'deutscherTraum', name: 'Der deutsche Traum', desc: 'Manchmal öffnet der richtige Dialekt mehr Türen als der richtige Geldbeutel.', icon: 'ach_pretzel' },
+  { id: 'zuJung', name: 'Zu jung für den Goldenen Eimer', desc: 'Manche Gäste sind wirklich noch nicht reif für diese Kneipe.', icon: 'ach_18' },
   { id: 'glasWasser', name: 'Ein Glas Wasser', desc: 'Leni ein Glas Wasser hingestellt.', icon: 'ach_glass', hidden: true, hint: 'Auf der Damentoilette braucht wer Hilfe.' },
 ];
 

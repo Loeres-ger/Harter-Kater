@@ -5,6 +5,7 @@ import { BAR_BACK_SPAWN, BAR_DOOR_SPAWN } from './BarScene';
 import type { DialogAction } from '../dialog/data';
 import { unlock } from '../progress/achievements';
 import { lilyWartet } from '../progress/flags';
+import { countBarEntry } from '../events/anne';
 import { BAR_LADDER_SPAWN, LADEN_SPAWN } from '../rooms/spawns';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
@@ -166,7 +167,11 @@ export class AlleyScene extends TopDown {
     const [qx, qy] = this.find('Q');
     const enter = (spawn: [number, number], label: string) => ({
       label: () => (this.corpse ? 'Erst die Leiche loswerden!' : label),
-      act: () => (this.corpse ? this.toast('Mit einer Leiche durch die Kneipe? Lieber nicht.') : this.go('Bar', { spawn })),
+      act: () => {
+        if (this.corpse) return this.toast('Mit einer Leiche durch die Kneipe? Lieber nicht.');
+        if (!this.leaving) countBarEntry();
+        this.go('Bar', { spawn });
+      },
     });
     this.interacts.push({ x: dx * T + 8, y: (dy + 1) * T + 4, r: 18, ...enter(BAR_DOOR_SPAWN, 'Kneipe betreten') });
     this.interacts.push({ x: qx * T + 8, y: qy * T - 4, r: 18, ...enter(BAR_BACK_SPAWN, 'Hintertür zur Kneipe') });

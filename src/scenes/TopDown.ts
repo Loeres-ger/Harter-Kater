@@ -41,6 +41,8 @@ export abstract class TopDown extends Phaser.Scene {
   /** nach einem Gespräch kurz keine neue Aktion, sonst öffnet Weiterdrücken gleich das nächste */
   private actBlockedUntil = 0;
   private ghostT = 0;
+  /** keine Interaktionen (z. B. während eines Events mit Zeitlimit) */
+  protected actsBlocked = false;
   /** langsamer laufen (z. B. beim Tragen) */
   protected slow = false;
   private stepT = 0;
@@ -57,6 +59,7 @@ export abstract class TopDown extends Phaser.Scene {
     this.interacts = [];
     this.leaving = false;
     this.actBlockedUntil = 0;
+    this.actsBlocked = false;
     this.carried = undefined;
     this.current = null;
     this.slow = false;
@@ -143,7 +146,7 @@ export abstract class TopDown extends Phaser.Scene {
   }
 
   private act() {
-    if (this.time.now < this.actBlockedUntil) return;
+    if (this.actsBlocked || this.time.now < this.actBlockedUntil) return;
     this.current?.act();
   }
 
@@ -264,7 +267,7 @@ export abstract class TopDown extends Phaser.Scene {
       if (d < it.r && d < bestD && it.label()) { best = it; bestD = d; }
     }
     this.current = best;
-    hud.prompt = best ? `[E] ${best.label()}` : '';
+    hud.prompt = best && !this.actsBlocked ? `[E] ${best.label()}` : '';
     hud.goal = this.goalText();
   }
 }
