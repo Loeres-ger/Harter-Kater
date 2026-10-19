@@ -1,9 +1,9 @@
 // Die Storyline: Prolog, drei Kapitel-Zwischenspiele und der Epilog.
 
-export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon';
+export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'kevin' | 'nebenan';
 
 export type Step =
-  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' }
+  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'kabine' }
   | { t: 'caption'; text: string }
   | { t: 'title'; text: string; sub: string }
   | { t: 'say'; who: Who; text: string; look?: number }
@@ -12,6 +12,60 @@ export type Step =
   | { t: 'pause' };
 
 export const STORY: Record<string, Step[]> = {
+  // ---------------------------------------------------------------- Nebenhandlungen
+
+  /** Verlauf A: Der Wirt hat Borna fertiggemacht. Bewusst still und ohne Details. */
+  bornaWeg: [
+    { t: 'bg', key: 'black' },
+    { t: 'caption', text: 'Später in der Nacht.' },
+    { t: 'bg', key: 'dachLeer' },
+    { t: 'say', who: 'wirt', text: '(Es ist still hier oben. Zu still.)' },
+    { t: 'say', who: 'wirt', text: '(Kein Rauch. Kein Gekicher. Nur das offene Fenster und ein Zettel auf der Matratze.)' },
+    { t: 'caption', text: '„Hab nachgedacht über das, was du gesagt hast, Chef.\nMach dir keinen Kopf. – B.“' },
+    { t: 'say', who: 'wirt', text: '(...)' },
+    { t: 'say', who: 'wirt', text: '(Das hätte ich nicht sagen sollen.)' },
+    { t: 'title', text: 'BORNA', sub: 'Sein Platz auf dem Dachboden bleibt leer.' },
+  ],
+
+  /** Verlauf B: Lily zieht auf den Dachboden, sie und Borna finden sich. */
+  lilyDach: [
+    { t: 'bg', key: 'dach' },
+    { t: 'say', who: 'wirt', text: 'Borna? Besuch. Das ist Lily. Sie braucht einen Platz zum Pennen.' },
+    { t: 'say', who: 'lily', text: 'Hi. Sorry, dass ich hier einfach so reinplatze.' },
+    { t: 'say', who: 'borna', text: 'Whoa. Hallo. Kein Ding. Ich platz hier seit drei Jahren.' },
+    { t: 'say', who: 'borna', text: 'Willst du die gute Seite der Matratze? Die ohne Fleck?' },
+    { t: 'say', who: 'lily', text: 'Es gibt eine Seite ohne Fleck?' },
+    { t: 'say', who: 'borna', text: 'Nein. Aber ich wollte nett sein.' },
+    { t: 'say', who: 'lily', look: 1, text: '... Du bist komisch. Das ist gut. Alle anderen sind so normal.' },
+    { t: 'say', who: 'borna', text: 'Manchmal guck ich nachts aus dem Fenster und frag mich, ob da draußen noch einer genauso festhängt.' },
+    { t: 'say', who: 'lily', text: 'Ich sitz seit Wochen in der Gasse und frag mich genau dasselbe.' },
+    { t: 'caption', text: 'Der Wirt beschließt, dass er hier oben überflüssig ist.\nEr klettert runter und dreht das Radio lauter.' },
+    { t: 'bg', key: 'black' },
+    { t: 'caption', text: 'Eine Stunde später.\nVon oben: rhythmisches Quietschen. Kalle wacht auf und schaut an die Decke.' },
+    { t: 'bg', key: 'bar' },
+    { t: 'say', who: 'borna', look: 1, text: 'Chef. CHEF. Ich hab ... ich hab wieder Gefühl in den Beinen. Und überall sonst.' },
+    { t: 'say', who: 'lily', look: 1, text: 'Wir haben geredet. Unter anderem.' },
+    { t: 'say', who: 'wirt', text: '(Die Matratze hat das „unter anderem“ sehr deutlich kommentiert.)' },
+    { t: 'say', who: 'borna', look: 1, text: 'Ich geh morgen raus. DRAUSSEN. Brötchen holen. Mit Sonne und so.' },
+    { t: 'say', who: 'lily', look: 1, text: 'Und ich komm mit. Ich glaub, ich hab gerade einen Platz gefunden.' },
+    { t: 'say', who: 'kalle', text: 'Schön für euch. Jetzt macht leise. Ich will pennen.' },
+    { t: 'title', text: 'UNTERMIETER', sub: 'Auf dem Dachboden wohnen jetzt zwei.' },
+  ],
+
+  /** Herrentoilette, Kabine 2: Der Nachbar meldet sich. */
+  kabine: [
+    { t: 'bg', key: 'kabine' },
+    { t: 'say', who: 'wirt', text: '(Endlich. Fünf Minuten Ruhe vor allen Irren dieser Kneipe.)' },
+    { t: 'wait', ms: 600 },
+    { t: 'say', who: 'nebenan', text: 'Psst. Bruder. Bist du das?' },
+    { t: 'say', who: 'wirt', text: 'Kommt drauf an, wer fragt.' },
+    { t: 'say', who: 'nebenan', text: 'Hast du Papier? Bei mir ist alle. Seit gestern.' },
+    { t: 'say', who: 'wirt', text: '(Seit GESTERN?)' },
+    { t: 'say', who: 'nebenan', text: 'Weißt du was? Egal. Ich komm raus. Mach dich bereit.' },
+    { t: 'fx', kind: 'shake' },
+    { t: 'say', who: 'wirt', text: '(Wofür bereit?!)' },
+  ],
+
   prolog: [
     { t: 'bg', key: 'street' },
     { t: 'caption', text: 'Irgendwo in der Stadt.\nEine verregnete Nacht.' },

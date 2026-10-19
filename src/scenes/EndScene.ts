@@ -51,14 +51,17 @@ export class EndScene extends Phaser.Scene {
       }
       txt(this, W / 2, 70, 'ERWISCHT', '#e05a4a', 24).setOrigin(0.5).setStroke('#2a0a0a', 6);
       const why = polizei
-        ? state.caughtBy === 'bulle'
-          ? 'Der Streifenpolizist hat alles gesehen.\nBlaulicht. Handschellen. Aus.'
-          : 'Jemand hat die Leiche in der Gasse gefunden.\nBlaulicht. Handschellen. Aus.'
+        ? state.caughtBy === 'felix'
+          ? 'Polizist Felix hatte „ein Gespür für so was“.\nSchlagstock. Handschellen. Aus.'
+          : state.caughtBy === 'bulle'
+            ? 'Polizist Felix hat alles gesehen.\nBlaulicht. Handschellen. Aus.'
+            : 'Jemand hat die Leiche in der Gasse gefunden.\nBlaulicht. Handschellen. Aus.'
         : `${VICTIM} hat Lunte gerochen\nund ist zur Polizei gerannt.`;
       txt(this, W / 2, 130, `${why}\n\nDie Katze bleibt heute hungrig.`, '#f4ead0')
         .setOrigin(0.5).setAlign('center');
       this.add.sprite(W / 2, 200, 'cat', 0).setScale(1.5).setTint(0x8888aa).play('cat_idle');
-      txt(this, W / 2, 222, polizei ? (state.caughtBy === 'bulle' ? 'Tipp: Achte auf die Taschenlampe des Polizisten.' : 'Tipp: Leichen gehören in den Müll. Schnell.') : 'Tipp: Gib ihm, was er will. Und nicht zu schnell.', '#8a7a5a').setOrigin(0.5);
+      const tip = state.caughtBy === 'felix' ? 'Felix urteilt nicht nach Taten. Leider.' : state.caughtBy === 'bulle' ? 'Achte auf die Taschenlampe von Felix.' : 'Leichen gehören in den Müll. Schnell.';
+      txt(this, W / 2, 222, `Tipp: ${polizei ? tip : 'Gib ihm, was er will. Und nicht zu schnell.'}`, '#8a7a5a').setOrigin(0.5);
     }
 
     const again = txt(this, W / 2, 250, '[ LEERTASTE: NOCHMAL ]', '#ffffff').setOrigin(0.5);

@@ -1,24 +1,37 @@
 import { GUESTS } from '../guests/data';
+import { felixTree } from './felix';
+import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
 // Ein Knoten hat Zeilen der Figur (mit „W:“ davor spricht der Wirt) und Antworten zur Auswahl.
 
-export type DialogBg = 'bar' | 'street' | 'cat';
+export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
-export type DialogAction = 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk';
+export type DialogAction =
+  | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
+  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'kevinFertig';
 
 export interface Choice {
   text: string;
-  /** nächster Knoten; ohne next und action endet das Gespräch */
-  next?: string;
+  /** nächster Knoten (oder Funktion, die ihn je nach Verlauf bestimmt); ohne next und action endet das Gespräch */
+  next?: string | (() => string);
   action?: DialogAction;
+  /** wird beim Wählen ausgeführt, z. B. um ein Story-Flag zu setzen */
+  pick?: () => void;
 }
 
 export interface DialogNode {
-  /** Funktionen werden bei jedem Besuch des Knotens neu ausgewertet (z. B. Zufallstipps) */
+  /** Funktionen werden bei jedem Besuch des Knotens neu ausgewertet (z. B. Zufallstipps).
+   *  „W:“ davor: spricht der Wirt, „N:“ davor: Erzähltext */
   lines: (string | (() => string))[];
   choices: Choice[];
+  /** Porträt des Gegenübers ab diesem Knoten wechseln (z. B. wütend) */
+  portrait?: string;
+  /** beim Betreten des Knotens, z. B. Story-Flag setzen */
+  onEnter?: () => void;
+  /** diese Aktion gilt auch, wenn das Gespräch hier vorzeitig beendet wird */
+  exitAction?: DialogAction;
 }
 
 export interface Speaker {
@@ -42,7 +55,7 @@ const KALLE_TIPS = [
   'Hinten in der Gasse steht einer, der hat ... Spezielles.',
   'Die Katze draußen? Hat nur noch ein Auge. Das andere glüht. Die frisst alles. ALLES.',
   'Sie nennen sie die Königskatze, Chef. Aber das ist kein König. Das ist ... die Pest.',
-  'In der Gasse läuft jetzt ein Bulle Streife. Pass auf seine Taschenlampe auf.',
+  'Hinten in der Gasse läuft jetzt Polizist Felix Streife. Pass auf seine Taschenlampe auf.',
   'Lass den Lackaffen nicht warten, Chef. Ungeduldige Gäste werden misstrauisch.',
   'Die Automaten da hinten? Die Risikoleiter hat mich mein Haus gekostet, Chef.',
   'Buch der Ratte ... drei Bücher, Chef. Dann geht die Post ab.',
@@ -88,7 +101,7 @@ function kalle(): Record<string, DialogNode> {
     },
     tipp: { lines: [() => pick(KALLE_TIPS)], choices: [{ text: 'Noch einen Tipp?', next: 'tipp' }, { text: 'Was noch?', next: 'start' }] },
     dealer: {
-      lines: ['Hinten in der Gasse. Pillen und Zeug. Aber nie kaufen, wenn der Bulle guckt.'],
+      lines: ['Hinten in der Gasse. Pillen und Zeug. Aber nie kaufen, wenn Felix guckt. Der Bulle.'],
       choices: [{ text: 'Was noch?', next: 'start' }, BYE],
     },
   };
@@ -167,30 +180,12 @@ function dealer(): Record<string, DialogNode> {
       choices: [
         { text: 'Was hast du?', action: 'shop' },
         { text: 'Ist das Zeug sicher?', next: 'sicher' },
-        { text: 'Was ist mit dem Bullen?', next: 'bulle' },
+        { text: 'Was ist mit Felix, dem Bullen?', next: 'bulle' },
         { text: 'Kein Interesse.' },
       ],
     },
     sicher: { lines: ['Sicher? Bruder. Nichts hier ist sicher. Aber es wirkt.'], choices: [{ text: 'Was hast du?', action: 'shop' }, BYE] },
     bulle: { lines: ['Der läuft die Gasse rauf und runter. Wenn seine Lampe uns erwischt, kenn ich dich nicht.'], choices: [{ text: 'Was hast du?', action: 'shop' }, BYE] },
-  };
-}
-
-function cop(): Record<string, DialogNode> {
-  return {
-    start: {
-      lines: [pick(['Guten Abend. Ruhige Nacht bisher.', 'Na, Herr Wirt. Auch mal frische Luft schnappen?'])],
-      choices: [
-        { text: 'Viel los heute?', next: 'los' },
-        { text: 'Was ist mit der Katze da hinten?', next: 'katze' },
-        { text: 'Schönen Dienst noch.' },
-      ],
-    },
-    los: {
-      lines: ['Hier verschwinden in letzter Zeit Leute. Keine Spur. Als hätte sie der Erdboden verschluckt.', 'Wenn Sie was sehen, melden Sie sich.'],
-      choices: [{ text: 'Mach ich. Ganz bestimmt.' }],
-    },
-    katze: { lines: ['Hab das Ordnungsamt angerufen. Die wollen nicht kommen. Keiner will in die Nähe von dem Vieh.'], choices: [BYE] },
   };
 }
 
@@ -206,7 +201,7 @@ function dame(): Record<string, DialogNode> {
       ],
     },
     geschaeft: {
-      lines: ['Mies. Seit die Glasbauten kommen, schickt der Bulle uns ständig weiter. Und meine Kollegin ist seit Tagen weg.'],
+      lines: ['Mies. Seit die Glasbauten kommen, schickt Felix uns ständig weiter. Und meine Kollegin ist seit Tagen weg.'],
       choices: [{ text: 'Umlegen', action: 'kill' }, BYE],
     },
     gesehen: {
@@ -265,15 +260,23 @@ export const SPEAKERS: Record<string, Speaker> = {
   kalle: { name: 'KALLE', color: '#d8a880', portrait: 'bustPenner', bg: 'bar', tree: kalle },
   glanz: { name: 'DR. VON GLANZ', color: '#90b8ff', portrait: 'bust0', bg: 'bar', tree: glanz },
   dealer: { name: 'DEALER', color: '#8ad08a', portrait: 'nbust_dealer', bg: 'street', tree: dealer },
-  cop: { name: 'POLIZIST', color: '#7aa8ff', portrait: 'nbust_cop', bg: 'street', tree: cop },
+  cop: { name: 'POLIZIST FELIX', color: '#7aa8ff', portrait: 'nbust_cop', bg: 'street', tree: felixTree },
   dame0: { name: 'CHANTAL', color: '#ff7ac0', portrait: 'nbust_dame0', bg: 'street', tree: dame },
   dame1: { name: 'JACKY', color: '#d090ff', portrait: 'nbust_dame1', bg: 'street', tree: dame },
   leonard: { name: 'KRÄFTIGER LEONARD', color: '#ff9a50', portrait: 'nbust_leonard', bg: 'street', drop: 30, tree: leonard },
+  borna: { name: 'BEKIFFTER BORNA', color: '#a8d070', portrait: 'nbust_borna', bg: 'dach', tree: bornaTree },
+  lily: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lily', bg: 'street', tree: lilyTree },
+  lilyDach: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lilyHappy', bg: 'dach', tree: lilyDachTree },
+  kevin: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'wc', tree: kevinTree },
+  leni: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniTree },
+  leniDanach: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniDanachTree },
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };
 
 /** Porträt kann vom Spielstand abhängen (von Glanz verfällt sichtbar). */
 export function portraitOf(id: string) {
-  return id === 'glanz' ? `bust${lookStage()}` : SPEAKERS[id].portrait;
+  if (id === 'glanz') return `bust${lookStage()}`;
+  if (id === 'borna' && state.flags.borna === 'hoffnung') return 'nbust_bornaHappy';
+  return SPEAKERS[id].portrait;
 }

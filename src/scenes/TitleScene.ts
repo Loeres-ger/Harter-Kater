@@ -5,6 +5,8 @@ import { makeCasinoTextures } from '../casino/gfx';
 import { makeGuestTextures } from '../guests/gfx';
 import { makeWorldTextures } from '../world/textures';
 import { makeLeonardTextures } from '../world/leonard';
+import { makeAchievementIcons } from '../progress/icons';
+import { makeRoomTextures } from '../rooms/gfx';
 import { VICTIM, resetState, state } from '../state';
 import { H, W, fadeTo, txt } from '../ui';
 import { resetAlley } from './AlleyScene';
@@ -36,6 +38,10 @@ export class TitleScene extends Phaser.Scene {
     makeGuestTextures(this);
     makeWorldTextures(this);
     makeLeonardTextures(this);
+    makeAchievementIcons(this);
+    makeRoomTextures(this);
+    // Achievement-Einblendungen laufen dauerhaft über allen Szenen
+    if (!this.scene.isActive('Notify')) this.scene.launch('Notify');
     showLegalLinks(true);
     audio.music('title');
     // Audio darf erst nach einer Nutzeraktion starten

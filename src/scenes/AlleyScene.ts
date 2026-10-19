@@ -3,6 +3,9 @@ import { audio } from '../audio';
 import { bulky, item, lookStage, PILLS, state } from '../state';
 import { BAR_BACK_SPAWN, BAR_DOOR_SPAWN } from './BarScene';
 import type { DialogAction } from '../dialog/data';
+import { unlock } from '../progress/achievements';
+import { lilyWartet } from '../progress/flags';
+import { BAR_LADDER_SPAWN } from '../rooms/spawns';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
@@ -55,6 +58,8 @@ const SLAPPED = ['Handtaschen-Hieb! Aua.', '„Finger weg, Opa!“ *KLATSCH*', '
 const VIEW_LEN = 96, VIEW_NEAR = 16, VIEW_SPREAD = 0.45, VIEW_CLOSE = 24;
 /** Streife: Reihe und Strecke (in Kacheln) in der Gasse hinter dem Haus */
 const COP_ROW = 3, COP_FROM = 8, COP_TO = 30;
+/** Lilys Platz an der Wand der Hintergasse (Kachel) */
+const LILY_TILE: [number, number] = [29, 2];
 
 export class AlleyScene extends TopDown {
   private cat!: Phaser.GameObjects.Sprite;
@@ -225,10 +230,10 @@ export class AlleyScene extends TopDown {
     });
     this.addLight(dealer.x, dealer.y - 10, 0.6, 0.35);
 
-    // Streifenpolizist läuft die Gasse auf und ab
+    // Polizist Felix läuft die Gasse auf und ab
     this.cop = this.add.sprite(COP_FROM * T, COP_ROW * T + 14, 'polizist', 6).setOrigin(0.5, 1).setScale(0.5);
     this.cop.play('polizist_side');
-    this.copSpot = { x: this.cop.x, y: this.cop.y - 4, r: 20, label: () => (this.copGone || this.busted || state.carrying || this.corpseCarried ? null : 'Polizist ansprechen'), act: () => this.talk('cop') };
+    this.copSpot = { x: this.cop.x, y: this.cop.y - 4, r: 20, label: () => (this.copGone || this.busted || state.carrying || this.corpseCarried ? null : 'Polizist Felix ansprechen'), act: () => this.talk('cop', (a) => a === 'felixKnueppel' && this.felixKnueppel()) };
     this.interacts.push(this.copSpot);
     this.npcs.push(this.cop);
     this.cone = this.add.graphics().setDepth(5001).setBlendMode(Phaser.BlendModes.ADD);
@@ -274,6 +279,7 @@ export class AlleyScene extends TopDown {
   /** Fassade, Straßenmöbel und Lichter rund ums Haus. */
   private buildStreet(dx: number, dy: number, qx: number, qy: number) {
     this.addLeonard(dx);
+    if (lilyWartet(state.flags)) this.addLily();
     // Schild über dem Eingang, Außenlampe, Lichtschein der Fenster auf dem Gehweg
     this.add.image(dx * T + 8, (dy - 1) * T + 7, 'barSign').setScale(0.5).setDepth(2);
     this.addLight(dx * T + 8, (dy - 1) * T + 6, 0.55, 0.45).setTint(0xff6ab4);
@@ -333,12 +339,60 @@ export class AlleyScene extends TopDown {
     });
   }
 
+  /** Lily sitzt in der Hintergasse an der Wand, Kopf auf den Knien. Erscheint erst, wenn der Wirt Borna kennt. */
+  private addLily() {
+    const [tx, ty] = LILY_TILE;
+    const x = tx * T + 8, y = ty * T + 13;
+    const lily = this.add.sprite(x, y, 'lilySit', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+    const shadow = this.add.image(x, y - 1, 'shadow').setDepth(1);
+    this.npcs.push(lily, shadow);
+    // schluchzt leise vor sich hin
+    this.time.addEvent({
+      delay: 1700, loop: true,
+      callback: () => {
+        if (!lily.active || lily.texture.key !== 'lilySit') return;
+        lily.setFrame(1);
+        this.tweens.add({ targets: lily, y: y - 1, duration: 120, yoyo: true, repeat: 2 });
+        this.time.delayedCall(700, () => lily.active && lily.texture.key === 'lilySit' && lily.setFrame(0));
+      },
+    });
+    this.interacts.push({
+      x, y: y - 4, r: 18,
+      label: () => (lily.active && lilyWartet(state.flags) && !state.carrying && !this.corpseCarried ? 'Mit der jungen Frau reden' : null),
+      act: () => this.talk('lily', (a) => this.lilyDone(a, lily, shadow)),
+    });
+  }
+
+  private lilyDone(a: DialogAction | undefined, lily: Phaser.GameObjects.Sprite, shadow: Phaser.GameObjects.Image) {
+    if (state.flags.lily || state.flags.borna === 'gebrochen') return;
+    if (a === 'lilyWeg') {
+      // Verlauf: weggeschickt. Sie geht und kommt nicht wieder.
+      state.flags.lily = 'weg';
+      lily.setTexture('lilyWalk', 6).play('lilyWalk_side');
+      shadow.destroy();
+      this.tweens.add({
+        targets: lily, x: lily.x + 220, duration: 4200,
+        onUpdate: () => lily.setDepth(lily.y),
+        onComplete: () => lily.destroy(),
+      });
+      this.tweens.add({ targets: lily, alpha: 0, delay: 3200, duration: 1000 });
+    } else if (a === 'lilyDach') {
+      // Verlauf B: ab auf den Dachboden. Endgültig, Borna kann nicht mehr in Verlauf A rutschen.
+      state.flags.lily = 'dach';
+      state.flags.borna = 'hoffnung';
+      unlock('untermieter');
+      this.leaving = true;
+      fadeTo(this, 'Cutscene', { script: 'lilyDach', music: 'bar', next: { scene: 'Bar', data: { spawn: BAR_LADDER_SPAWN } } });
+    }
+  }
+
   private leonardSells(a?: DialogAction) {
     if (a !== 'speed' && a !== 'bulk') return;
     const price = PILLS[a];
     if (state.money < price) return this.toast('Leonard: „Kein Geld, keine Muckis.“');
     state.money -= price;
     state.boost[a] = state.time + PILLS.duration;
+    unlock('vitaminL');
     audio.sfx('glug');
     this.float(`-${price}€`, '#ff8a6a');
     if (a === 'speed') {
@@ -441,7 +495,7 @@ export class AlleyScene extends TopDown {
     this.toast('Weg damit. Niemand hat was gesehen.');
   }
 
-  /** Sieht der Polizist diesen Punkt? Taschenlampenkegel in Laufrichtung + Nahbereich. */
+  /** Sieht Felix diesen Punkt? Taschenlampenkegel in Laufrichtung + Nahbereich. */
   private copSees(x: number, y: number) {
     if (!this.cop) return false;
     const dx = x - this.cop.x, dy = y - this.cop.y;
@@ -463,12 +517,74 @@ export class AlleyScene extends TopDown {
       state.gameOver = 'polizei';
       fadeTo(this, 'End');
     });
-    this.toast(`HALT! POLIZEI! ${why}`);
+    this.toast(`Felix: „HALT! POLIZEI!“ ${why}`);
     audio.sfx('siren');
     this.cameras.main.flash(300, 80, 120, 255);
     this.cop.anims.stop();
     const bang = this.add.text(this.cop.x, this.cop.y - 30, '!', { fontFamily: '"Press Start 2P", monospace', fontSize: '16px', color: '#ff3030' }).setOrigin(0.5).setDepth(6000).setStroke('#000', 4);
     this.tweens.add({ targets: bang, y: bang.y - 6, duration: 200, yoyo: true, repeat: 3 });
+  }
+
+  /** Felix eskaliert: Schlagstock raus, ein Hieb, der Wirt geht zu Boden. Danach Game over. */
+  private felixKnueppel() {
+    if (this.busted) return;
+    this.busted = true;
+    this.leaving = true; // Spieler einfrieren
+    state.running = false;
+    state.caughtBy = 'felix';
+    unlock('profilPasst');
+    const c = this.cop, p = this.player;
+    const dir = p.x < c.x ? -1 : 1;
+    c.anims.stop();
+    c.setFrame(6).setFlipX(dir < 0).setTint(0xff9090);
+    this.cone.clear();
+    audio.sfx('angry');
+    const bang = this.add.text(c.x, c.y - 30, '!', { fontFamily: '"Press Start 2P", monospace', fontSize: '16px', color: '#ff3030' }).setOrigin(0.5).setDepth(6000).setStroke('#000', 4);
+    this.tweens.add({ targets: bang, y: bang.y - 6, duration: 160, yoyo: true, repeat: 2, onComplete: () => bang.destroy() });
+    // Schlagstock ziehen
+    const baton = this.add.rectangle(c.x + dir * 4, c.y - 11, 2, 11, 0x14141c).setOrigin(0.5, 1).setDepth(c.y + 1);
+    baton.setAngle(dir * 20);
+    this.tweens.add({ targets: baton, angle: -dir * 130, duration: 300, delay: 300, ease: 'Back.easeOut' });
+    // losstürmen
+    this.time.delayedCall(800, () => {
+      c.anims.play('polizist_side', true);
+      this.tweens.add({
+        targets: c, x: p.x - dir * 10, y: p.y, duration: 320, ease: 'Quad.easeIn',
+        onUpdate: () => { baton.setPosition(c.x + dir * 4, c.y - 11); c.setDepth(c.y); },
+        onComplete: () => {
+          c.anims.stop();
+          // Zuschlagen
+          this.tweens.add({ targets: baton, angle: dir * 70, duration: 90, ease: 'Quad.easeIn', onComplete: () => this.felixHit(dir) });
+        },
+      });
+    });
+  }
+
+  private felixHit(dir: number) {
+    const p = this.player;
+    audio.sfx('thud');
+    audio.sfx('slap');
+    this.cameras.main.shake(300, 0.02);
+    this.cameras.main.flash(120, 255, 255, 255);
+    const bonk = this.add.text(p.x, p.y - 34, 'BONK!', { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#f8e070' }).setOrigin(0.5).setDepth(6001).setStroke('#000', 3);
+    this.tweens.add({ targets: bonk, y: bonk.y - 10, scale: 1.4, duration: 400, ease: 'Back.easeOut' });
+    // Wirt kippt um, Sternchen kreisen
+    this.tweens.add({ targets: p, angle: dir * 90, y: p.y + 2, duration: 260, ease: 'Quad.easeIn' });
+    const stars = [0, 1, 2].map(() => this.add.image(p.x, p.y - 10, 'star').setScale(0.7).setDepth(6000));
+    let t = 0;
+    const ev = this.time.addEvent({
+      delay: 16, loop: true,
+      callback: () => {
+        t += 0.12;
+        stars.forEach((s, i) => s.setPosition(p.x + dir * 8 + Math.cos(t + i * 2.1) * 8, p.y - 8 + Math.sin(t + i * 2.1) * 3));
+      },
+    });
+    this.toast('Felix: „Widerstand gegen die Staatsgewalt! Hab ich alles gesehen!“');
+    this.time.delayedCall(2200, () => {
+      ev.remove();
+      state.gameOver = 'polizei';
+      fadeTo(this, 'End');
+    });
   }
 
   private updateCop(dt: number) {

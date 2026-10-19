@@ -6,9 +6,9 @@ import { BustLook, GUESTS } from './data';
 
 const BW = 64, BH = 96;
 
-export type Mood = 'angry' | 'neutral';
+export type Mood = 'angry' | 'neutral' | 'stoned' | 'sad' | 'drunk' | 'happy';
 
-/** Brustbild: wütend (Kampf) oder freundlich (Gespräch). */
+/** Brustbild: wütend (Kampf), freundlich (Gespräch) oder mit besonderer Stimmung (bekifft, traurig, betrunken, glücklich). */
 export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
   const cx = 32;
   // Oberkörper
@@ -92,10 +92,33 @@ export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
   }
   // Augenbrauen: wütend schräg oder entspannt gerade
   if (mood === 'angry') for (let i = 0; i < 5; i++) { p(c, cx - 9 + i, 21 + Math.floor(i / 2), '#2a1a10'); p(c, cx + 8 - i, 21 + Math.floor(i / 2), '#2a1a10'); }
+  else if (mood === 'sad') for (let i = 0; i < 5; i++) { p(c, cx - 9 + i, 23 - Math.floor(i / 2), '#2a1a10'); p(c, cx + 8 - i, 23 - Math.floor(i / 2), '#2a1a10'); }
+  else if (mood === 'happy') { r(c, cx - 8, 21, 5, 1, '#2a1a10'); r(c, cx + 3, 21, 5, 1, '#2a1a10'); }
   else { r(c, cx - 8, 22, 5, 1, '#2a1a10'); r(c, cx + 3, 22, 5, 1, '#2a1a10'); p(c, cx - 8, 23, '#2a1a10'); p(c, cx + 7, 23, '#2a1a10'); }
   // Augen
   r(c, cx - 7, 25, 4, 3, '#f8f8f0'); r(c, cx + 3, 25, 4, 3, '#f8f8f0');
   r(c, cx - 5, 25, 2, 2, '#1c120a'); r(c, cx + 4, 25, 2, 2, '#1c120a');
+  if (mood === 'stoned') {
+    // schwere Lider, rote Äderchen, Augenringe
+    r(c, cx - 7, 25, 4, 2, skin); r(c, cx + 3, 25, 4, 2, skin);
+    r(c, cx - 7, 27, 4, 1, '#e8b0a0'); r(c, cx + 3, 27, 4, 1, '#e8b0a0');
+    p(c, cx - 5, 27, '#1c120a'); p(c, cx + 4, 27, '#1c120a');
+    r(c, cx - 7, 29, 4, 1, '#00000022'); r(c, cx + 3, 29, 4, 1, '#00000022');
+  } else if (mood === 'drunk') {
+    // ein Auge fast zu, das andere glasig
+    r(c, cx - 7, 25, 4, 2, skin); p(c, cx - 5, 27, '#1c120a'); r(c, cx - 7, 27, 4, 1, '#f0d0c8');
+    r(c, cx + 3, 25, 4, 1, skin); p(c, cx + 5, 26, '#ffffff');
+  } else if (mood === 'sad') {
+    // Blick nach unten, eine Träne
+    r(c, cx - 5, 25, 2, 1, '#f8f8f0'); r(c, cx + 4, 25, 2, 1, '#f8f8f0');
+    r(c, cx - 5, 27, 2, 1, '#1c120a'); r(c, cx + 4, 27, 2, 1, '#1c120a');
+    r(c, cx + 7, 29, 1, 3, '#a8d8ff');
+  } else if (mood === 'happy') {
+    // lachende Augen
+    r(c, cx - 7, 25, 4, 3, skin); r(c, cx + 3, 25, 4, 3, skin);
+    r(c, cx - 6, 25, 2, 1, '#1c120a'); p(c, cx - 7, 26, '#1c120a'); p(c, cx - 4, 26, '#1c120a');
+    r(c, cx + 4, 25, 2, 1, '#1c120a'); p(c, cx + 3, 26, '#1c120a'); p(c, cx + 6, 26, '#1c120a');
+  }
   if (L.glasses) {
     for (const gx of [cx - 9, cx + 2]) { r(c, gx, 24, 7, 1, '#1a1a1a'); r(c, gx, 29, 7, 1, '#1a1a1a'); r(c, gx, 24, 1, 6, '#1a1a1a'); r(c, gx + 6, 24, 1, 6, '#1a1a1a'); }
     r(c, cx - 2, 26, 4, 1, '#1a1a1a');
@@ -106,6 +129,23 @@ export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
     r(c, cx - 9, 31, 3, 2, '#e07060'); r(c, cx + 6, 31, 3, 2, '#e07060');
     r(c, cx - 4, 35, 8, 4, '#3a0e0a');
     r(c, cx - 3, 35, 6, 1, '#f4f0e0');
+  } else if (mood === 'stoned') {
+    // schiefes Grinsen
+    const m = L.lips ?? '#7a3a30';
+    r(c, cx - 3, 36, 7, 1, m); p(c, cx + 4, 35, m); p(c, cx + 5, 34, m);
+  } else if (mood === 'sad') {
+    const m = L.lips ?? '#7a3a30';
+    r(c, cx - 3, 36, 6, 1, m); p(c, cx - 4, 37, m); p(c, cx + 3, 37, m);
+  } else if (mood === 'drunk') {
+    // halb offener Mund, rote Wangen
+    r(c, cx - 9, 31, 4, 2, '#f0909a'); r(c, cx + 5, 31, 4, 2, '#f0909a');
+    const m = L.lips ?? '#7a3a30';
+    r(c, cx - 3, 35, 6, 3, '#5a1a1a'); r(c, cx - 3, 35, 6, 1, m); r(c, cx - 2, 38, 4, 1, m);
+  } else if (mood === 'happy') {
+    const m = L.lips ?? '#7a3a30';
+    r(c, cx - 9, 31, 3, 2, '#f0b0a0'); r(c, cx + 6, 31, 3, 2, '#f0b0a0');
+    r(c, cx - 4, 35, 8, 2, '#5a1a1a'); r(c, cx - 3, 35, 6, 1, '#f4f0e0');
+    p(c, cx - 5, 34, m); p(c, cx + 4, 34, m);
   } else {
     // leichtes Lächeln
     const m = L.lips ?? '#7a3a30';
@@ -206,5 +246,6 @@ export function makeGuestTextures(scene: Phaser.Scene) {
     bust(scene, `gbustN_${g.id}`, g.bust, 'neutral');
   }
   for (const [id, L] of Object.entries(NPC_BUSTS)) bust(scene, `nbust_${id}`, L, 'neutral');
+  bust(scene, 'nbust_copAngry', NPC_BUSTS.cop, 'angry');
   tex2x(scene, 'fist', 32, 48, drawFist);
 }

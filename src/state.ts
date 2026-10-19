@@ -1,5 +1,7 @@
 // Gemeinsamer Spielzustand: Inventar, Geld und die Werte des Schnösels.
 
+import type { StoryFlags } from './progress/flags';
+
 export type ItemId = 'bier' | 'kippe' | 'schnaps' | 'fusel' | 'pillen' | 'zeug';
 
 export interface ItemDef {
@@ -52,11 +54,13 @@ function freshState() {
     /** Frist, bis zu der eine Leiche in der Gasse entsorgt sein muss */
     bodyDeadline: null as number | null,
     /** wer dich erwischt hat (bei gameOver 'polizei') */
-    caughtBy: 'zeit' as 'zeit' | 'bulle',
+    caughtBy: 'zeit' as 'zeit' | 'bulle' | 'felix',
     /** bereits gezeigte Story-Zwischenspiele */
     story: { kapitel2: false, kapitel3: false },
     /** Leonards Pillen: bis wann sie wirken (Spielzeit) */
     boost: { speed: 0, bulk: 0 },
+    /** Story-Flags der Nebenhandlungen (siehe progress/flags.ts) */
+    flags: {} as StoryFlags,
   };
 }
 

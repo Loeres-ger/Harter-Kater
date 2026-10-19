@@ -4,6 +4,7 @@ import { bulky, state } from '../state';
 import { H, W, floatText, txt } from '../ui';
 import { GuestDef, guestById } from './data';
 import { roster } from './roster';
+import { unlock } from '../progress/achievements';
 
 export interface FightData {
   guestId: string;
@@ -325,6 +326,7 @@ export class FightScene extends Phaser.Scene {
 
   private win() {
     this.over = true;
+    unlock('ersteSchlaegerei');
     this.attackTimer?.remove();
     this.idle?.stop();
     this.tweens.killTweensOf(this.foeC);

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { audio } from '../audio';
+import { Track, audio } from '../audio';
 import { STORY, Step, Who } from '../story';
 import { state } from '../state';
 import { H, W, txt } from '../ui';
@@ -11,6 +11,10 @@ export interface CutsceneData {
   next?: { scene: string; data?: object };
   /** … oder pausierte Szene, die danach weiterläuft */
   resume?: string;
+  /** Musik während der Szene (Standard: Spannung) */
+  music?: Track;
+  /** wird nach dem Ende aufgerufen (z. B. damit die Szene dahinter weiterspielt) */
+  onDone?: () => void;
 }
 
 const NAMES: Record<Who, [string, string]> = {
@@ -19,6 +23,17 @@ const NAMES: Record<Who, [string, string]> = {
   kalle: ['KALLE', '#d8a880'],
   katze: ['DIE KATZE', '#b8f060'],
   telefon: ['BRENNINGER', '#ff6a6a'],
+  borna: ['BEKIFFTER BORNA', '#a8d070'],
+  lily: ['LILY', '#c8a0e0'],
+  kevin: ['KURDISCHER KEVIN', '#ff8a50'],
+  nebenan: ['STIMME VON NEBENAN', '#c0c0c0'],
+};
+
+/** Porträts der Nebenfiguren: Seite und Bild je nach look (0 = normal, 1 = glücklich) */
+const CAST: Partial<Record<Who, { side: 'left' | 'right'; key: (look: number) => string }>> = {
+  borna: { side: 'left', key: (l) => (l ? 'nbust_bornaHappy' : 'nbust_borna') },
+  lily: { side: 'right', key: (l) => (l ? 'nbust_lilyHappy' : 'nbust_lily') },
+  kevin: { side: 'right', key: () => 'nbust_kevin' },
 };
 
 const BAR_H = 22; // Kinobalken
@@ -79,7 +94,7 @@ export class CutsceneScene extends Phaser.Scene {
       g.destroy();
     }
     state.running = false;
-    audio.music('tension');
+    audio.music(data.music ?? 'tension');
 
     this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0);
     this.bg = this.add.container(0, 0);
@@ -204,12 +219,14 @@ export class CutsceneScene extends Phaser.Scene {
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       if (!state.gameOver) state.running = true;
+      const { onDone } = this.cfg;
       if (this.cfg.resume) {
         this.scene.resume(this.cfg.resume);
         this.scene.stop();
       } else if (this.cfg.next) {
         this.scene.start(this.cfg.next.scene, this.cfg.next.data);
       }
+      onDone?.();
     });
   }
 
@@ -226,7 +243,7 @@ export class CutsceneScene extends Phaser.Scene {
     this.hidePortraits();
     this.hideInset(false);
     this.cameras.main.flash(200, 0, 0, 0);
-    audio.setRain(key === 'street');
+    audio.setRain(key === 'street' || key === 'dachLeer');
 
     if (key === 'street' || key === 'dawn') {
       const img = this.add.image(0, 0, 'csStreet').setOrigin(0);
@@ -248,6 +265,21 @@ export class CutsceneScene extends Phaser.Scene {
       this.bg.add(kalle);
       this.bg.add(this.add.image(0, 186, 'counterFront').setOrigin(0));
       for (const x of [112, 312]) this.bg.add(this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5));
+    } else if (key === 'dach' || key === 'dachLeer') {
+      this.bg.add(this.add.image(0, 0, key === 'dach' ? 'csDach' : 'csDachLeer').setOrigin(0));
+      this.bg.add(this.add.image(330, 80, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2).setTint(0x8090c0).setAlpha(0.35));
+      if (key === 'dachLeer') this.rain = this.add.graphics().setDepth(100);
+      else {
+        const candle = this.add.image(26, 170, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.4).setTint(0xffa040).setAlpha(0.5);
+        this.bg.add(candle);
+        this.tweens.add({ targets: candle, alpha: 0.3, duration: 140, yoyo: true, repeat: -1, repeatDelay: 400 });
+      }
+    } else if (key === 'kabine') {
+      this.bg.add(this.add.image(0, 0, 'csKabine').setOrigin(0));
+      const tube = this.add.image(240, 8, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.5, 1).setTint(0xd0f0d0).setAlpha(0.35);
+      this.bg.add(tube);
+      // die Füße von nebenan wippen ungeduldig
+      this.time.addEvent({ delay: 130, loop: true, callback: () => tube.setAlpha(Math.random() < 0.1 ? 0.05 : 0.35) });
     } else if (key === 'tod') {
       this.bg.add(this.add.image(0, 0, 'tresenBg').setOrigin(0));
       for (const x of [112, 312]) this.bg.add(this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5));
@@ -382,6 +414,7 @@ export class CutsceneScene extends Phaser.Scene {
     if (who === 'wirt') this.portrait('left', 'bustWirt');
     else if (who === 'kalle') this.portrait('right', 'bustPenner');
     else if (who === 'glanz') this.portrait('right', `bust${look}`);
+    else if (CAST[who]) this.portrait(CAST[who]!.side, CAST[who]!.key(look));
     else for (const p of Object.values(this.portraits)) p?.setTint(0x666666);
     if (who === 'telefon') this.showInset(look === 1 ? 'brennMega' : 'brennPhone', look === 1 ? 'VOR ORT' : 'ANRUF');
     else this.insetImg?.setTint(0x777777);

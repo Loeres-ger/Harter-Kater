@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { unlock } from '../progress/achievements';
 import { audio } from '../audio';
 import { ITEMS, ItemId, MAX_HEALTH, VICTIM, give, impatient, item, lookStage, state } from '../state';
 import { H, W, fadeTo, floatText, txt } from '../ui';
@@ -227,6 +228,7 @@ export class TresenScene extends Phaser.Scene {
 
   private die() {
     this.busy = true;
+    unlock('glanzTot');
     this.wishC.setVisible(false);
     this.flies.forEach((f) => f.setVisible(false));
     // er läuft grün an und erstarrt, den Rest erzählt die Todesszene

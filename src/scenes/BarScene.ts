@@ -5,6 +5,7 @@ import { T, TileInfo, TopDown } from './TopDown';
 import { floatText } from '../ui';
 import { GuestDef, guestById } from '../guests/data';
 import { BarGuest, SEATS, ensureGuests, removeGuest, resetRoster, roster } from '../guests/roster';
+import { ATTIC_SPAWN, DAMEN_SPAWN, HERREN_SPAWN } from '../rooms/spawns';
 
 interface GuestView {
   g: BarGuest;
@@ -17,20 +18,21 @@ interface GuestView {
   fidget?: Phaser.Tweens.Tween;
 }
 
-// Die Kneipe: Tresen oben links (rein durch die Klappe F), Gastraum, rechts oben die Toilette
-// mit Hinterausgang (E) zur Gasse, unten die Eingangstür (D).
+// Die Kneipe: Tresen oben links (rein durch die Klappe F), Gastraum, rechts oben der Toilettenflur
+// mit Herren- (1) und Damentoilette (2) und Hinterausgang (E) zur Gasse, unten die Eingangstür (D).
+// An der Wand zum Toilettenflur führt eine Leiter (3) auf den Dachboden.
 //  P Poster  U Uhr  Z Dartscheibe  V Fernseher  M/N/O Spielautomaten
-//  k Waschbecken+Spiegel  u Pissoir  j Fliesenwand  l Kabinenwand  q WC  v/w Kabinentüren
+//  k Waschbecken+Spiegel  j Fliesenwand  1/2 Türen Herren/Damen  3 Leiter zum Dachboden
 //  d Durchgang WC  y Garderobe  i Mülleimer  e Pflanze  a Unordnung am Boden
 const MAP = [
   '########################',
-  '#SSSSSSPUWWZVMNO#kuujjj#',
-  '#......C........#ffflqq#',
-  '#CCCCCFC........#ffflvw#',
+  '#SSSSSSPUWWZVMNO#kj1j2j#',
+  '#......C........#ffffff#',
+  '#CCCCCFC........#ffffff#',
   '#.s.s.s..i.....y#ffffff#',
   '#..........rrrr.#ffffffE',
   '#..hth.....rrrr.#ffffff#',
-  '#......a........##d#####',
+  '#......a........##d#3###',
   '#..hth....hth..........#',
   '#......a..........hth.J#',
   '#.......hth.........e..#',
@@ -76,7 +78,7 @@ export class BarScene extends TopDown {
   }
 
   protected mapRows() { return MAP; }
-  protected isWall(ch: string) { return '#SWDMNOPUZVkujE'.includes(ch); }
+  protected isWall(ch: string) { return '#SWDMNOPUZVkujE123'.includes(ch); }
   protected darkness() { return 0.3; }
   protected floorKey(x: number, y: number) {
     const ch = this.rows[y][x];
@@ -98,6 +100,9 @@ export class BarScene extends TopDown {
       case 'u': return { key: 'urinal', solid: true };
       case 'j': return { key: 'tileWallFront', solid: true };
       case 'E': return { key: 'exitDoor', solid: true };
+      case '1': return { key: 'doorHerren', solid: true };
+      case '2': return { key: 'doorDamen', solid: true };
+      case '3': return { key: 'barLadder', solid: true };
       case 'l': return { key: 'stallWall', solid: true };
       case 'q': return { key: 'wcBowl', solid: true };
       case 'v': return { key: 'stallDoorH', solid: true };
@@ -247,16 +252,25 @@ export class BarScene extends TopDown {
     const lamp = this.addLight(19 * T + 8, 4 * T, 0.75, 0.6).setTint(0xd0f0d0);
     this.tweens.killTweensOf(lamp);
     this.time.addEvent({ delay: 120, loop: true, callback: () => lamp.setAlpha(Math.random() < 0.12 ? 0.05 : 0.45 + Math.random() * 0.15) });
-    const spots: [string, string, string][] = [
-      ['k', 'Waschbecken', 'Der Hahn hustet braunes Wasser. Der Spiegel ist blind vor Dreck.'],
-      ['u', 'Pissoir', 'Seit Jahren nicht geputzt. Besser nicht genauer hinsehen.'],
-      ['v', 'Herren-Kabine', 'Besetzt. Von drinnen: „Nie wieder Fusel ...“'],
-      ['w', 'Damen-Kabine', 'Abgeschlossen. Seit 1998.'],
+    const [kx, ky] = this.find('k');
+    this.interacts.push({ x: kx * T + 8, y: (ky + 1) * T + 6, r: 14, label: () => 'Waschbecken', act: () => this.toast('Der Hahn hustet braunes Wasser. Der Spiegel ist blind vor Dreck.') });
+    // Türen zu Herren- und Damentoilette, Leiter zum Dachboden (nicht mit einer Leiche auf der Schulter)
+    const rooms: [string, string, string, [number, number], number][] = [
+      ['1', 'Herrentoilette', 'HerrenWC', HERREN_SPAWN, 1],
+      ['2', 'Damentoilette', 'DamenWC', DAMEN_SPAWN, 1],
+      ['3', 'Leiter zum Dachboden', 'Dach', ATTIC_SPAWN, 1],
     ];
-    for (const [ch, label, text] of spots) {
+    for (const [ch, label, scene, spawn, below] of rooms) {
       const [x, y] = this.find(ch);
-      this.interacts.push({ x: x * T + 8, y: (y + 1) * T + 6, r: 14, label: () => label, act: () => this.toast(text) });
+      this.interacts.push({
+        x: x * T + 8, y: (y + below) * T + 6, r: 14,
+        label: () => (state.carrying ? null : label),
+        act: () => this.go(scene, { spawn }),
+      });
     }
+    // Lichtschein über der Leiter
+    const [lx, ly] = this.find('3');
+    this.addLight(lx * T + 8, ly * T + 4, 0.35, 0.4).setTint(0x8090d0);
   }
 
   // ---------------------------------------------------------------- Stammgäste

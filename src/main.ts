@@ -18,6 +18,11 @@ import { RatteScene } from './casino/RatteScene';
 import { DerbyScene } from './casino/DerbyScene';
 import { FightScene } from './guests/FightScene';
 import { DialogScene } from './dialog/DialogScene';
+import { NotifyScene } from './scenes/NotifyScene';
+import { AchievementsScene } from './scenes/AchievementsScene';
+import { AtticScene } from './rooms/AtticScene';
+import { MensRoomScene } from './rooms/MensRoomScene';
+import { LadiesRoomScene } from './rooms/LadiesRoomScene';
 
 async function boot() {
   // Pixel-Font laden, bevor Texte erzeugt werden
@@ -36,7 +41,7 @@ async function boot() {
     roundPixels: true,
     backgroundColor: '#0d0b0a',
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [TitleScene, BarScene, AlleyScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, PauseScene],
+    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, PauseScene, AchievementsScene, NotifyScene],
   });
 
   if (import.meta.env.DEV) {
@@ -47,6 +52,7 @@ async function boot() {
   const pauseBtn = document.getElementById('pause') as HTMLButtonElement | null;
   const togglePause = () => {
     audio.unlock();
+    if (game.scene.isActive('Achievements')) return; // erst die Liste schließen
     if (game.scene.isActive('Pause')) (game.scene.getScene('Pause') as PauseScene).close();
     else PauseScene.open(game);
   };

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import { bulky, state } from '../state';
 import { H, W, txt } from '../ui';
-import { Choice, DialogAction, DialogNode, SPEAKERS, portraitOf } from './data';
+import { Choice, DialogAction, DialogBg, DialogNode, SPEAKERS, portraitOf } from './data';
 
 export interface DialogData {
   /** Schlüssel aus SPEAKERS */
@@ -30,6 +30,8 @@ export class DialogScene extends Phaser.Scene {
   private box!: Phaser.GameObjects.Container;
   private rows: Phaser.GameObjects.Container[] = [];
   private choices: Choice[] = [];
+  /** aktueller Gesprächsknoten (für exitAction beim vorzeitigen Schließen) */
+  private node?: DialogNode;
   private hint!: Phaser.GameObjects.Text;
   private rain?: Phaser.GameObjects.Graphics;
   private typing: Phaser.Time.TimerEvent | null = null;
@@ -112,11 +114,20 @@ export class DialogScene extends Phaser.Scene {
   private async show(id: string) {
     const node = this.tree[id];
     if (!node) return this.finish();
+    this.node = node;
+    node.onEnter?.();
+    if (node.portrait && this.right.texture.key !== node.portrait) {
+      this.right.setTexture(node.portrait);
+      this.cameras.main.shake(200, 0.006);
+    }
     for (const entry of node.lines) {
       if (this.done) return;
       const line = typeof entry === 'function' ? entry() : entry;
-      const wirt = line.startsWith('W:');
-      await this.say(wirt, wirt ? line.slice(2) : line);
+      if (line.startsWith('N:')) await this.narrate(line.slice(2));
+      else {
+        const wirt = line.startsWith('W:');
+        await this.say(wirt, wirt ? line.slice(2) : line);
+      }
     }
     if (!this.done) this.offer(node.choices);
   }
@@ -129,6 +140,18 @@ export class DialogScene extends Phaser.Scene {
     this.focus(wirt);
     this.hint.setText('Klicken oder Tippen: weiter');
     this.typeInto(text, wirt ? this.left : this.right);
+    return new Promise<void>((res) => (this.advance = res));
+  }
+
+  /** Erzähltext: kein Namensschild, beide Figuren im Halbdunkel. */
+  private narrate(text: string) {
+    this.nameBg.setVisible(false);
+    this.nameText.setVisible(false);
+    this.boxText.setColor('#a8c0d8');
+    this.left.setTint(0x888888);
+    this.right.setTint(0x888888);
+    this.hint.setText('Klicken oder Tippen: weiter');
+    this.typeInto(text, this.right, false);
     return new Promise<void>((res) => (this.advance = res));
   }
 
@@ -145,12 +168,12 @@ export class DialogScene extends Phaser.Scene {
     this.right.setTint(wirt ? 0x666666 : 0xffffff);
   }
 
-  private typeInto(s: string, talker: Phaser.GameObjects.Image) {
+  private typeInto(s: string, talker: Phaser.GameObjects.Image, bob = true) {
     this.fullText = s;
     this.boxText.setText('');
     this.bob?.stop();
     const baseY = talker.y;
-    this.bob = this.tweens.add({ targets: talker, y: baseY - 1, duration: 90, yoyo: true, repeat: -1, onStop: () => talker.setY(baseY) });
+    if (bob) this.bob = this.tweens.add({ targets: talker, y: baseY - 1, duration: 90, yoyo: true, repeat: -1, onStop: () => talker.setY(baseY) });
     let i = 0;
     this.typing = this.time.addEvent({
       delay: 26,
@@ -198,7 +221,7 @@ export class DialogScene extends Phaser.Scene {
     choices.forEach((c, i) => {
       const y = y0 + i * rh;
       const bg = this.add.rectangle(4, y - 1, W - 24, rh - 1, 0x3a2a1c, 0).setOrigin(0).setInteractive({ useHandCursor: true });
-      const color = c.action === 'kill' ? '#ff7070' : c.action ? '#9ae09a' : '#f4ead0';
+      const color = c.action === 'kill' || c.action === 'felixKnueppel' || c.action === 'bornaGebrochen' ? '#ff7070' : c.action ? '#9ae09a' : '#f4ead0';
       const label = txt(this, 14, y + 1, `${i + 1}  ${c.text}`, color);
       const row = this.add.container(8, BOX_Y, [bg, label]).setDepth(810);
       bg.on('pointerover', () => { bg.setFillStyle(0x3a2a1c, 1); label.setText(`>  ${c.text}`); });
@@ -215,14 +238,17 @@ export class DialogScene extends Phaser.Scene {
     this.choices = [];
     for (const r of this.rows) r.destroy();
     this.rows = [];
+    c.pick?.();
     if (c.action) return this.finish(c.action);
     await this.say(true, c.text);
-    if (c.next) this.show(c.next);
+    const next = typeof c.next === 'function' ? c.next() : c.next;
+    if (next) this.show(next);
     else this.finish();
   }
 
   private finish(action?: DialogAction) {
     if (this.done) return;
+    action ??= this.node?.exitAction;
     this.done = true;
     this.stopTyping();
     this.advance = null;
@@ -238,7 +264,7 @@ export class DialogScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- Kulissen
 
-  private background(kind: 'bar' | 'street' | 'cat') {
+  private background(kind: DialogBg) {
     if (kind === 'bar') {
       this.add.image(0, 0, 'tresenBg').setOrigin(0);
       this.add.image(0, 186, 'counterFront').setOrigin(0);
@@ -248,6 +274,17 @@ export class DialogScene extends Phaser.Scene {
       const neon = txt(this, 240, 102, 'ZUM GOLDENEN EIMER', '#ff6ab4').setOrigin(0.5).setShadow(0, 0, '#ff2a8a', 8, true, true);
       this.tweens.add({ targets: neon, alpha: 0.6, duration: 90, yoyo: true, repeat: -1, repeatDelay: 1800 });
       this.rain = this.add.graphics().setDepth(700);
+    } else if (kind === 'dach') {
+      // Dachboden: Mondlicht durchs Fenster, Kerzenschein
+      this.add.image(0, 0, 'csDach').setOrigin(0);
+      this.add.image(330, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2).setTint(0x8090c0).setAlpha(0.35);
+      const candle = this.add.image(150, 170, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.6).setTint(0xffa040).setAlpha(0.45);
+      this.tweens.add({ targets: candle, alpha: 0.3, duration: 140, yoyo: true, repeat: -1, repeatDelay: 400 });
+    } else if (kind === 'wc') {
+      // Toilette: flackernde Neonröhre
+      this.add.image(0, 0, 'csWC').setOrigin(0);
+      const tube = this.add.image(240, 20, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3, 1.2).setTint(0xd0f0d0).setAlpha(0.4);
+      this.time.addEvent({ delay: 120, loop: true, callback: () => tube.setAlpha(Math.random() < 0.1 ? 0.05 : 0.35 + Math.random() * 0.1) });
     } else {
       // fauliges Glimmen im Dunkeln
       const glow = this.add.image(W - 110, 130, 'light').setScale(3).setTint(0x40a020).setAlpha(0.45).setBlendMode(Phaser.BlendModes.ADD);
