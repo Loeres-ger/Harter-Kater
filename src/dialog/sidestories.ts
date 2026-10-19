@@ -158,45 +158,99 @@ export function lilyDachTree(): Record<string, DialogNode> {
 
 // ---------------------------------------------------------------- Leni
 
-/** Leni ist sehr betrunken und hält den Wirt für ihren Freund Xavi. Der Wirt hilft ihr, mehr passiert nicht. */
+/**
+ * Leni ist sturzbetrunken und hält den Wirt felsenfest für ihren Freund Xavi.
+ * Vier Phasen: Verwechslung, Anhänglichkeit, absurde Liebeserklärung, abrupter Würgereiz.
+ * Der Wirt blockt in jeder Antwort ab; mehr als ein Glas Wasser passiert nicht.
+ * Ab Phase 2 endet auch ein vorzeitiges Schließen mit dem Würgereiz, damit das Gespräch nicht neu beginnt.
+ */
 export function leniTree(): Record<string, DialogNode> {
-  const water = { text: 'Trink erst mal ein Glas Wasser.', next: 'wasser', pick: () => (state.flags.leniWasser = true) };
+  const water = (next: string) => ({ text: 'Trink erst mal ein Glas Wasser.', next, pick: () => (state.flags.leniWasser = true) });
   return {
+    // Phase 1: Verwechslung
     start: {
-      lines: ['Xaviii ... da bisse ja ... *hicks*', 'Du riechst anders. Nach Bier. Und Bratfett. Is neu. Steht dir.'],
+      lines: [
+        'N:Leni hebt den Kopf vom Waschbecken, kneift die Augen zusammen ... und strahlt.',
+        'XAVIII! Da bisse ja endlich! Xavi, Xavi, Xaviii ...',
+        'Du hass mich ... *hicks* ... allein gelassen! Drei Stunden! „Kurz Kippen holen“, ja? JA, Xavi?',
+        'Warum guckste so komisch, Xavi? Haste wieder was ausgefressen?',
+      ],
       choices: [
-        { text: 'Ich bin nicht Xavi. Ich bin der Wirt.', next: 'nichtX' },
-        water,
-        { text: 'Ich ruf dir ein Taxi.', next: 'taxi' },
+        { text: 'Äh. Ich bin nicht Xavi.', next: 'nichtXavi' },
+        { text: 'Ich ... hab keine Kippen.', next: 'kippen' },
+        water('wasser1'),
       ],
     },
-    nichtX: {
-      lines: ['Pssst. Xavi macht immer so Witze.', 'Komm ma her ... gib Küsschen ... nur eins ... warum bist du so weit weg ...'],
-      choices: [
-        { text: 'Leni, du bist betrunken. Setz dich erst mal hin.', next: 'moment' },
-        water,
+    nichtXavi: {
+      lines: [
+        'Nich Xavi? Pfff. Xavi macht immer so Witze. Xavi is sooo lustig.',
+        'Ich erkenn dich doch, Xavi. An ... an deim Bauch. Der war früher kleiner. Aber ich lieb ihn trotzdem.',
       ],
+      choices: [{ text: 'Das ist kein Bauch, das ist Erfahrung.', next: 'anhaenglich' }, { text: 'Leni, ich bin wirklich nicht ...', next: 'anhaenglich' }],
     },
-    taxi: {
-      lines: ['Taxi? Nee ... ich will nich nach Hause ... ich will Xavi ...', 'Du BIST ja Xavi ... komm her ... *hicks*'],
-      choices: [
-        { text: 'Nein. Ich bin der Wirt, und du gehörst ins Bett. Allein.', next: 'moment' },
-        water,
-      ],
+    kippen: {
+      lines: ['Keine Kippen. Typisch Xavi. Drei Stunden weg und dann keine Kippen.', 'Egal. EGAL! Hauptsache, du bis wieder da, Xavi.'],
+      choices: [{ text: '...', next: 'anhaenglich' }],
     },
-    wasser: {
+    wasser1: {
       lines: [
         'N:Der Wirt stellt ihr ein Glas Leitungswasser hin.',
-        'Wasser ... Xavi, du bist so ... fürsorglich ... seit wann bist du so breit ... ich mag das ...',
-        'Komm ma näher ... Moment ... Moment ...',
+        'Wasser? Xavi bringt mir WASSER? Seit wann biss du so ... fürsorglich?',
+        'Das is das Süßeste, was du je gemacht hass, Xavi.',
       ],
-      exitAction: 'leniKotzt',
-      choices: [{ text: 'Leni?', action: 'leniKotzt' }],
+      choices: [{ text: 'Trink. Langsam.', next: 'anhaenglich' }],
     },
-    moment: {
-      lines: ['Moment ... mir is ... mir is so ...', 'N:Leni wird blass. Dann grün.'],
+    // Phase 2: anhänglich, aufdringlich
+    anhaenglich: {
       exitAction: 'leniKotzt',
-      choices: [{ text: 'Leni?', action: 'leniKotzt' }],
+      lines: [
+        'N:Leni hängt sich an den Arm des Wirts. Mit beiden Händen.',
+        'Xavi ... ich hab dich so vermisst ... komm her, gib Küsschen ...',
+        'Nur eins. Oder zwei. Oder ... alle, Xavi.',
+        'Lass uns heimgehn, Xavi. Ich will mit dir allein sein. Ganz allein. Mit dir ins Bett. Und vorher ganz bestimmt nich schlafen.',
+      ],
+      choices: [
+        { text: 'Leni, du bist sturzbetrunken.', next: 'absurd' },
+        { text: 'Ich ruf dir ein Taxi. Für dich. Allein.', next: 'absurd' },
+        water('absurd'),
+      ],
+    },
+    // Phase 3: völlig überzeugt, immer absurder
+    absurd: {
+      exitAction: 'leniKotzt',
+      lines: [
+        'Betrunken? ICH? Xavi, ich bin nur ... verliebt. In dich. Und ein bisschen ins Waschbecken. Aber mehr in dich.',
+        'N:Leni zieht den Wirt am Hemdkragen zu sich heran.',
+        'Warum biss du so steif, Xavi? Sonst biss du nie so ... höflich.',
+        'Und seit wann trägs du ne FLIEGE? Und nen Schnurrbart? Haste dir den für MICH wachsen lassen, Xavi?',
+      ],
+      choices: [
+        { text: 'Der war schon immer da.', next: 'liebe' },
+        { text: 'Leni. Sieh mich ganz genau an.', next: 'liebe' },
+        { text: 'Ich bin nicht der, für den du mich hältst.', next: 'liebe' },
+      ],
+    },
+    liebe: {
+      exitAction: 'leniKotzt',
+      lines: [
+        'Doch, doch. Du biss mein Xavi. Mein Xaviii. Mein Xavilein. Mein Xavi-Bär.',
+        'Ich liebe dich, Xavi. Ich will dich heiraten. Hier. Jetz. Der Seifenspender kann Trauzeuge sein.',
+        'Und dann gehn wir heim und machen ... machen ... Komm ganz nah, Xavi, ich muss dir was ganz Wichtiges ...',
+      ],
+      choices: [
+        { text: 'Leni, nein.', next: 'wuergen' },
+        { text: 'Was musst du mir sagen?', next: 'wuergen' },
+      ],
+    },
+    // Phase 4: abrupter Abbruch
+    wuergen: {
+      portrait: 'nbust_leniSick',
+      exitAction: 'leniKotzt',
+      lines: [
+        'N:Leni erstarrt mitten im Satz. Ihr Gesicht wird blass. Dann grün. Dann sehr grün.',
+        'Xavi ... mir is ... HMPF!',
+      ],
+      choices: [{ text: 'Leni?!', action: 'leniKotzt' }],
     },
   };
 }
@@ -206,9 +260,9 @@ export function leniDanachTree(): Record<string, DialogNode> {
   return {
     start: {
       lines: [
-        'Oh nein. Du bist gar nicht Xavi. Du bist der Wirt.',
-        'Hab ich ... hab ich gesagt, dass du nach Bratfett riechst? Sorry. Stimmt aber.',
-        () => (state.flags.leniWasser ? 'Danke für das Wasser. Echt. Das war ... nett. Hier drin ist sonst keiner nett.' : 'Mein Kopf. Hat jemand ein Glas Wasser? Nein? War ja klar.'),
+        'Oh nein. Du bist gar nicht Xavi. Du bist der Wirt. Mit Fliege.',
+        'Hab ich dir ... einen Heiratsantrag gemacht? Mit dem Seifenspender als Trauzeugen?',
+        () => (state.flags.leniWasser ? 'Danke für das Wasser. Und dass du ... na ja. Anständig warst. Hier drin ist sonst keiner anständig.' : 'Mein Kopf. Hat jemand ein Glas Wasser? Nein? War ja klar.'),
       ],
       choices: [
         { text: 'Und wer ist Xavi?', next: 'xavi' },
@@ -216,8 +270,8 @@ export function leniDanachTree(): Record<string, DialogNode> {
       ],
     },
     xavi: {
-      lines: ['Mein Freund. Der wollte vor drei Stunden „kurz Zigaretten holen“.', 'Ich glaub, ich hol mir auch mal was. Einen neuen Freund zum Beispiel.'],
-      choices: [{ text: 'Klingt nach einem Plan.' }],
+      lines: ['Mein Freund. Der wollte vor drei Stunden „kurz Kippen holen“.', 'Weißt du was? Sag ihm ruhig, dass ich dich heiraten wollte. Der soll ruhig eifersüchtig werden.'],
+      choices: [{ text: 'Mach ich.' }],
     },
   };
 }

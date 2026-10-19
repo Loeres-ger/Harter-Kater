@@ -379,6 +379,7 @@ export function makeRoomTextures(scene: Phaser.Scene) {
   bust(scene, 'nbust_lily', LOOKS.lily, 'sad');
   bust(scene, 'nbust_lilyHappy', LOOKS.lily, 'happy');
   bust(scene, 'nbust_leni', LOOKS.leni, 'drunk');
+  bust(scene, 'nbust_leniSick', { ...LOOKS.leni, skin: '#c8dca0' }, 'drunk'); // kurz vor dem Würgen
 
   // ---- Kulissen
   tex(scene, 'csDach', 480, 270, (c) => drawDach(c, false));

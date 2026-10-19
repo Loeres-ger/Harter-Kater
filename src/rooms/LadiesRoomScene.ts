@@ -147,12 +147,17 @@ export class LadiesRoomScene extends TopDown {
     const leni = this.leni;
     this.leaving = true;
     this.tweens.killTweensOf(leni);
-    leni.setAngle(0).setFrame(6).play('leni_stagger');
+    // Hand vor den Mund: grün, ein Würgen, ein kurzes Zittern, dann los
+    leni.setAngle(0).setFrame(0).setTint(0xb0e090);
     audio.sfx('retch');
+    const hmpf = this.add.text(leni.x, leni.y - 26, 'HMPF!', { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#b8e070' }).setOrigin(0.5).setScale(0.5).setResolution(2).setDepth(6001);
+    this.tweens.add({ targets: leni, x: leni.x + 1, duration: 50, yoyo: true, repeat: 5 });
+    this.tweens.add({ targets: hmpf, y: hmpf.y - 6, alpha: 0, delay: 500, duration: 400, onComplete: () => hmpf.destroy() });
     const [sx, sy] = LENI_STALL;
     // hastig zur Kabine
     this.tweens.add({
-      targets: leni, x: sx * T + 8, y: (sy + 1) * T + 12, duration: 700, ease: 'Quad.easeIn',
+      targets: leni, x: sx * T + 8, y: (sy + 1) * T + 12, duration: 700, delay: 600, ease: 'Quad.easeIn',
+      onStart: () => leni.setFrame(6).play('leni_stagger'),
       onUpdate: () => leni.setDepth(leni.y),
       onComplete: () => {
         leni.anims.stop();
