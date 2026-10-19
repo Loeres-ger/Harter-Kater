@@ -156,6 +156,26 @@ export function lilyDachTree(): Record<string, DialogNode> {
   };
 }
 
+// ---------------------------------------------------------------- Kurdischer Kevin
+
+/** Kevins einzige Worte, bevor ihn die Panik packt. Läuft nur in seiner Flucht-Szene (Story-Flag kevinFlucht). */
+export function kevinTree(): Record<string, DialogNode> {
+  return {
+    start: {
+      lines: [
+        'N:Der Mann ist riesig. Locken wie ein Wasserfall. Ein Tanga in Rot, Weiß und Grün mit einer gelben Sonne genau da, wo sie hingehört.',
+        'Kevin. Kurdischer Kevin.',
+        'Merk dir den Namen, Bruder. Den vergisst keiner.',
+      ],
+      choices: [
+        { text: 'Äh ... angenehm?' },
+        { text: 'Ich hab nichts gehört. Gar nichts.' },
+        { text: 'Hast du gerade ... nein. Ich will es nicht wissen.' },
+      ],
+    },
+  };
+}
+
 // ---------------------------------------------------------------- Leni
 
 /**

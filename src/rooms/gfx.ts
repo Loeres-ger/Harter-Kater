@@ -123,6 +123,37 @@ const LOOKS: Record<string, BustLook> = {
   leni: { skin: '#f4c8a8', hair: '#d8a050', style: 'long', outfit: 'jacket', top: '#c03a6a', top2: '#a02a5a', accent: '#202020', lips: '#d02a4a', earrings: '#f0d040' },
 };
 
+/** Kevins Brustbild: riesiges Kreuz, Lockenpracht, Vollbart, Brusthaar, selbstbewusstes Grinsen. */
+function drawKevinBust(c: Ctx) {
+  const cx = 32, SK = '#c89068', SKD = '#a8704c', HAIR = '#1a1210';
+  blob(c, 8, 74, 10, 18, SK); blob(c, 56, 74, 10, 18, SK);
+  blob(c, cx, 58, 26, 12, SK);
+  r(c, cx - 24, 60, 48, 36, SK);
+  r(c, cx + 12, 62, 12, 34, SKD);
+  r(c, cx - 16, 74, 13, 1, SKD); r(c, cx + 3, 74, 13, 1, SKD);
+  const rnd = rng(77);
+  for (let i = 0; i < 45; i++) p(c, cx - 12 + Math.floor(rnd() * 24), 64 + Math.floor(rnd() * 26), HAIR);
+  // Hals und Kopf
+  r(c, cx - 7, 44, 14, 14, SK);
+  r(c, cx - 11, 16, 22, 30, SK); r(c, cx - 12, 22, 24, 20, SK);
+  r(c, cx - 13, 28, 2, 6, SK); r(c, cx + 11, 28, 2, 6, SK);
+  // Locken
+  for (let i = 0; i < 16; i++) blob(c, cx - 13 + (i % 8) * 3.6, 9 + Math.floor(i / 8) * 5 + (i % 2), 3, 3, HAIR);
+  blob(c, cx - 13, 22, 2.5, 4, HAIR); blob(c, cx + 13, 22, 2.5, 4, HAIR);
+  // Gesicht: dichte Brauen, eine hochgezogen, breites Grinsen
+  r(c, cx - 9, 22, 7, 2, HAIR); r(c, cx + 2, 23, 7, 2, HAIR);
+  r(c, cx - 7, 27, 4, 3, '#f8f8f0'); r(c, cx + 3, 27, 4, 3, '#f8f8f0');
+  r(c, cx - 5, 27, 2, 2, '#1c120a'); r(c, cx + 4, 27, 2, 2, '#1c120a');
+  r(c, cx - 1, 29, 3, 6, SKD);
+  for (let y = 33; y < 48; y++) for (let x = cx - 12; x < cx + 12; x++) {
+    if (y < 36 && Math.abs(x - cx) < 7) continue;
+    if (y >= 37 && y <= 40 && Math.abs(x - cx) < 6) continue;
+    if ((x * 5 + y * 3) % 4 !== 0) p(c, x, y, HAIR);
+  }
+  r(c, cx - 5, 37, 10, 3, '#5a1a1a'); r(c, cx - 4, 37, 8, 1, '#f4f0e0');
+  outline(c, 0, 0, BW, BH);
+}
+
 // ---------------------------------------------------------------- Kulissen (480×270, Pixel 1:1)
 
 /** Dachboden von innen: Dachschrägen, Fenster mit Mond, Matratze, Kisten, Kerze. leer = Bornas Platz ist verlassen. */
@@ -378,6 +409,7 @@ export function makeRoomTextures(scene: Phaser.Scene) {
   bust(scene, 'nbust_bornaHappy', LOOKS.borna, 'happy');
   bust(scene, 'nbust_lily', LOOKS.lily, 'sad');
   bust(scene, 'nbust_lilyHappy', LOOKS.lily, 'happy');
+  tex2x(scene, 'nbust_kevin', BW, BH, drawKevinBust, { detail: (c) => { strands(c, '#1a1210'); eyeShine(c, ['#1c120a']); sideLight(c); } });
   bust(scene, 'nbust_leni', LOOKS.leni, 'drunk');
   bust(scene, 'nbust_leniSick', { ...LOOKS.leni, skin: '#c8dca0' }, 'drunk'); // kurz vor dem Würgen
 

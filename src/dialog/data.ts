@@ -1,7 +1,7 @@
 import { GUESTS } from '../guests/data';
 import { felixTree } from './felix';
 import { mayaTree } from './maya';
-import { bornaTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
+import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
@@ -268,6 +268,7 @@ export const SPEAKERS: Record<string, Speaker> = {
   borna: { name: 'BEKIFFTER BORNA', color: '#a8d070', portrait: 'nbust_borna', bg: 'dach', tree: bornaTree },
   lily: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lily', bg: 'street', tree: lilyTree },
   lilyDach: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lilyHappy', bg: 'dach', tree: lilyDachTree },
+  kevin: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'wc', tree: kevinTree },
   leni: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniTree },
   leniDanach: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniDanachTree },
   maya: { name: 'MEISTERNUTTE MAYA', color: '#e05a7a', portrait: 'nbust_maya', bg: 'laden', tree: mayaTree },

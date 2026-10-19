@@ -123,16 +123,10 @@ export class MensRoomScene extends TopDown {
     cam.zoomTo(2.6, 500, 'Sine.easeInOut');
 
     const [xx, xy] = this.find('X');
-    const [dx, dy] = this.find('D');
     const door = this.add.image(xx * T, xy * T, 'stallDoorOpen').setOrigin(0).setScale(0.5).setDepth(xy * T + T + 1).setAlpha(0);
     const k = this.add.sprite(xx * T + 8, xy * T + 14, 'kevin', 0).setOrigin(0.5, 1).setScale(0.5).setAlpha(0).setDepth(xy * T + 16);
-    const bubble = (who: Phaser.GameObjects.Sprite, s: string, color = '#ffffff') => {
-      const b = this.add.text(who.x, who.y - 32, s, { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color }).setOrigin(0.5).setDepth(6001).setStroke('#000', 3);
-      this.tweens.add({ targets: b, y: b.y - 4, duration: 300, ease: 'Back.easeOut' });
-      return b;
-    };
 
-    // Tür auf, Kevin tritt heraus und bleibt stehen
+    // Tür auf, Kevin tritt heraus, bleibt stehen und schaut den Wirt an
     this.time.delayedCall(500, () => {
       audio.sfx('clang');
       door.setAlpha(1);
@@ -142,43 +136,70 @@ export class MensRoomScene extends TopDown {
         onUpdate: () => k.setDepth(k.y),
       });
     });
-    // Blickkontakt. Wortlos.
-    const dots: Phaser.GameObjects.Text[] = [];
-    this.time.delayedCall(1500, () => dots.push(bubble(k, '...')));
-    this.time.delayedCall(2300, () => dots.push(bubble(this.player, '...')));
-    // Panik
-    this.time.delayedCall(4200, () => {
-      dots.forEach((d) => d.destroy());
-      const bang = bubble(k, '!!!', '#ff4040');
-      audio.sfx('scream');
-      cam.shake(200, 0.01);
-      const sweat = this.add.particles(0, 0, 'sweat', {
-        follow: k, followOffset: { x: 0, y: -18 }, lifespan: 500, speedX: { min: -40, max: 40 }, speedY: { min: -50, max: -20 },
-        gravityY: 200, scale: { start: 0.6, end: 0.2 }, frequency: 60,
-      }).setDepth(6000);
-      this.time.delayedCall(400, () => bang.destroy());
-      // erst zur Raummitte, dann durch die Tür hinaus
-      this.tweens.add({ targets: k, angle: { from: -10, to: 10 }, duration: 80, yoyo: true, repeat: -1 });
-      this.tweens.chain({
-        targets: k,
-        tweens: [
-          { x: dx * T + 8, y: (dy - 1) * T + 14, duration: 450, ease: 'Quad.easeIn', delay: 300, onUpdate: () => k.setDepth(k.y) },
-          { y: dy * T + 20, alpha: 0, duration: 200 },
-        ],
-        onComplete: () => {
-          k.destroy();
-          sweat.destroy();
-          audio.sfx('thud');
-          cam.shake(250, 0.012);
-          this.addSlipper();
-          this.time.delayedCall(900, () => {
-            this.toast('Draußen knallen Türen. Dann ist es still. Kevin ist weg.');
-            unlock('bruderEntspann');
-            cam.zoomTo(2, 500, 'Sine.easeInOut');
-            this.leaving = false;
-          });
-        },
-      });
+    // Er wirft sich in Pose, über ihm erscheint sein Name
+    let name: Phaser.GameObjects.Container | undefined;
+    this.time.delayedCall(1700, () => {
+      k.setFrame(1);
+      audio.sfx('sting');
+      cam.shake(150, 0.005);
+      name = this.nameBubble(k.x, k.y - 30, 'KURDISCHER KEVIN');
+    });
+    // Vorstellung im Dialog, danach die Panik
+    this.time.delayedCall(3300, () => {
+      this.leaving = false;
+      this.talk('kevin', () => this.kevinPanic(k, name));
+    });
+  }
+
+  /** Kleine Sprechblase mit gut lesbarem Namen über einer Figur. */
+  private nameBubble(x: number, y: number, s: string) {
+    const label = this.add.text(0, 0, s, { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#f8e070' })
+      .setOrigin(0.5).setScale(0.5).setResolution(2);
+    const w = label.displayWidth + 8, h = label.displayHeight + 5;
+    const bg = this.add.rectangle(0, 0, w, h, 0x120c0b, 0.92).setStrokeStyle(1, 0xf8e070);
+    const tail = this.add.triangle(0, h / 2 + 1, -2, 0, 2, 0, 0, 3, 0x120c0b);
+    const c = this.add.container(x, y, [bg, tail, label]).setDepth(6002).setScale(0);
+    this.tweens.add({ targets: c, scale: 1, duration: 250, ease: 'Back.easeOut' });
+    return c;
+  }
+
+  /** Nach der Vorstellung: Panik, Flucht durch die Tür, für immer weg. */
+  private kevinPanic(k: Phaser.GameObjects.Sprite, name?: Phaser.GameObjects.Container) {
+    this.leaving = true;
+    hud.prompt = '';
+    const cam = this.cameras.main;
+    const [dx, dy] = this.find('D');
+    name?.destroy();
+    k.setFrame(0);
+    const bang = this.add.text(k.x, k.y - 32, '!!!', { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#ff4040' }).setOrigin(0.5).setDepth(6001).setStroke('#000', 3);
+    this.time.delayedCall(400, () => bang.destroy());
+    audio.sfx('scream');
+    cam.shake(200, 0.01);
+    const sweat = this.add.particles(0, 0, 'sweat', {
+      follow: k, followOffset: { x: 0, y: -18 }, lifespan: 500, speedX: { min: -40, max: 40 }, speedY: { min: -50, max: -20 },
+      gravityY: 200, scale: { start: 0.6, end: 0.2 }, frequency: 60,
+    }).setDepth(6000);
+    // erst zur Raummitte, dann durch die Tür hinaus
+    this.tweens.add({ targets: k, angle: { from: -10, to: 10 }, duration: 80, yoyo: true, repeat: -1 });
+    this.tweens.chain({
+      targets: k,
+      tweens: [
+        { x: dx * T + 8, y: (dy - 1) * T + 14, duration: 450, ease: 'Quad.easeIn', delay: 300, onUpdate: () => k.setDepth(k.y) },
+        { y: dy * T + 20, alpha: 0, duration: 200 },
+      ],
+      onComplete: () => {
+        k.destroy();
+        sweat.destroy();
+        audio.sfx('thud');
+        cam.shake(250, 0.012);
+        this.addSlipper();
+        this.time.delayedCall(900, () => {
+          this.toast('Draußen knallen Türen. Dann ist es still. Kurdischer Kevin ist weg.');
+          unlock('bruderEntspann');
+          cam.zoomTo(2, 500, 'Sine.easeInOut');
+          this.leaving = false;
+        });
+      },
     });
   }
 
