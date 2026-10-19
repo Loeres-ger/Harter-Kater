@@ -1,4 +1,4 @@
-# Die Königskatze
+# Harter Karter
 
 Ein kleines Pixel-Art-Story-Game im Browser, gebaut mit [Phaser 3](https://phaser.io), TypeScript und Vite.
 Satire mit schwarzem Humor – nur für Erwachsene.

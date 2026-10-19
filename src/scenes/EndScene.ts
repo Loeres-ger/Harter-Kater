@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { VICTIM, state } from '../state';
-import { W, txt } from '../ui';
+import { H, W, txt } from '../ui';
+import { Btn } from './ShopScene';
+import { drawRain, hGradient, kalleAtTable, vGradient } from './screenFx';
 import { newGame } from './TitleScene';
 
 export class EndScene extends Phaser.Scene {
@@ -44,24 +46,8 @@ export class EndScene extends Phaser.Scene {
       txt(this, W / 2, 222, `${VICTIM} wurde restlos verfüttert.\nZeit: ${m}:${String(s).padStart(2, '0')}   Kohle übrig: €${state.money}`, '#f4ead0')
         .setOrigin(0.5).setAlign('center');
     } else {
-      const polizei = state.gameOver === 'polizei';
-      if (polizei) {
-        const siren = this.add.rectangle(0, 0, W, 270, 0xff2020, 0.15).setOrigin(0);
-        this.time.addEvent({ delay: 400, loop: true, callback: () => siren.setFillStyle(siren.fillColor === 0xff2020 ? 0x2040ff : 0xff2020, 0.15) });
-      }
-      txt(this, W / 2, 70, 'ERWISCHT', '#e05a4a', 24).setOrigin(0.5).setStroke('#2a0a0a', 6);
-      const why = polizei
-        ? state.caughtBy === 'felix'
-          ? 'Polizist Felix hatte „ein Gespür für so was“.\nSchlagstock. Handschellen. Aus.'
-          : state.caughtBy === 'bulle'
-            ? 'Polizist Felix hat alles gesehen.\nBlaulicht. Handschellen. Aus.'
-            : 'Jemand hat die Leiche in der Gasse gefunden.\nBlaulicht. Handschellen. Aus.'
-        : `${VICTIM} hat Lunte gerochen\nund ist zur Polizei gerannt.`;
-      txt(this, W / 2, 130, `${why}\n\nDie Katze bleibt heute hungrig.`, '#f4ead0')
-        .setOrigin(0.5).setAlign('center');
-      this.add.sprite(W / 2, 200, 'cat', 0).setScale(1.5).setTint(0x8888aa).play('cat_idle');
-      const tip = state.caughtBy === 'felix' ? 'Felix urteilt nicht nach Taten. Leider.' : state.caughtBy === 'bulle' ? 'Achte auf die Taschenlampe von Felix.' : 'Leichen gehören in den Müll. Schnell.';
-      txt(this, W / 2, 222, `Tipp: ${polizei ? tip : 'Gib ihm, was er will. Und nicht zu schnell.'}`, '#8a7a5a').setOrigin(0.5);
+      this.lose();
+      return;
     }
 
     const again = txt(this, W / 2, 250, '[ LEERTASTE: NOCHMAL ]', '#ffffff').setOrigin(0.5);
@@ -70,5 +56,120 @@ export class EndScene extends Phaser.Scene {
       this.input.keyboard!.once('keydown-SPACE', () => newGame(this));
       this.input.once('pointerdown', () => newGame(this));
     });
+  }
+
+  /** Verloren: Polizeifoto vom Wirt, Blaulicht im Regen, Kalle kommentiert aus dem Hintergrund. */
+  private lose() {
+    const polizei = state.gameOver === 'polizei';
+    const felix = polizei && state.caughtBy === 'felix';
+    const bulle = polizei && state.caughtBy === 'bulle';
+
+    // ---------------------------------------------------------------- Kulisse: Straße vor der Kneipe, Blaulicht, Regen
+    this.add.image(0, 0, 'csStreet').setOrigin(0).setTint(0x4a5a8a);
+    const neon = txt(this, 240, 102, 'ZUM GOLDENEN EIMER', '#ff6ab4').setOrigin(0.5).setAlpha(0.35);
+    this.tweens.add({ targets: neon, alpha: 0.1, duration: 80, yoyo: true, repeat: -1, repeatDelay: 1400 });
+    const red = this.add.image(90, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(5, 3).setTint(0xff2020).setAlpha(0).setDepth(5);
+    const blue = this.add.image(390, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(5, 3).setTint(0x2050ff).setAlpha(0).setDepth(5);
+    if (polizei) {
+      this.tweens.add({ targets: red, alpha: 0.35, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.tweens.add({ targets: blue, alpha: 0.35, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 380 });
+    }
+
+    // Kalle im Hintergrund am Tisch, blass im Regenlicht
+    const KX = 404, TY = 218;
+    const k = kalleAtTable(this, KX, TY, { depth: 8, tint: 0x8a90b8 });
+    k.kalle.setAlpha(0.9);
+    const rain = this.add.graphics().setDepth(20);
+    const onUpdate = (t: number) => drawRain(rain, t, 0, 0, W, H, 60, 0x9ab0e0, 0.3);
+    this.events.on(Phaser.Scenes.Events.UPDATE, onUpdate);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.UPDATE, onUpdate));
+    vGradient(this, 0, W, 0, 40, 0x000000, 0.8, 0, 21);
+    vGradient(this, 0, W, 200, H, 0x000000, 0, 0.9, 21);
+    hGradient(this, 0, 330, 0, H, 0x05040a, 0.75, 0.05, 21);
+
+    // ---------------------------------------------------------------- Polizeifoto
+    const BX = 22, BY = 52, BWD = 128, BHT = 150;
+    const board = this.add.graphics().setDepth(30);
+    board.fillStyle(0x2a2e3a).fillRect(BX, BY, BWD, BHT);
+    board.lineStyle(1, 0x5a6278, 1);
+    for (let y = BY + 8; y < BY + BHT; y += 12) board.lineBetween(BX, y, BX + (((y - BY) / 12) % 2 ? 10 : 18), y);
+    for (let y = BY + 8; y < BY + BHT; y += 12) board.lineBetween(BX + BWD, y, BX + BWD - (((y - BY) / 12) % 2 ? 10 : 18), y);
+    board.lineStyle(2, 0x8a6a3a, 1).strokeRect(BX, BY, BWD, BHT);
+    const mug = this.add.image(BX + BWD / 2, BY + BHT, 'bustWirt').setOrigin(0.5, 1).setScale(0.72).setDepth(31);
+    // Nummernschild vor der Brust
+    const plate = this.add.container(BX + BWD / 2, BY + BHT - 22).setDepth(32);
+    plate.add(this.add.rectangle(0, 0, 76, 22, 0x101014).setStrokeStyle(1, 0xd8d8d8));
+    plate.add(txt(this, 0, -5, 'HORST W.', '#f0f0f0', 8).setOrigin(0.5));
+    plate.add(txt(this, 0, 6, `#${String(Math.floor(state.time * 7) % 9000 + 1000)}`, '#c8c8c8', 8).setOrigin(0.5));
+    // Kamerablitz beim Erscheinen
+    this.time.delayedCall(350, () => {
+      this.cameras.main.flash(180, 255, 255, 255);
+      audio.sfx('click');
+      mug.setTint(0xffffff);
+    });
+
+    // ---------------------------------------------------------------- Titel und Grund
+    const head = felix || bulle || polizei ? 'ERWISCHT' : 'ER IST WEG';
+    const TX = 164;
+    const glitchR = txt(this, TX + 2, 38, head, '#ff2a4a', 24).setDepth(39).setAlpha(0.6);
+    const glitchB = txt(this, TX - 2, 38, head, '#2a8aff', 24).setDepth(39).setAlpha(0.6);
+    const title = txt(this, TX, 38, head, '#f4ead0', 24).setDepth(40).setStroke('#120c0b', 4);
+    this.time.addEvent({
+      delay: 90, loop: true,
+      callback: () => {
+        const j = Math.random() < 0.12 ? 3 : 1;
+        glitchR.setX(TX + j); glitchB.setX(TX - j);
+        title.setX(Math.random() < 0.05 ? TX + 1 : TX);
+      },
+    });
+    const why = felix
+      ? 'Polizist Felix hatte\n„ein Gespür für so was“.\nSchlagstock. Handschellen. Aus.'
+      : bulle
+        ? 'Polizist Felix hat alles gesehen.\nBlaulicht. Handschellen. Aus.'
+        : polizei
+          ? 'Jemand hat die Leiche\nin der Gasse gefunden.\nBlaulicht. Handschellen. Aus.'
+          : `${VICTIM} hat Lunte gerochen\nund ist zur Polizei gerannt.`;
+    txt(this, TX, 74, why, '#f4ead0', 8).setDepth(40);
+    txt(this, TX, 120, 'Die Katze bleibt heute hungrig.', '#9ad070', 8).setDepth(40);
+    const m = Math.floor(state.time / 60), s = Math.floor(state.time % 60);
+    txt(this, TX, 136, `ZEIT ${m}:${String(s).padStart(2, '0')}    KASSE €${state.money}`, '#8a8aa8', 8).setDepth(40);
+    const tip = felix ? 'Felix urteilt nicht nach Taten. Leider.' : bulle ? 'Achte auf die Taschenlampe von Felix.' : polizei ? 'Leichen gehören in den Müll. Schnell.' : 'Gib ihm, was er will. Nicht zu schnell.';
+    txt(this, TX, 156, `TIPP: ${tip}`, '#c9a24a', 8).setDepth(40).setWordWrapWidth(300);
+
+    // Kalle meldet sich aus dem Hintergrund
+    const kalleSays = felix || bulle
+      ? 'Hab ich doch gesagt,\nChef. Der Bulle.'
+      : polizei
+        ? 'Leichen in den Müll,\nChef. Immer.'
+        : 'Nicht so hastig,\nChef. Hab ich gesagt.';
+    this.time.delayedCall(1400, () => {
+      const bubble = this.add.container(KX - 40, 34).setDepth(41).setScale(0);
+      const label = txt(this, 0, 0, kalleSays, '#1a1212', 8).setOrigin(0.5).setAlign('center');
+      const bw = label.width + 6, bh = label.height + 2;
+      bubble.add(this.add.rectangle(0, 0, bw, bh, 0xf4ead0).setStrokeStyle(1, 0x1a1212));
+      bubble.add(this.add.triangle(18, bh / 2 + 3, 0, 0, 8, 0, 6, 6, 0xf4ead0));
+      bubble.add(label);
+      this.tweens.add({ targets: bubble, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    });
+
+    // ---------------------------------------------------------------- Nochmal
+    let gone = false;
+    const again = () => {
+      if (gone) return;
+      gone = true;
+      newGame(this);
+    };
+    const btn = new Btn(this, TX + 70, 200, 140, 22, 'NOCHMAL', 0xa8342a, again);
+    btn.box.setDepth(45).setAlpha(0);
+    this.tweens.add({ targets: btn.box, alpha: 1, duration: 400, delay: 800 });
+    this.tweens.add({ targets: btn.box, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 1300 });
+    txt(this, TX + 70, 222, 'oder Leertaste', '#6a6a88', 8).setOrigin(0.5, 0).setDepth(45);
+    this.time.delayedCall(800, () => {
+      this.input.keyboard!.once('keydown-SPACE', again);
+      this.input.keyboard!.once('keydown-ENTER', again);
+    });
+    // Scanlines wie auf dem Titelbildschirm
+    const scan = this.add.graphics().setDepth(60);
+    for (let y = 0; y < H; y += 2) scan.fillStyle(0x000000, 0.12).fillRect(0, y, W, 1);
   }
 }

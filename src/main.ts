@@ -34,11 +34,11 @@ function showError(msg: string) {
   el.classList.add('show');
 }
 window.addEventListener('error', (e) => {
-  console.error('[Harter Kater]', e.error ?? e.message);
+  console.error('[Harter Karter]', e.error ?? e.message);
   showError(String(e.message || e.error));
 });
 window.addEventListener('unhandledrejection', (e) => {
-  console.error('[Harter Kater]', e.reason);
+  console.error('[Harter Karter]', e.reason);
   showError(String(e.reason?.message ?? e.reason));
 });
 
