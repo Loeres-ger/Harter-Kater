@@ -24,6 +24,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'profilPasst', name: 'Profil passt', desc: 'Felix hatte „ein Gespür für so was“.', icon: 'ach_baton', hidden: true, hint: 'Beantworte Felix ein paar Fragen.' },
   { id: 'untermieter', name: 'Untermieter', desc: 'Lily und Borna haben sich gefunden.', icon: 'ach_heart', hidden: true, hint: 'Auf dem Dachboden ist noch Platz.' },
   { id: 'bruderEntspann', name: 'Bruder, entspann dich', desc: 'Kevin ist panisch geflüchtet.', icon: 'ach_roll', hidden: true, hint: 'Die Herrentoilette hat Geheimnisse.' },
+  { id: 'deutscherTraum', name: 'Der deutsche Traum', desc: 'Manchmal öffnet der richtige Dialekt mehr Türen als der richtige Geldbeutel.', icon: 'ach_pretzel' },
   { id: 'glasWasser', name: 'Ein Glas Wasser', desc: 'Leni ein Glas Wasser hingestellt.', icon: 'ach_glass', hidden: true, hint: 'Auf der Damentoilette braucht wer Hilfe.' },
 ];
 

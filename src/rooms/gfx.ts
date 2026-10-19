@@ -42,13 +42,17 @@ function drawBornaSit(c: Ctx, ox: number, puff: boolean) {
   // Hoodie, leicht zusammengesunken
   r(c, cx - 5, 5, 10, 7, HO); r(c, cx + 2, 5, 3, 7, HO2);
   r(c, cx - 2, 9, 4, 2, HO2); // Bauchtasche
-  // Kopf mit Bart und Mütze
+  // Kopf mit Mozart-Lockenpracht: Volumen oben, Locken an den Seiten, lang über die Schultern
+  const HAIR = '#7a4a26';
   r(c, cx - 3, 1, 6, 5, SK);
-  r(c, cx - 3, 4, 6, 2, '#4a3020');
-  r(c, cx - 4, 0, 8, 2, '#3a6a2a'); p(c, cx, -0 + 0, '#5a8a3a');
-  r(c, cx - 2, 2, 1, 1, '#a04040'); r(c, cx + 1, 2, 1, 1, '#a04040'); // rote Augen
+  r(c, cx - 4, 0, 8, 2, HAIR);
+  r(c, cx - 6, 1, 2, 9, HAIR); r(c, cx + 4, 1, 2, 9, HAIR);
+  blob(c, cx - 6, 2, 1.4, 1.4, HAIR); blob(c, cx + 5, 2, 1.4, 1.4, HAIR);
+  blob(c, cx - 6, 5, 1.4, 1.4, HAIR); blob(c, cx + 5, 5, 1.4, 1.4, HAIR);
+  p(c, cx - 6, 3, '#5a3418'); p(c, cx + 5, 6, '#5a3418');
+  r(c, cx - 2, 3, 1, 1, '#e03030'); r(c, cx + 1, 3, 1, 1, '#e03030'); // knallrote Augen
   if (puff) {
-    r(c, cx + 2, 4, 3, 3, SK); r(c, cx + 3, 3, 3, 1, '#f0f0e8'); p(c, cx + 6, 3, '#ff8030');
+    r(c, cx + 2, 4, 3, 3, SK); r(c, cx + 3, 4, 3, 1, '#f0f0e8'); p(c, cx + 6, 4, '#ff8030');
   } else {
     r(c, cx + 4, 8, 3, 2, SK); r(c, cx + 6, 8, 3, 1, '#f0f0e8'); p(c, cx + 9, 8, '#c06020');
   }
@@ -114,7 +118,7 @@ function drawKevin(c: Ctx, ox: number, flex: boolean) {
 // ---------------------------------------------------------------- Brustbilder
 
 const LOOKS: Record<string, BustLook> = {
-  borna: { skin: '#d8a880', hair: '#4a3020', style: 'cap', outfit: 'hoodie', top: '#5a4a6a', top2: '#4a3a5a', accent: '#c8c0a0', hat: '#3a6a2a', beard: '#4a3020' },
+  borna: { skin: '#e0b090', hair: '#7a4a26', style: 'mozart', outfit: 'hoodie', top: '#5a4a6a', top2: '#4a3a5a', accent: '#c8c0a0' },
   lily: { skin: '#f0c8a8', hair: '#6a4026', style: 'long', outfit: 'cardigan', top: '#5a7a8a', top2: '#4a6a7a', accent: '#e8e0d0', glasses: true },
   leni: { skin: '#f4c8a8', hair: '#d8a050', style: 'long', outfit: 'jacket', top: '#c03a6a', top2: '#a02a5a', accent: '#202020', lips: '#d02a4a', earrings: '#f0d040' },
 };

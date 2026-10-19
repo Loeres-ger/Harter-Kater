@@ -11,3 +11,7 @@ export const BAR_DAMEN_SPAWN: [number, number] = [21, 2];
 export const ATTIC_SPAWN: [number, number] = [6, 5];
 export const HERREN_SPAWN: [number, number] = [6, 6];
 export const DAMEN_SPAWN: [number, number] = [5, 5];
+
+/** Mayas Feinkost: im Laden vor der Tür, draußen vor dem Ladeneingang */
+export const LADEN_SPAWN: [number, number] = [6, 6];
+export const ALLEY_LADEN_SPAWN: [number, number] = [30, 17];

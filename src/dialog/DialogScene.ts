@@ -221,7 +221,7 @@ export class DialogScene extends Phaser.Scene {
     choices.forEach((c, i) => {
       const y = y0 + i * rh;
       const bg = this.add.rectangle(4, y - 1, W - 24, rh - 1, 0x3a2a1c, 0).setOrigin(0).setInteractive({ useHandCursor: true });
-      const color = c.action === 'kill' || c.action === 'felixKnueppel' || c.action === 'bornaGebrochen' ? '#ff7070' : c.action ? '#9ae09a' : '#f4ead0';
+      const color = c.action === 'kill' || c.action === 'felixKnueppel' || c.action === 'bornaGebrochen' ? '#ff7070' : c.action ? '#9ae09a' : c.text.startsWith('„') ? '#f0c070' : '#f4ead0';
       const label = txt(this, 14, y + 1, `${i + 1}  ${c.text}`, color);
       const row = this.add.container(8, BOX_Y, [bg, label]).setDepth(810);
       bg.on('pointerover', () => { bg.setFillStyle(0x3a2a1c, 1); label.setText(`>  ${c.text}`); });
@@ -280,6 +280,9 @@ export class DialogScene extends Phaser.Scene {
       this.add.image(330, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2).setTint(0x8090c0).setAlpha(0.35);
       const candle = this.add.image(150, 170, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.6).setTint(0xffa040).setAlpha(0.45);
       this.tweens.add({ targets: candle, alpha: 0.3, duration: 140, yoyo: true, repeat: -1, repeatDelay: 400 });
+    } else if (kind === 'laden') {
+      this.add.image(0, 0, 'csLaden').setOrigin(0);
+      this.add.image(240, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3).setTint(0xffe0a0).setAlpha(0.3);
     } else if (kind === 'wc') {
       // Toilette: flackernde Neonröhre
       this.add.image(0, 0, 'csWC').setOrigin(0);

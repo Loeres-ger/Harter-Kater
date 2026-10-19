@@ -1,16 +1,17 @@
 import { GUESTS } from '../guests/data';
 import { felixTree } from './felix';
+import { mayaTree } from './maya';
 import { bornaTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
 // Ein Knoten hat Zeilen der Figur (mit „W:“ davor spricht der Wirt) und Antworten zur Auswahl.
 
-export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc';
+export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
-  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt';
+  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum';
 
 export interface Choice {
   text: string;
@@ -269,6 +270,7 @@ export const SPEAKERS: Record<string, Speaker> = {
   lilyDach: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lilyHappy', bg: 'dach', tree: lilyDachTree },
   leni: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniTree },
   leniDanach: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniDanachTree },
+  maya: { name: 'MEISTERNUTTE MAYA', color: '#e05a7a', portrait: 'nbust_maya', bg: 'laden', tree: mayaTree },
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };
@@ -277,5 +279,6 @@ for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#
 export function portraitOf(id: string) {
   if (id === 'glanz') return `bust${lookStage()}`;
   if (id === 'borna' && state.flags.borna === 'hoffnung') return 'nbust_bornaHappy';
+  if (id === 'maya' && state.flags.mayaTraum) return 'nbust_mayaHappy';
   return SPEAKERS[id].portrait;
 }

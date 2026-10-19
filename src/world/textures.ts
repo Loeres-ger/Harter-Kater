@@ -125,13 +125,6 @@ export function makeWorldTextures(scene: Phaser.Scene) {
     r(c, 2, 13, 12, 1, '#9a8a7a');
   });
   // zugenagelte Nachbartür: klar nicht begehbar
-  make('neighborDoor', (c) => {
-    brick(c, '#6a3a2c', '#38221a', 53);
-    r(c, 3, 2, 10, 14, '#2a2a30');
-    r(c, 4, 3, 8, 13, '#3a3a42');
-    r(c, 2, 6, 12, 2, '#8a6a40'); r(c, 2, 11, 12, 2, '#8a6a40'); // Bretter
-    p(c, 3, 6, '#cfcfcf'); p(c, 12, 7, '#cfcfcf'); p(c, 3, 11, '#cfcfcf'); p(c, 12, 12, '#cfcfcf');
-  });
 
   // ---------------------------------------------------------------- Dach & Gebäudehülle
   const shingles = (c: Ctx, base: string, dark: string, light: string, seed: number) => {

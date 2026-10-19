@@ -5,7 +5,7 @@ import { BAR_BACK_SPAWN, BAR_DOOR_SPAWN } from './BarScene';
 import type { DialogAction } from '../dialog/data';
 import { unlock } from '../progress/achievements';
 import { lilyWartet } from '../progress/flags';
-import { BAR_LADDER_SPAWN } from '../rooms/spawns';
+import { BAR_LADDER_SPAWN, LADEN_SPAWN } from '../rooms/spawns';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
@@ -129,7 +129,7 @@ export class AlleyScene extends TopDown {
       case 'A': return { key: 'automat', solid: true };
       case 'N': return { key: 'brickFacade', solid: true };
       case 'O': return { key: 'brickFacadeWin', solid: true };
-      case 'U': return { key: 'neighborDoor', solid: true };
+      case 'U': return { key: 'ladenEntrance', solid: true };
       case 'G': return { key: 'dumpster', solid: true, object: true };
       case 'T': return { key: 'trash', solid: true, object: true };
       case 'b': return { key: 'crate', solid: true, object: true };
@@ -299,7 +299,15 @@ export class AlleyScene extends TopDown {
         } else if (ch === 'n') {
           this.interacts.push({ x: x * T + 8, y: y * T + 8, r: 16, label: () => 'Bank', act: () => this.toast('Eingeritzt: „BRENNINGER STINKT“.') });
         } else if (ch === 'U') {
-          this.interacts.push({ x: x * T + 8, y: (y + 1) * T + 4, r: 16, label: () => 'Zugenagelte Tür', act: () => this.toast('Zugenagelt. Hier wohnt schon lange keiner mehr.') });
+          // Mayas Feinkost: Schild über der Tür, warmes Licht, rein geht es (nicht mit Leiche)
+          this.add.image(x * T + 8, y * T - 4, 'ladenSign').setScale(0.5).setDepth(2);
+          this.add.text(x * T + 4, y * T - 4, 'FEINKOST', { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#b02020' }).setOrigin(0.5).setScale(0.5).setResolution(2).setDepth(3);
+          this.addLight(x * T + 8, (y + 1) * T, 0.6, 0.6).setTint(0xffe0a0);
+          this.interacts.push({
+            x: x * T + 8, y: (y + 1) * T + 4, r: 16,
+            label: () => (state.carrying || this.corpseCarried ? null : 'Mayas Feinkost betreten'),
+            act: () => this.go('Laden', { spawn: LADEN_SPAWN }),
+          });
         } else if (ch === 'o') {
           // Dampf aus dem Gully
           this.add.particles(x * T + 8, y * T + 8, 'light', {

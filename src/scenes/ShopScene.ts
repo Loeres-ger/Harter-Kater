@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { ITEMS, ItemDef, state } from '../state';
+import { ITEMS, ItemDef, ItemId, state } from '../state';
 import { H, W, txt } from '../ui';
 
-export type ShopId = 'wirt' | 'automat' | 'dealer';
+export type ShopId = 'wirt' | 'automat' | 'dealer' | 'laden';
 
 export interface ShopData {
   shop: ShopId;
@@ -11,10 +11,12 @@ export interface ShopData {
   resume: string;
 }
 
-const SHOPS: Record<ShopId, { title: string; line: string; accent: number; accentCss: string }> = {
+const SHOPS: Record<ShopId, { title: string; line: string; accent: number; accentCss: string; items?: ItemId[] }> = {
   wirt: { title: 'DIE THEKE', line: 'Was darf es sein, Chef?', accent: 0xc9a24a, accentCss: '#f0d070' },
   automat: { title: 'ZIGARETTENAUTOMAT', line: '*summt leise vor sich hin*', accent: 0xc02a2a, accentCss: '#ff7a6a' },
   dealer: { title: 'DER DEALER', line: 'Psst. Keine Fragen, keine Quittung.', accent: 0x6ac04a, accentCss: '#9ae09a' },
+  // Mayas Feinkost verkauft dieselbe Bierware wie die Kneipentheke
+  laden: { title: 'MAYAS FEINKOST', line: 'Deutsches Bier. Barzahlung. Kein Anschreiben.', accent: 0x2a8a4a, accentCss: '#8ae0a0', items: ['bier'] },
 };
 
 const CARD_W = 104, CARD_H = 142;
@@ -38,7 +40,7 @@ export class ShopScene extends Phaser.Scene {
     this.wasRunning = state.running;
     state.running = false;
     const shop = SHOPS[data.shop];
-    const items = ITEMS.filter((i) => i.shop === data.shop);
+    const items = shop.items ? ITEMS.filter((i) => shop.items!.includes(i.id)) : ITEMS.filter((i) => i.shop === data.shop);
 
     // Abdunkeln, Klick daneben schließt
     const dim = this.add.rectangle(0, 0, W, H, 0x000000, 0).setOrigin(0).setInteractive();

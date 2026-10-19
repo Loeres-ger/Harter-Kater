@@ -24,6 +24,9 @@ export interface StoryFlags {
   leniGekotzt?: number;
   /** der Wirt hat ihr ein Glas Wasser hingestellt */
   leniWasser?: boolean;
+
+  /** Mayas Dialektpfad samt Zwischensequenz „Der deutsche Traum“ ist gelaufen */
+  mayaTraum?: boolean;
 }
 
 /** Sitzt Lily gerade in der Hintergasse? */

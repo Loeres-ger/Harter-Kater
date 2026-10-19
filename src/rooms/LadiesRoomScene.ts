@@ -84,7 +84,7 @@ export class LadiesRoomScene extends TopDown {
     this.interacts.push({ x: dx * T + 8, y: dy * T, r: 18, label: () => 'Zurück in die Kneipe', act: () => this.go('Bar', { spawn: BAR_DAMEN_SPAWN }) });
     this.addLight(6 * T, 3 * T, 1.1, 0.5).setTint(0xf0d8e8);
     const [kx, ky] = this.find('k');
-    this.interacts.push({ x: kx * T + 8, y: (ky + 1) * T + 6, r: 12, label: () => 'Waschbecken', act: () => this.toast('Auf dem Spiegel steht in Lippenstift: „XAVIER = LÜGNER“.') });
+    this.interacts.push({ x: kx * T + 8, y: (ky + 1) * T + 6, r: 12, label: () => 'Waschbecken', act: () => this.toast('Auf dem Spiegel steht in Lippenstift: „XAVI = LÜGNER“.') });
 
     // Kabine mit Leni darin (Tür geschlossen, solange sie schläft)
     const [sx, sy] = LENI_STALL;
@@ -93,7 +93,7 @@ export class LadiesRoomScene extends TopDown {
       x: sx * T + 8, y: (sy + 1) * T + 4, r: 14,
       label: () => (this.phase() === 'kabine' ? 'Leni (Kabine)' : 'Kabine'),
       act: () => this.toast(this.phase() === 'kabine'
-        ? Phaser.Utils.Array.GetRandom(['Von drinnen: Schnarchen. Und ein leises „Xavier ...“.', 'Leni schläft. Das Glas Wasser steht noch auf dem Becken.', 'Ein Geräusch wie ein Walross mit Schluckauf.'])
+        ? Phaser.Utils.Array.GetRandom(['Von drinnen: Schnarchen. Und ein leises „Xavi ...“.', 'Leni schläft. Das Glas Wasser steht noch auf dem Becken.', 'Ein Geräusch wie ein Walross mit Schluckauf.'])
         : 'Frei. Und erstaunlich sauber. Für diese Kneipe.'),
     });
 

@@ -5,7 +5,7 @@ import { H, W, txt } from '../ui';
 import { Btn } from './ShopScene';
 
 const PW = 464, PH = 236;
-const ROW_H = 24, ROWS = 7;
+const ROW_H = 36, ROWS = 5;
 
 /** Liste aller Erfolge, aus dem Pausemenü geöffnet. Maus/Touch: Buttons und Mausrad, Tastatur: Pfeile, ESC. */
 export class AchievementsScene extends Phaser.Scene {
@@ -67,10 +67,10 @@ export class AchievementsScene extends Phaser.Scene {
       const y = top + i * ROW_H;
       const at = unlockedAt(a.id);
       const rowBg = this.add.rectangle(-PW / 2 + 10, y, PW - 46, ROW_H - 3, at ? 0x2e2214 : 0x161010).setOrigin(0).setStrokeStyle(1, at ? 0x8a6a3a : 0x2a201a);
-      const icon = this.add.image(-PW / 2 + 22, y + 10, at ? a.icon : 'ach_lock').setScale(0.75).setAlpha(at ? 1 : 0.6);
+      const icon = this.add.image(-PW / 2 + 22, y + 16, at ? a.icon : 'ach_lock').setScale(0.75).setAlpha(at ? 1 : 0.6);
       const name = txt(this, -PW / 2 + 36, y + 2, a.hidden && !at ? '???' : a.name, at ? '#f4ead0' : '#7a6a5a');
       const descText = at ? a.desc : a.hidden ? (a.hint ?? 'Geheim.') : a.desc;
-      const desc = txt(this, -PW / 2 + 36, y + 12, descText, at ? '#b8a888' : '#5a4a3a');
+      const desc = txt(this, -PW / 2 + 36, y + 12, descText, at ? '#b8a888' : '#5a4a3a').setWordWrapWidth(PW - 90).setLineSpacing(2);
       const status = txt(this, PW / 2 - 40, y + 2, at ? at.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : 'GESPERRT', at ? '#9ae09a' : '#6a4a3a').setOrigin(1, 0);
       this.list.add([rowBg, icon, name, desc, status]);
     });

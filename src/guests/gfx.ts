@@ -6,7 +6,7 @@ import { BustLook, GUESTS } from './data';
 
 const BW = 64, BH = 96;
 
-export type Mood = 'angry' | 'neutral' | 'stoned' | 'sad' | 'drunk' | 'happy';
+export type Mood = 'angry' | 'neutral' | 'stoned' | 'sad' | 'drunk' | 'happy' | 'smug';
 
 /** Brustbild: wütend (Kampf), freundlich (Gespräch) oder mit besonderer Stimmung (bekifft, traurig, betrunken, glücklich). */
 export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
@@ -51,6 +51,13 @@ export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
       r(c, cx - 10, 50, 3, 30, L.top2); r(c, cx + 7, 50, 3, 30, L.top2);
       for (let i = 0; i < 7; i++) p(c, cx - 3 + i, 50 + Math.abs(i - 3), '#f0d040');
       break;
+    case 'dirndl': // weiße Bluse mit Puffärmeln, Mieder mit Schnürung, Schürze, Lebkuchenherz
+      blob(c, cx - 20, 56, 7, 6, '#f8f6ee'); blob(c, cx + 20, 56, 7, 6, '#f8f6ee');
+      r(c, cx - 11, 48, 22, 8, '#f8f6ee'); r(c, cx - 11, 55, 22, 1, '#d8d4c8');
+      for (let i = 0; i < 8; i++) { p(c, cx - 2 + (i % 2) * 3, 58 + i * 3, L.accent); p(c, cx + 1 - (i % 2) * 3, 59 + i * 3, L.accent); }
+      r(c, cx - 16, 84, 32, 12, L.top2); r(c, cx - 16, 84, 32, 1, '#ffffff55');
+      r(c, cx - 3, 57, 7, 5, '#a0602a'); p(c, cx - 1, 58, '#f8f0e0'); p(c, cx + 1, 59, '#f8f0e0');
+      break;
     case 'cardigan':
       r(c, cx - 6, 48, 12, 30, '#f4f0e8');
       for (let y = 56; y < 92; y += 8) p(c, cx + 7, y, '#e8d0a0');
@@ -83,6 +90,16 @@ export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
     case 'cap':
       r(c, cx - 11, 14, 22, 3, h);
       r(c, cx - 12, 7, 24, 9, L.hat ?? L.top); r(c, cx - 2, 15, 18, 3, L.hat ? '#0a0a14' : L.top2); r(c, cx - 1, 9, 3, 3, L.accent);
+      if (L.baby) { r(c, cx - 12, 16, 3, 7, h); r(c, cx + 9, 16, 3, 7, h); r(c, cx - 9, 17, 4, 2, h); }
+      break;
+    case 'mozart': // Lockenpracht wie zu Mozarts Zeiten: Volumen oben, gerollte Locken an den Seiten, lang bis auf die Schultern
+      blob(c, cx, 10, 13, 6, h); r(c, cx - 12, 10, 24, 7, h);
+      r(c, cx - 19, 36, 9, 22, h); r(c, cx + 10, 36, 9, 22, h);
+      for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
+        blob(c, cx + side * 15, 16 + i * 7, 4.5, 3.6, h);
+        p(c, cx + side * 15, 16 + i * 7, '#00000040'); p(c, cx + side * 15 + side, 17 + i * 7, '#00000040');
+      }
+      r(c, cx - 7, 15, 14, 2, h); // Pony
       break;
     case 'bun':
       r(c, cx - 11, 10, 22, 8, h); r(c, cx - 12, 14, 3, 10, h); r(c, cx + 9, 14, 3, 10, h);
@@ -94,16 +111,29 @@ export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
   if (mood === 'angry') for (let i = 0; i < 5; i++) { p(c, cx - 9 + i, 21 + Math.floor(i / 2), '#2a1a10'); p(c, cx + 8 - i, 21 + Math.floor(i / 2), '#2a1a10'); }
   else if (mood === 'sad') for (let i = 0; i < 5; i++) { p(c, cx - 9 + i, 23 - Math.floor(i / 2), '#2a1a10'); p(c, cx + 8 - i, 23 - Math.floor(i / 2), '#2a1a10'); }
   else if (mood === 'happy') { r(c, cx - 8, 21, 5, 1, '#2a1a10'); r(c, cx + 3, 21, 5, 1, '#2a1a10'); }
+  else if (mood === 'smug') { r(c, cx - 8, 20, 5, 1, '#2a1a10'); p(c, cx - 9, 21, '#2a1a10'); r(c, cx + 3, 22, 5, 1, '#2a1a10'); }
   else { r(c, cx - 8, 22, 5, 1, '#2a1a10'); r(c, cx + 3, 22, 5, 1, '#2a1a10'); p(c, cx - 8, 23, '#2a1a10'); p(c, cx + 7, 23, '#2a1a10'); }
   // Augen
   r(c, cx - 7, 25, 4, 3, '#f8f8f0'); r(c, cx + 3, 25, 4, 3, '#f8f8f0');
   r(c, cx - 5, 25, 2, 2, '#1c120a'); r(c, cx + 4, 25, 2, 2, '#1c120a');
+  if (L.baby) {
+    // Pausbacken, rundes Kinn, große blaue Kulleraugen, rosige Wangen
+    r(c, cx - 12, 28, 24, 11, skin); r(c, cx - 10, 39, 20, 4, skin);
+    r(c, cx - 8, 24, 5, 4, '#f8f8f0'); r(c, cx + 3, 24, 5, 4, '#f8f8f0');
+    r(c, cx - 6, 25, 3, 3, '#3a6ab0'); r(c, cx + 4, 25, 3, 3, '#3a6ab0');
+    p(c, cx - 6, 25, '#ffffff'); p(c, cx + 4, 25, '#ffffff');
+    r(c, cx - 11, 31, 4, 3, '#f0a8a0'); r(c, cx + 7, 31, 4, 3, '#f0a8a0');
+  }
   if (mood === 'stoned') {
-    // schwere Lider, rote Äderchen, Augenringe
+    // schwere Lider, knallrote Augen, Augenringe
     r(c, cx - 7, 25, 4, 2, skin); r(c, cx + 3, 25, 4, 2, skin);
-    r(c, cx - 7, 27, 4, 1, '#e8b0a0'); r(c, cx + 3, 27, 4, 1, '#e8b0a0');
+    r(c, cx - 7, 27, 4, 1, '#e05050'); r(c, cx + 3, 27, 4, 1, '#e05050');
+    r(c, cx - 7, 28, 4, 1, '#b84040'); r(c, cx + 3, 28, 4, 1, '#b84040');
     p(c, cx - 5, 27, '#1c120a'); p(c, cx + 4, 27, '#1c120a');
     r(c, cx - 7, 29, 4, 1, '#00000022'); r(c, cx + 3, 29, 4, 1, '#00000022');
+  } else if (mood === 'smug') {
+    // halb gesenkte Lider: von oben herab
+    r(c, cx - 7, 25, 4, 1, skin); r(c, cx + 3, 25, 4, 1, skin);
   } else if (mood === 'drunk') {
     // ein Auge fast zu, das andere glasig
     r(c, cx - 7, 25, 4, 2, skin); p(c, cx - 5, 27, '#1c120a'); r(c, cx - 7, 27, 4, 1, '#f0d0c8');
@@ -133,6 +163,11 @@ export function drawBust(c: Ctx, L: BustLook, mood: Mood = 'angry') {
     // schiefes Grinsen
     const m = L.lips ?? '#7a3a30';
     r(c, cx - 3, 36, 7, 1, m); p(c, cx + 4, 35, m); p(c, cx + 5, 34, m);
+  } else if (mood === 'smug') {
+    // schiefes, überlegenes Lächeln
+    const m = L.lips ?? '#7a3a30';
+    r(c, cx - 2, 36, 5, 1, m); p(c, cx + 3, 35, m); p(c, cx + 4, 34, m);
+    if (L.lips) r(c, cx - 1, 37, 3, 1, m);
   } else if (mood === 'sad') {
     const m = L.lips ?? '#7a3a30';
     r(c, cx - 3, 36, 6, 1, m); p(c, cx - 4, 37, m); p(c, cx + 3, 37, m);
@@ -229,7 +264,7 @@ export function bust(scene: Phaser.Scene, key: string, L: BustLook, mood: Mood) 
 /** Brustbilder für Gespräche mit den Leuten draußen */
 const NPC_BUSTS: Record<string, BustLook> = {
   dealer: { skin: '#b07a50', hair: '#1a1a1a', style: 'cap', outfit: 'hoodie', top: '#2d3b2d', top2: '#223022', accent: '#8a9a8a', hat: '#1e2a1e', beard: '#2a1a10' },
-  cop: { skin: '#f0c090', hair: '#2a2018', style: 'cap', outfit: 'shirt', top: '#9ab0e0', top2: '#7a90c0', accent: '#0a1430', hat: '#14244a' },
+  cop: { skin: '#f8d4b8', hair: '#e8c860', style: 'cap', outfit: 'shirt', top: '#9ab0e0', top2: '#7a90c0', accent: '#0a1430', hat: '#14244a', baby: true },
   dame0: { skin: '#f0c4a0', hair: '#f8e070', style: 'long', outfit: 'jacket', top: '#ff3a9a', top2: '#d02a7a', accent: '#1a1a1a', lips: '#e0103a', earrings: '#f0d040' },
   dame1: { skin: '#a8724c', hair: '#c0301a', style: 'long', outfit: 'jacket', top: '#b040e0', top2: '#8a2ab8', accent: '#c8c8d8', lips: '#ff2a6a', earrings: '#e8e8f0' },
 };

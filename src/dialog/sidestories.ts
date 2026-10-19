@@ -158,27 +158,27 @@ export function lilyDachTree(): Record<string, DialogNode> {
 
 // ---------------------------------------------------------------- Leni
 
-/** Leni ist sehr betrunken und hält den Wirt für ihren Freund Xavier. Der Wirt hilft ihr, mehr passiert nicht. */
+/** Leni ist sehr betrunken und hält den Wirt für ihren Freund Xavi. Der Wirt hilft ihr, mehr passiert nicht. */
 export function leniTree(): Record<string, DialogNode> {
   const water = { text: 'Trink erst mal ein Glas Wasser.', next: 'wasser', pick: () => (state.flags.leniWasser = true) };
   return {
     start: {
-      lines: ['Xaviiier ... da bisse ja ... *hicks*', 'Du riechst anders. Nach Bier. Und Bratfett. Is neu. Steht dir.'],
+      lines: ['Xaviii ... da bisse ja ... *hicks*', 'Du riechst anders. Nach Bier. Und Bratfett. Is neu. Steht dir.'],
       choices: [
-        { text: 'Ich bin nicht Xavier. Ich bin der Wirt.', next: 'nichtX' },
+        { text: 'Ich bin nicht Xavi. Ich bin der Wirt.', next: 'nichtX' },
         water,
         { text: 'Ich ruf dir ein Taxi.', next: 'taxi' },
       ],
     },
     nichtX: {
-      lines: ['Pssst. Xavier macht immer so Witze.', 'Komm ma her ... gib Küsschen ... nur eins ... warum bist du so weit weg ...'],
+      lines: ['Pssst. Xavi macht immer so Witze.', 'Komm ma her ... gib Küsschen ... nur eins ... warum bist du so weit weg ...'],
       choices: [
         { text: 'Leni, du bist betrunken. Setz dich erst mal hin.', next: 'moment' },
         water,
       ],
     },
     taxi: {
-      lines: ['Taxi? Nee ... ich will nich nach Hause ... ich will Xavier ...', 'Du BIST ja Xavier ... komm her ... *hicks*'],
+      lines: ['Taxi? Nee ... ich will nich nach Hause ... ich will Xavi ...', 'Du BIST ja Xavi ... komm her ... *hicks*'],
       choices: [
         { text: 'Nein. Ich bin der Wirt, und du gehörst ins Bett. Allein.', next: 'moment' },
         water,
@@ -187,7 +187,7 @@ export function leniTree(): Record<string, DialogNode> {
     wasser: {
       lines: [
         'N:Der Wirt stellt ihr ein Glas Leitungswasser hin.',
-        'Wasser ... Xavier, du bist so ... fürsorglich ... seit wann bist du so breit ... ich mag das ...',
+        'Wasser ... Xavi, du bist so ... fürsorglich ... seit wann bist du so breit ... ich mag das ...',
         'Komm ma näher ... Moment ... Moment ...',
       ],
       exitAction: 'leniKotzt',
@@ -206,16 +206,16 @@ export function leniDanachTree(): Record<string, DialogNode> {
   return {
     start: {
       lines: [
-        'Oh nein. Du bist gar nicht Xavier. Du bist der Wirt.',
+        'Oh nein. Du bist gar nicht Xavi. Du bist der Wirt.',
         'Hab ich ... hab ich gesagt, dass du nach Bratfett riechst? Sorry. Stimmt aber.',
         () => (state.flags.leniWasser ? 'Danke für das Wasser. Echt. Das war ... nett. Hier drin ist sonst keiner nett.' : 'Mein Kopf. Hat jemand ein Glas Wasser? Nein? War ja klar.'),
       ],
       choices: [
-        { text: 'Und wer ist Xavier?', next: 'xavier' },
+        { text: 'Und wer ist Xavi?', next: 'xavi' },
         { text: 'Komm gut nach Hause, Leni.' },
       ],
     },
-    xavier: {
+    xavi: {
       lines: ['Mein Freund. Der wollte vor drei Stunden „kurz Zigaretten holen“.', 'Ich glaub, ich hol mir auch mal was. Einen neuen Freund zum Beispiel.'],
       choices: [{ text: 'Klingt nach einem Plan.' }],
     },

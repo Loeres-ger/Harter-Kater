@@ -306,6 +306,10 @@ export interface Pal {
   fishnet?: boolean;
   boots?: boolean;
   lips?: string;
+  /** rosige Wangen (Babyface) */
+  blush?: string;
+  /** Schürze statt bauchfrei (Dirndl) */
+  apron?: string;
 }
 
 /** 16x20-Figur. dir: 0 = vorne, 1 = hinten, 2 = seitlich (rechts). step: 0..2 */
@@ -338,9 +342,10 @@ function drawHuman(c: Ctx, ox: number, dir: number, step: number, pal: Pal) {
     if (pal.tie) r(c, ox + 7, 10, 2, 4, pal.tie);
   }
   if (pal.skirt) {
-    if (dir !== 1) r(c, ox + 5, 12, 6, 1, pal.skin); // bauchfrei
+    if (dir !== 1 && !pal.apron) r(c, ox + 5, 12, 6, 1, pal.skin); // bauchfrei
     r(c, ox + 4, 13, 8, 3, pal.skirt);
     r(c, ox + 4, 13, 8, 1, '#ffffff33');
+    if (pal.apron && dir !== 1) r(c, ox + 6, 12, 4, 4, pal.apron);
   }
   // Arme
   const s = step === 1 ? 1 : step === 2 ? -1 : 0;
@@ -363,6 +368,7 @@ function drawHuman(c: Ctx, ox: number, dir: number, step: number, pal: Pal) {
     p(c, ox + 6, 5, '#1a1212');
     p(c, ox + 9, 5, '#1a1212');
     if (pal.beard) r(c, ox + 5, 7, 6, 2, pal.beard);
+    if (pal.blush) { p(c, ox + 5, 6, pal.blush); p(c, ox + 10, 6, pal.blush); }
   } else if (dir === 1) {
     r(c, ox + 4, pal.bald ? 3 : 1, 8, pal.bald ? 6 : 8, hair);
   } else {
@@ -413,7 +419,7 @@ const DAME_PALS: Pal[] = [
   { skin: '#a8724c', hair: '#c0301a', coat: '#b040e0', coat2: '#8a2ab8', pants: '#a8724c', shoes: '#101010', longHair: true, lips: '#ff2a6a', skirt: '#c8c8d8', fishnet: true, boots: true },
 ];
 const COP_PAL: Pal = {
-  skin: '#f0c090', hair: '#2a2018', coat: '#1e3a8a', coat2: '#16306e', pants: '#1a2440', shoes: '#0a0a0a', hat: '#14244a', hat2: '#0a1430', shirt: '#9ab0e0', tie: '#0a1430',
+  skin: '#f8d4b8', hair: '#e8c860', coat: '#1e3a8a', coat2: '#16306e', pants: '#1a2440', shoes: '#0a0a0a', hat: '#14244a', hat2: '#0a1430', shirt: '#9ab0e0', tie: '#0a1430', blush: '#f0a0a0',
 };
 const DEALER_PAL: Pal = {
   skin: '#b07a50', hair: '#1a1a1a', coat: '#2d3b2d', coat2: '#223022', pants: '#1e1e22', shoes: '#111', hat: '#2d3b2d', hat2: '#223022',

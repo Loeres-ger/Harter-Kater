@@ -25,12 +25,14 @@ const NAMES: Record<Who, [string, string]> = {
   telefon: ['BRENNINGER', '#ff6a6a'],
   borna: ['BEKIFFTER BORNA', '#a8d070'],
   lily: ['LILY', '#c8a0e0'],
+  maya: ['MEISTERNUTTE MAYA', '#e05a7a'],
 };
 
 /** Porträts der Nebenfiguren: Seite und Bild je nach look (0 = normal, 1 = glücklich) */
 const CAST: Partial<Record<Who, { side: 'left' | 'right'; key: (look: number) => string }>> = {
   borna: { side: 'left', key: (l) => (l ? 'nbust_bornaHappy' : 'nbust_borna') },
   lily: { side: 'right', key: (l) => (l ? 'nbust_lilyHappy' : 'nbust_lily') },
+  maya: { side: 'right', key: (l) => (l ? 'nbust_mayaHappy' : 'nbust_maya') },
 };
 
 const BAR_H = 22; // Kinobalken
@@ -271,6 +273,9 @@ export class CutsceneScene extends Phaser.Scene {
         this.bg.add(candle);
         this.tweens.add({ targets: candle, alpha: 0.3, duration: 140, yoyo: true, repeat: -1, repeatDelay: 400 });
       }
+    } else if (key === 'laden') {
+      this.bg.add(this.add.image(0, 0, 'csLaden').setOrigin(0));
+      this.bg.add(this.add.image(240, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3).setTint(0xffe0a0).setAlpha(0.3));
     } else if (key === 'tod') {
       this.bg.add(this.add.image(0, 0, 'tresenBg').setOrigin(0));
       for (const x of [112, 312]) this.bg.add(this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.5));
@@ -445,6 +450,8 @@ export class CutsceneScene extends Phaser.Scene {
   private async fx(kind: string) {
     const cam = this.cameras.main;
     switch (kind) {
+      case 'hearts':
+        return this.hearts();
       case 'queasy':
         return this.queasy();
       case 'puke':
@@ -548,6 +555,30 @@ export class CutsceneScene extends Phaser.Scene {
         await this.sleep(1200);
         return;
     }
+  }
+
+  // ---------------------------------------------------------------- Herzen auf Schwarz
+
+  /** Schwarzblende, aufsteigende Herzen mit Glöckchen, dann zurück ins Bild. */
+  private async hearts() {
+    const black = this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0).setDepth(850).setAlpha(0);
+    await new Promise<void>((res) => this.tweens.add({ targets: black, alpha: 1, duration: 450, onComplete: () => res() }));
+    audio.sfx('chime');
+    const hs: Phaser.GameObjects.Image[] = [];
+    for (let i = 0; i < 16; i++) {
+      this.time.delayedCall(i * 170, () => {
+        const h = this.add.image(Phaser.Math.Between(70, 410), H + 10, 'ach_heart').setDepth(860).setScale(Phaser.Math.FloatBetween(0.8, 2));
+        hs.push(h);
+        this.tweens.add({ targets: h, y: Phaser.Math.Between(30, 140), alpha: 0, duration: 2300, ease: 'Sine.easeOut' });
+        this.tweens.add({ targets: h, x: h.x + Phaser.Math.Between(-30, 30), duration: 600, yoyo: true, repeat: 2, ease: 'Sine.easeInOut' });
+        if (i % 4 === 0) audio.sfx('blip');
+      });
+    }
+    await this.sleep(3400);
+    audio.sfx('chime');
+    await new Promise<void>((res) => this.tweens.add({ targets: black, alpha: 0, duration: 500, onComplete: () => res() }));
+    hs.forEach((h) => h.destroy());
+    black.destroy();
   }
 
   // ---------------------------------------------------------------- Todesszene

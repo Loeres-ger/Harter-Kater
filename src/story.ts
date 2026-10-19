@@ -1,13 +1,13 @@
 // Die Storyline: Prolog, drei Kapitel-Zwischenspiele und der Epilog.
 
-export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily';
+export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'maya';
 
 export type Step =
-  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' }
+  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'laden' }
   | { t: 'caption'; text: string }
   | { t: 'title'; text: string; sub: string }
   | { t: 'say'; who: Who; text: string; look?: number }
-  | { t: 'fx'; kind: 'thunder' | 'shake' | 'bell' | 'phone' | 'splash' | 'bulldozer' | 'monster' | 'roar' | 'flee' | 'queasy' | 'puke' | 'collapse' }
+  | { t: 'fx'; kind: 'thunder' | 'shake' | 'bell' | 'phone' | 'splash' | 'bulldozer' | 'monster' | 'roar' | 'flee' | 'queasy' | 'puke' | 'collapse' | 'hearts' }
   | { t: 'wait'; ms: number }
   | { t: 'pause' };
 
@@ -25,6 +25,20 @@ export const STORY: Record<string, Step[]> = {
     { t: 'say', who: 'wirt', text: '(...)' },
     { t: 'say', who: 'wirt', text: '(Das hätte ich nicht sagen sollen.)' },
     { t: 'title', text: 'BORNA', sub: 'Sein Platz auf dem Dachboden bleibt leer.' },
+  ],
+
+  /** Mayas Dialektpfad: Sie lädt den Wirt freiwillig ins Lager ein. Nichts wird gezeigt, nur Herzen. */
+  deutscherTraum: [
+    { t: 'bg', key: 'laden' },
+    { t: 'say', who: 'maya', look: 1, text: 'Also dann, mein Dialekt-Prinz. Hinterm Käse ist das Lager. Da riecht es nach Bergkäse.' },
+    { t: 'say', who: 'wirt', text: '(Bergkäse. Romantischer wird es heute nicht mehr.)' },
+    { t: 'say', who: 'maya', look: 1, text: 'Sag noch einmal „gell“.' },
+    { t: 'say', who: 'wirt', text: '... Gell?' },
+    { t: 'fx', kind: 'hearts' },
+    { t: 'say', who: 'maya', look: 1, text: 'Das war ... sehr ... regional.' },
+    { t: 'say', who: 'wirt', text: '(Ich glaub, ich hab mir was im Jodelmuskel gezerrt.)' },
+    { t: 'say', who: 'maya', look: 1, text: 'Wenn jemand fragt: Wir haben im Lager Weißwürste gezuzelt.' },
+    { t: 'title', text: 'DER DEUTSCHE TRAUM', sub: 'Ganz ohne Geld. Nur mit Dialekt.' },
   ],
 
   /** Verlauf B: Lily zieht auf den Dachboden, sie und Borna finden sich. */
