@@ -65,3 +65,4 @@ export function ensureGuests(now: number) {
 export function removeGuest(id: string) {
   roster.guests = roster.guests.filter((g) => g.id !== id);
 }
+

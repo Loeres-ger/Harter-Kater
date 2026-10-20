@@ -9,27 +9,26 @@ export interface ItemDef {
   name: string;
   price: number; // Einkaufspreis (bzw. Wert, falls nicht kaufbar)
   sucht: number;
-  health: number;
-  wuerde: number;
   minSucht: number; // ab dieser Sucht nimmt er es an
   shop: 'wirt' | 'automat' | 'dealer' | null;
 }
 
 export const ITEMS: ItemDef[] = [
-  { id: 'bier', name: 'Bier', price: 3, sucht: 6, health: 4, wuerde: 2, minSucht: 0, shop: 'wirt' },
-  { id: 'kippe', name: 'Kippen', price: 4, sucht: 5, health: 3, wuerde: 2, minSucht: 0, shop: 'automat' },
-  { id: 'schnaps', name: 'Schnaps', price: 5, sucht: 9, health: 7, wuerde: 3, minSucht: 15, shop: 'wirt' },
-  { id: 'fusel', name: 'Fusel', price: 4, sucht: 11, health: 9, wuerde: 4, minSucht: 25, shop: 'wirt' },
-  { id: 'pillen', name: 'Pillen', price: 12, sucht: 16, health: 14, wuerde: 6, minSucht: 50, shop: 'dealer' },
-  { id: 'zeug', name: 'Zeug', price: 25, sucht: 22, health: 22, wuerde: 8, minSucht: 72, shop: 'dealer' },
+  { id: 'bier', name: 'Bier', price: 3, sucht: 6, minSucht: 0, shop: 'wirt' },
+  { id: 'kippe', name: 'Kippen', price: 4, sucht: 5, minSucht: 0, shop: 'automat' },
+  { id: 'schnaps', name: 'Schnaps', price: 5, sucht: 9, minSucht: 15, shop: 'wirt' },
+  { id: 'fusel', name: 'Fusel', price: 4, sucht: 11, minSucht: 25, shop: 'wirt' },
+  { id: 'pillen', name: 'Pillen', price: 12, sucht: 16, minSucht: 50, shop: 'dealer' },
+  { id: 'zeug', name: 'Zeug', price: 25, sucht: 22, minSucht: 72, shop: 'dealer' },
 ];
 
 export const item = (id: ItemId) => ITEMS.find((i) => i.id === id)!;
 
 export const VICTIM = 'Dr. von Glanz';
-export const MAX_HEALTH = 260;
 /** Sekunden, die er auf seinen Wunsch wartet, bevor er ungeduldig wird */
 export const PATIENCE = 12;
+/** Verfall pro Sucht-Punkt einer Gabe: etwa sechs Gaben vom ersten Bier bis zur Todesszene */
+export const VERFALL_FAKTOR = 1.6;
 
 function freshState() {
   return {
@@ -39,9 +38,9 @@ function freshState() {
     inv: { bier: 1, kippe: 1, schnaps: 0, fusel: 0, pillen: 0, zeug: 0 } as Record<ItemId, number>,
     uses: { bier: 0, kippe: 0, schnaps: 0, fusel: 0, pillen: 0, zeug: 0 } as Record<ItemId, number>,
     sucht: 0,
-    health: MAX_HEALTH,
-    wuerde: 100,
     misstrauen: 0,
+    /** wie weit Glanz heruntergekommen ist (0..100, bei 100 stirbt er) */
+    verfall: 0,
     wish: null as ItemId | null,
     wishTimer: 6,
     wishSince: 0,
@@ -77,6 +76,30 @@ export function resetState() {
   state = freshState();
 }
 
+/** Gespeicherten Kapitelstand übernehmen. Fehlende oder neue Felder kommen aus einem frischen Spielstand,
+ *  damit auch Stände aus älteren Versionen laden. */
+export function loadState(data: Record<string, unknown>) {
+  const fresh = freshState();
+  const d = data as Partial<typeof fresh>;
+  const obj = <T extends object>(base: T, v: unknown): T => ({ ...base, ...(v && typeof v === 'object' ? v : {}) });
+  state = {
+    ...fresh,
+    ...d,
+    inv: obj(fresh.inv, d.inv),
+    uses: obj(fresh.uses, d.uses),
+    story: obj(fresh.story, d.story),
+    boost: obj(fresh.boost, d.boost),
+    flags: obj(fresh.flags, d.flags),
+    consumed: Array.isArray(d.consumed) ? d.consumed : [],
+  };
+  // Stände vor dem Umbau kannten nur Würde (100 = tipptopp): daraus den Verfall ableiten
+  const alt = data as { wuerde?: unknown };
+  if (typeof d.verfall !== 'number' && typeof alt.wuerde === 'number') state.verfall = Math.max(0, Math.min(99, 100 - alt.wuerde));
+  if (state.dead) state.verfall = 100;
+  state.running = true;
+  state.gameOver = null;
+}
+
 /** 0 = tipptopp … 4 = Wrack, 5 = tot */
 export function stage(): number {
   if (state.dead) return 5;
@@ -91,13 +114,13 @@ export function impatient() {
   return !!state.wish && !state.dead && state.sucht >= WISH_PRESSURE && state.time - state.wishSince > PATIENCE;
 }
 
-/** Aussehen-Stufe 0..4, auch nach dem Tod. */
+/** Aussehen-Stufe 0..4 aus dem Verfall (steigt nur, sinkt nie), auch nach dem Tod. */
 export function lookStage(): number {
-  const w = state.wuerde;
-  if (w > 80) return 0;
-  if (w > 60) return 1;
-  if (w > 38) return 2;
-  if (w > 15) return 3;
+  const v = state.verfall;
+  if (v < 20) return 0;
+  if (v < 40) return 1;
+  if (v < 60) return 2;
+  if (v < 80) return 3;
   return 4;
 }
 
@@ -112,8 +135,6 @@ export function tick(dt: number) {
   }
   if (state.dead) return;
   state.sucht = Math.max(0, state.sucht - 0.35 * dt);
-  // Ohne Nachschub fängt er sich langsam wieder
-  if (state.time - state.lastGive > 8) state.wuerde = Math.min(100, state.wuerde + 0.12 * dt);
   state.misstrauen = Math.max(0, state.misstrauen - 0.6 * dt);
   // Ungeduld: wer zu lange auf seinen Wunsch wartet, wird misstrauisch
   if (impatient()) {
@@ -123,8 +144,7 @@ export function tick(dt: number) {
 
   state.wishTimer -= dt;
   if (state.wishTimer <= 0) {
-    // Unerfüllter Wunsch bei starker Sucht: Entzug nagt an ihm
-    if (state.wish && state.sucht >= 40) state.wuerde = Math.max(0, state.wuerde - 3);
+    if (state.wish && state.sucht >= 40) state.misstrauen += 4; // Entzug macht ihn misstrauisch
     state.wishTimer = 10 + Math.random() * 5;
     // Er wünscht sich immer etwas, das er gerade annehmen würde. Früher kam bei Sucht unter 8 gar kein
     // Wunsch: Wer ihn noch nicht bedient hatte, sah nie, was er trinken will.
@@ -176,10 +196,8 @@ export function give(id: ItemId): GiveResult | null {
   const mult = wished ? 1.5 : 1;
 
   state.sucht = Math.min(100, state.sucht + def.sucht * tol * mult);
-  state.health -= def.health * mult * (1 + state.sucht / 150);
-  // Er klammert sich ans Leben, bis er ganz unten ist
-  if (lookStage() < 4) state.health = Math.max(1, state.health);
-  state.wuerde = Math.max(0, state.wuerde - def.wuerde * mult);
+  // Verfall: wenige Runden bis zum Ende. Er klammert sich ans Leben, bis Kapitel 3 gelaufen ist.
+  state.verfall = Math.min(state.story.kapitel3 ? 100 : 99, state.verfall + def.sucht * tol * mult * VERFALL_FAKTOR);
 
   if (!wished && state.time - state.lastGive < 5) state.misstrauen += 16;
   if (wished) {
@@ -195,8 +213,7 @@ export function give(id: ItemId): GiveResult | null {
   state.money += paid;
 
   let died = false;
-  if (state.health <= 0) {
-    state.health = 0;
+  if (state.verfall >= 100) {
     state.dead = true;
     died = true;
   }

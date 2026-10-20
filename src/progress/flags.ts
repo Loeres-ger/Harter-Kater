@@ -6,13 +6,13 @@ export interface StoryFlags {
   /** Felix' Verhör: bestanden oder mit dem Schlagstock beendet */
   felixVerhoer?: 'bestanden' | 'eskaliert';
 
-  /** Borna zum ersten Mal angesprochen (schaltet Lily in der Gasse frei) */
+  /** Borna zum ersten Mal angesprochen (schaltet Lilly in der Gasse frei) */
   bornaGetroffen?: boolean;
   /** wie weit der Wirt Borna im aktuellen Gespräch runtergemacht hat */
   bornaDruck?: number;
   /** endgültiger Ausgang von Bornas Nebenhandlung, danach nicht mehr änderbar */
   borna?: 'gebrochen' | 'hoffnung';
-  /** Lily: weggeschickt oder wohnt jetzt auf dem Dachboden (leer = sitzt noch in der Gasse, falls freigeschaltet) */
+  /** Lilly: weggeschickt oder wohnt jetzt auf dem Dachboden (leer = sitzt noch in der Gasse, falls freigeschaltet) */
   lily?: 'weg' | 'dach';
 
   /** der Wirt hat in Kabine 2 an das Loch in der Wand geklopft */
@@ -32,9 +32,29 @@ export interface StoryFlags {
   lokalBetreten?: number;
   /** Event „Anne“: läuft, Anne gefangen, oder Felix musste sie holen (Strafe bezahlt) */
   anne?: 'laeuft' | 'gefangen' | 'felix';
+
+  /** Die Glanz-Handlung ist abgeschlossen (verfüttert), danach freies Spiel */
+  glanzErledigt?: boolean;
+  /** Kapitel 5: Captain Claudius getroffen (Rechner auf dem Dachboden freigeschaltet) oder Akten veröffentlicht */
+  claudius?: 'getroffen' | 'veroeffentlicht';
+  /** gelesene Akten auf Claudius' Rechner (ids aus dialog/pcFiles.ts) */
+  pcGelesen?: string[];
+  /** Spielzeit, bis zu der der Rechner nach einem gescheiterten Hochladen gesperrt ist */
+  pcSperreBis?: number;
+
+  // ---- Offene Welt (siehe progress/quests.ts)
+  /** zuletzt eingeleiteter Strang und Pause bis zur nächsten Einleitung (Spielzeit) */
+  letzterStrang?: string;
+  strangPauseBis?: number;
+  /** gefundene Easter Eggs */
+  entdeckt?: string[];
 }
 
-/** Sitzt Lily gerade in der Hintergasse? */
+/** Freies Spiel nach der Glanz-Handlung: Sucht und Misstrauen spielen keine Rolle mehr. */
+export function freiesSpiel(f: StoryFlags) {
+  return !!f.glanzErledigt;
+}
+/** Sitzt Lilly gerade in der Hintergasse? */
 export function lilyWartet(f: StoryFlags) {
   return !!f.bornaGetroffen && !f.lily && f.borna !== 'gebrochen';
 }

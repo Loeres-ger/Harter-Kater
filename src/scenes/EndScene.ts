@@ -1,10 +1,13 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { VICTIM, state } from '../state';
-import { H, W, txt } from '../ui';
+import { H, W, fadeTo, txt } from '../ui';
+import { lastChapter } from '../progress/save';
 import { Btn } from './ShopScene';
 import { drawRain, hGradient, kalleAtTable, vGradient } from './screenFx';
-import { newGame } from './TitleScene';
+import { loadChapter, newGame } from './TitleScene';
+import { resetAlley } from './AlleyScene';
+import { BAR_TRESEN_SPAWN } from './BarScene';
 
 export class EndScene extends Phaser.Scene {
   constructor() {
@@ -50,12 +53,37 @@ export class EndScene extends Phaser.Scene {
       return;
     }
 
-    const again = txt(this, W / 2, 250, '[ LEERTASTE: NOCHMAL ]', '#ffffff').setOrigin(0.5);
-    this.tweens.add({ targets: again, alpha: 0.2, duration: 600, yoyo: true, repeat: -1 });
+    // Weiterspielen: freies Spiel in der Kneipe (danach kann Kapitel 5 beginnen), oder ganz von vorn
+    let gone = false;
+    const once = (fn: () => void) => () => {
+      if (gone) return;
+      gone = true;
+      fn();
+    };
+    const cont = once(() => this.freePlay());
+    const again = once(() => newGame(this));
+    const contBtn = new Btn(this, W / 2 - 78, 250, 140, 18, 'WEITERSPIELEN', 0x3a6a2a, cont);
+    const newBtn = new Btn(this, W / 2 + 78, 250, 140, 18, 'NEUES SPIEL', 0x6a2a20, again);
+    for (const b of [contBtn, newBtn]) {
+      b.box.setAlpha(0);
+      this.tweens.add({ targets: b.box, alpha: 1, duration: 400, delay: 800 });
+    }
     this.time.delayedCall(800, () => {
-      this.input.keyboard!.once('keydown-SPACE', () => newGame(this));
-      this.input.once('pointerdown', () => newGame(this));
+      this.input.keyboard!.once('keydown-SPACE', cont);
+      this.input.keyboard!.once('keydown-ENTER', cont);
+      this.input.keyboard!.once('keydown-N', again);
     });
+  }
+
+  /** Nach dem Sieg: Glanz ist Geschichte, die Kneipe läuft weiter. Sucht und Misstrauen sind dann ausgeblendet. */
+  private freePlay() {
+    state.flags.glanzErledigt = true;
+    state.gameOver = null;
+    state.carrying = false;
+    state.bodyDeadline = null;
+    state.running = true;
+    resetAlley();
+    fadeTo(this, 'Bar', { spawn: BAR_TRESEN_SPAWN });
   }
 
   /** Verloren: Polizeifoto vom Wirt, Blaulicht im Regen, Kalle kommentiert aus dem Hintergrund. */
@@ -165,7 +193,19 @@ export class EndScene extends Phaser.Scene {
     btn.box.setDepth(45).setAlpha(0);
     this.tweens.add({ targets: btn.box, alpha: 1, duration: 400, delay: 800 });
     this.tweens.add({ targets: btn.box, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 1300 });
-    txt(this, TX + 70, 222, 'oder Leertaste', '#6a6a88', 8).setOrigin(0.5, 0).setDepth(45);
+    // Mit Kapitelstand: direkt dort weitermachen statt ganz von vorn
+    const last = lastChapter();
+    if (last) {
+      const load = new Btn(this, TX + 70, 228, 140, 16, 'LETZTER STAND', 0x3a3040, () => {
+        if (gone) return;
+        gone = true;
+        loadChapter(this, last.id);
+      });
+      load.box.setDepth(45).setAlpha(0);
+      this.tweens.add({ targets: load.box, alpha: 1, duration: 400, delay: 800 });
+    } else {
+      txt(this, TX + 70, 222, 'oder Leertaste', '#6a6a88', 8).setOrigin(0.5, 0).setDepth(45);
+    }
     this.time.delayedCall(800, () => {
       this.input.keyboard!.once('keydown-SPACE', again);
       this.input.keyboard!.once('keydown-ENTER', again);

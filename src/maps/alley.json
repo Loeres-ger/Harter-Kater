@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "alley",
+  "rows": [
+    "__=__###############################",
+    "_____##w#L#g##w##L#p#w#g##L#w##p#L##",
+    "__=__,,...m............GG.T.....bb.#",
+    "_____,,.....Y....u....K.....x.o....#",
+    "__=__,,.T......................X..m#",
+    "_____,,,,BBBBBBBBBBBBBQBBBB..EEEEEEE",
+    "__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
+    "_____,,,,RRRCRRRRRRRRRRRRRR..EEEEEEE",
+    "__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
+    "_____,,,,RRRRRRRRRRRVRRRRRR..EEEEEEE",
+    "__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
+    "_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
+    "__=__,,,,RRRRRRRRRRRRRRRVRR..EEEEEEE",
+    "_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
+    "__=__,,,,rrrrrrrrrrrrrrrrrr..EEEEEEE",
+    "_____,,,,FHFFHFFHFFHFFHFFHF..NONNONN",
+    "__=__,,,,FHFAFHFFDFFHFHFFHF..NUNNONN",
+    "_____,,,,,,T,,,,,,,,,,,,,,,,,,,,,,,,",
+    "__=__,,,,,,,,,,,,,,,n,,,,,,,,,Y,,,,,",
+    "_____,,,l,,,,,,,,,,l,,,,,,,,,,l,,,,,",
+    "_____________zZ_____________________",
+    "__=__-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-",
+    "__=_________________________________",
+    "____________________________________"
+  ],
+  "objects": [],
+  "zones": [],
+  "collision": {
+    "block": [],
+    "free": []
+  }
+}

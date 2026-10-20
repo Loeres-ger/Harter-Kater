@@ -8,6 +8,8 @@ import { BarGuest, SEATS, ensureGuests, removeGuest, resetRoster, roster } from 
 import { ATTIC_SPAWN, DAMEN_SPAWN, HERREN_SPAWN } from '../rooms/spawns';
 import { AnneEvent, EventHost, anneDue } from '../events/anne';
 import { hud } from './HudScene';
+import { freiesSpiel } from '../progress/flags';
+import { entdecke, weltZiel, zaehle } from '../progress/quests';
 
 interface GuestView {
   g: BarGuest;
@@ -136,6 +138,8 @@ export class BarScene extends TopDown {
   }
 
   protected goalText() {
+    const f = state.flags;
+    if (freiesSpiel(f)) return weltZiel(f);
     if (state.carrying) return 'Raus in die Gasse damit. Zur Katze.';
     if (state.dead) return `${VICTIM} liegt am Boden. Schulter ihn.`;
     if (impatient()) return `${VICTIM} wird ungeduldig! Schnell bedienen!`;
@@ -217,7 +221,12 @@ export class BarScene extends TopDown {
     }
 
     const [jx, jy] = this.find('J');
-    this.interacts.push({ x: jx * T + 8, y: jy * T + 12, r: 20, label: () => 'Jukebox', act: () => this.toast(Phaser.Utils.Array.GetRandom(SCHLAGER)) });
+    this.interacts.push({ x: jx * T + 8, y: jy * T + 12, r: 20, label: () => 'Jukebox',
+      act: () => {
+        // Easter Egg: beim fünften Mal spielt sie von selbst
+        if (zaehle('jukebox') >= 5 && entdecke(state.flags, 'jukebox')) return this.toast('Die Jukebox spielt von selbst „Highway to Hell“. Kalle wacht kurz auf und salutiert.');
+        this.toast(Phaser.Utils.Array.GetRandom(SCHLAGER));
+      } });
     // Türen: vorne raus auf die Straße, hinten durch die Toilette in die Gasse
     const [dx, dy] = this.find('D');
     this.interacts.push({ x: dx * T + 8, y: dy * T, r: 18, label: () => 'Raus auf die Straße', act: () => this.go('Alley', { spawn: OUT_FRONT }) });
@@ -233,6 +242,7 @@ export class BarScene extends TopDown {
     }
 
     this.setupGuests();
+    this.scheduleStory(() => !!this.anneEvent?.active);
 
     // warmes, gedämpftes Licht über Tresen und Tischen
     for (const [x, y] of [[4, 3], [4, 7], [11, 8], [13, 5], [9, 10], [19, 10], [13, 11]]) this.addLight(x * T, y * T, 0.9, 0.62).setTint(0xffc890);

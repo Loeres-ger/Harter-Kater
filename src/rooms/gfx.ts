@@ -59,8 +59,8 @@ function drawBornaSit(c: Ctx, ox: number, puff: boolean) {
   outline(c, ox, 0, 16, 14);
 }
 
-/** Lily sitzt am Boden: 0 = Kopf auf den Knien, 1 = schluchzt, 2 = aufrecht und froh */
-function drawLilySit(c: Ctx, ox: number, pose: number) {
+/** Lilly sitzt am Boden: 0 = Kopf auf den Knien, 1 = schluchzt, 2 = aufrecht und froh */
+function drawLillySit(c: Ctx, ox: number, pose: number) {
   const cx = ox + 8;
   const SK = '#f0c8a8', HAIR = '#6a4026', CARD = '#5a7a8a', CARD2 = '#4a6a7a', JEANS = '#3a3a4a';
   if (pose < 2) {
@@ -348,7 +348,7 @@ export function makeRoomTextures(scene: Phaser.Scene) {
   make('bornaSit', (c) => { drawBornaSit(c, 0, false); drawBornaSit(c, 16, true); }, 32, 14);
   scene.textures.get('bornaSit').add(0, 0, 0, 0, 32, 28);
   scene.textures.get('bornaSit').add(1, 0, 32, 0, 32, 28);
-  make('lilySit', (c) => { drawLilySit(c, 0, 0); drawLilySit(c, 16, 1); drawLilySit(c, 32, 2); }, 48, 14);
+  make('lilySit', (c) => { drawLillySit(c, 0, 0); drawLillySit(c, 16, 1); drawLillySit(c, 32, 2); }, 48, 14);
   for (let i = 0; i < 3; i++) scene.textures.get('lilySit').add(i, 0, i * 32, 0, 32, 28);
 
   // ---- Bar: Leiter zum Dachboden, Türen zu den Toiletten

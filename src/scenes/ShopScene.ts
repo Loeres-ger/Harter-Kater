@@ -83,7 +83,7 @@ export class ShopScene extends Phaser.Scene {
     const price = txt(this, CARD_W / 2 - 18, -CARD_H / 2 + 12, `${def.price}€`, '#2a1a0a').setOrigin(0.5).setAngle(6);
     // Wirkung als kleine Balken
     const stats = this.add.graphics();
-    const rows: [string, number, number][] = [['SUCHT', def.sucht, 0xc07ae0], ['GIFT', def.health, 0x6ad06a], ['SCHAM', def.wuerde, 0x6aa0e0]];
+    const rows: [string, number, number][] = [['SUCHT', def.sucht, 0xc07ae0]];
     rows.forEach(([, v, col], r) => {
       const sy = -CARD_H / 2 + 75 + r * 10;
       stats.fillStyle(0x140e0a).fillRect(2, sy, 44, 6);

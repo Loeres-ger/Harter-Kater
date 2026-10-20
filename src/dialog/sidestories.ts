@@ -1,7 +1,7 @@
 import { state } from '../state';
 import type { DialogNode } from './data';
 
-// Gespräche der Nebenhandlungen: Borna (Dachboden), Lily (Gasse/Dachboden), Leni (Damentoilette). Entscheidungen landen als Story-Flags in state.flags (siehe progress/flags.ts).
+// Gespräche der Nebenhandlungen: Borna (Dachboden), Lilly (Gasse/Dachboden), Leni (Damentoilette). Entscheidungen landen als Story-Flags in state.flags (siehe progress/flags.ts).
 
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const f = () => state.flags;
@@ -14,11 +14,11 @@ export function bornaTree(): Record<string, DialogNode> {
       start: {
         lines: [pick([
           'Chef! Ich war heute DRAUSSEN. Mit Sonne. Die ist echt hell, wusstest du das?',
-          'Lily hat gesagt, ich soll mal lüften. Ich hab das Fenster aufgemacht. Da war Welt dahinter.',
-          'Ich rauch nur noch halb so viel. Die andere Hälfte rede ich jetzt. Mit Lily.',
+          'Lilly hat gesagt, ich soll mal lüften. Ich hab das Fenster aufgemacht. Da war Welt dahinter.',
+          'Ich rauch nur noch halb so viel. Die andere Hälfte rede ich jetzt. Mit Lilly.',
         ])],
         choices: [
-          { text: 'Wie läuft es mit Lily?', next: 'lily' },
+          { text: 'Wie läuft es mit Lilly?', next: 'lily' },
           { text: 'Schön, dich so zu sehen.' },
         ],
       },
@@ -87,9 +87,9 @@ export function bornaTree(): Record<string, DialogNode> {
   };
 }
 
-// ---------------------------------------------------------------- Lily
+// ---------------------------------------------------------------- Lilly
 
-/** Lily in der Hintergasse */
+/** Lilly in der Hintergasse */
 export function lilyTree(): Record<string, DialogNode> {
   return {
     start: {
@@ -102,7 +102,32 @@ export function lilyTree(): Record<string, DialogNode> {
     okay: {
       lines: [
         'Klar. Ich sitz nachts gern auf nassem Asphalt neben Mülltonnen. Ist so ein Hobby.',
-        '... Nein. Ist es nicht. Ich bin vor drei Monaten hergezogen. Kenn keinen. Die WG hat mich rausgeworfen, weil ich „zu still“ war.',
+        '... Nein. Ist es nicht. Ich bin vor drei Monaten hergezogen. Kenn keinen. Und aus der Wohnung bin ich raus.',
+      ],
+      choices: [
+        { text: 'Rausgeflogen? Warum?', next: 'ex' },
+        { text: 'Und jetzt?', next: 'jetzt' },
+      ],
+    },
+    // Lillys Vorgeschichte: nur Andeutungen, aufgelöst wird nichts
+    ex: {
+      lines: [
+        'Mein Ex. Sagen wir ... es gab einen Vorfall.',
+        'Mit einem Feuerlöscher, einem Wellensittich und der Hausverwaltung.',
+        'W:In der Reihenfolge?',
+        'Die Reihenfolge ist Teil des Problems.',
+        'Seitdem darf ich das Haus nicht mehr betreten. Steht so in einem Schreiben. Mit Stempel.',
+      ],
+      choices: [
+        { text: 'Und der Wellensittich?', next: 'vogel' },
+        { text: 'Und jetzt?', next: 'jetzt' },
+      ],
+    },
+    vogel: {
+      lines: [
+        'Dem geht es gut. Glaub ich. Er redet jetzt nur noch rückwärts.',
+        'Frag nicht weiter. Bitte. Ich hab der Polizei schon alles erzählt. Zweimal. Die haben irgendwann aufgehört mitzuschreiben.',
+        'W:Bei mir in der Kneipe passiert so was jeden Dienstag.',
       ],
       choices: [{ text: 'Und jetzt?', next: 'jetzt' }],
     },
@@ -128,14 +153,14 @@ export function lilyTree(): Record<string, DialogNode> {
       ],
     },
     weg: {
-      lines: ['Nach Hause. Klar. Mach ich.', 'N:Lily steht auf, klopft sich den Dreck von der Hose und geht, ohne sich umzudrehen.'],
+      lines: ['Nach Hause. Klar. Mach ich.', 'N:Lilly steht auf, klopft sich den Dreck von der Hose und geht, ohne sich umzudrehen.'],
       exitAction: 'lilyWeg',
       choices: [{ text: '...', action: 'lilyWeg' }],
     },
   };
 }
 
-/** Lily auf dem Dachboden, nach der gemeinsamen Nacht mit Borna */
+/** Lilly auf dem Dachboden, nach der gemeinsamen Nacht mit Borna */
 export function lilyDachTree(): Record<string, DialogNode> {
   return {
     start: {
@@ -146,12 +171,22 @@ export function lilyDachTree(): Record<string, DialogNode> {
       ])],
       choices: [
         { text: 'Wie gefällt es dir hier oben?', next: 'hier' },
+        { text: 'Hat sich dein Ex mal gemeldet?', next: 'ex' },
         { text: 'Pass gut auf ihn auf.' },
       ],
     },
     hier: {
       lines: ['Es zieht, es riecht nach Gras und die Matratze hat eine Vergangenheit.', 'Bester Platz, den ich seit Monaten hatte.'],
       choices: [{ text: 'Freut mich.' }],
+    },
+    ex: {
+      lines: [
+        'Einmal. Per Postkarte. Vorne ein Leuchtturm, hinten nur ein Wort: „Feuerlöscher?“',
+        'Ich hab nicht geantwortet. Borna sagt, das war die richtige Entscheidung. Borna sagt das zu allem.',
+        'W:Ich will die Geschichte gar nicht hören.',
+        'Gut. Ich will sie auch nicht erzählen.',
+      ],
+      choices: [{ text: 'Abgemacht.' }],
     },
   };
 }

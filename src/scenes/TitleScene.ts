@@ -9,7 +9,10 @@ import { makeAchievementIcons } from '../progress/icons';
 import { makeRoomTextures } from '../rooms/gfx';
 import { makeLadenTextures } from '../rooms/ladenGfx';
 import { makeAnneTextures } from '../events/anne';
-import { VICTIM, resetState, state } from '../state';
+import { makeClaudiusTextures } from '../events/claudius';
+import { getMap, isTestRun } from '../maps';
+import { CHAPTERS, lastChapter, snapshotData } from '../progress/save';
+import { VICTIM, loadState, resetState, state } from '../state';
 import { H, W, fadeTo, txt } from '../ui';
 import { resetAlley } from './AlleyScene';
 import { BAR_START_SPAWN, resetBar } from './BarScene';
@@ -31,6 +34,20 @@ export function newGame(scene: Phaser.Scene) {
   fadeTo(scene, 'Cutscene', { script: 'prolog', next: { scene: 'Bar', data: { spawn: BAR_START_SPAWN } } });
 }
 
+/** Gespeichertes Kapitel laden und dort weiterspielen, wo die Kapitel-Einblendung endete. */
+export function loadChapter(scene: Phaser.Scene, id: string) {
+  const def = CHAPTERS.find((c) => c.id === id);
+  const data = snapshotData(id);
+  if (!def || !data) return false;
+  showLegalLinks(false);
+  resetBar();
+  resetAlley();
+  loadState(data);
+  state.running = true;
+  fadeTo(scene, def.scene, { spawn: def.spawn });
+  return true;
+}
+
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super('Title');
@@ -49,6 +66,7 @@ export class TitleScene extends Phaser.Scene {
       ['Dachboden und Toiletten', () => makeRoomTextures(this)],
       ['Feinkostladen', () => makeLadenTextures(this)],
       ['Anne', () => makeAnneTextures(this)],
+      ['Captain Claudius', () => makeClaudiusTextures(this)],
     ];
     for (const [name, make] of groups) {
       try {
@@ -59,6 +77,8 @@ export class TitleScene extends Phaser.Scene {
     }
     // Achievement-Einblendungen laufen dauerhaft über allen Szenen
     if (!this.scene.isActive('Notify')) this.scene.launch('Notify');
+    // Testlauf aus dem Map-Editor (nur Dev-Server): direkt auf die bearbeitete Karte
+    if (isTestRun()) return this.startTestRun();
     showLegalLinks(true);
     audio.music('title');
     // Audio darf erst nach einer Nutzeraktion starten
@@ -122,11 +142,58 @@ export class TitleScene extends Phaser.Scene {
       },
     });
 
+    // feine Scanlines über allem: Röhrenfernseher-Look
+    const scan = this.add.graphics().setDepth(60);
+    for (let y = 0; y < H; y += 2) scan.fillStyle(0x000000, 0.12).fillRect(0, y, W, 1);
+
+    this.started = false;
+    this.buildMenu(true);
+    this.events.on('savesChanged', () => this.buildMenu(false));
+    this.input.keyboard!.on('keydown-SPACE', () => this.primary());
+    this.input.keyboard!.on('keydown-ENTER', () => this.primary());
+  }
+
+  /** Map-Editor „Im Spiel testen“: frischer Spielstand, optional nach der Glanz-Mission (Baustellen offen), Start am Spawn „start“. */
+  private startTestRun() {
+    const p = new URLSearchParams(location.search);
+    showLegalLinks(false);
+    resetState();
+    resetBar();
+    resetAlley();
+    if (p.get('frei') === '1') {
+      Object.assign(state, { dead: true, bodyInAlley: true, verfall: 100 });
+      state.flags.glanzErledigt = true;
+    }
+    state.running = true;
+    const m = getMap('alley');
+    const sp = m.objects.find((o) => o.kind === 'spawn' && (o.label ?? 'start') === 'start');
+    // Spawn in Koordinaten der Originalkarte (TopDown rechnet die Erweiterung wieder drauf)
+    const spawn: [number, number] = sp ? [Math.floor(sp.x / 16) - (m.origin?.x ?? 0), Math.round((sp.y - 14) / 16) - (m.origin?.y ?? 0)] : [17, 18];
+    this.scene.start('Alley', { spawn });
+  }
+
+  private started = false;
+  private menu?: Phaser.GameObjects.Container;
+  /** Taste Leertaste/Enter: weiterspielen, falls ein Stand existiert, sonst neues Spiel */
+  private primary = () => {};
+
+  /** Overlay (Achievements, Kapitel laden) offen? Dann reagiert das Titelmenü nicht. */
+  private overlayOpen() {
+    return this.scene.isActive('Achievements') || this.scene.isActive('Saves');
+  }
+
+  /** Menü je nach Spielstand: ohne Stand „Spiel starten“, mit Stand „Fortsetzen“, „Neues Spiel“, „Kapitel“. */
+  private buildMenu(intro: boolean) {
+    this.menu?.destroy();
+    const LX = 26;
+    const menu = this.add.container(0, 0).setDepth(41);
+    this.menu = menu;
     const mobile = isTouchDevice(this);
-    let started = false;
-    const go = () => {
-      if (started || this.scene.isActive('Achievements')) return;
-      started = true;
+    const last = lastChapter();
+
+    const begin = (act: () => void) => {
+      if (this.started || this.overlayOpen()) return;
+      this.started = true;
       audio.unlock();
       // Auf dem Handy: Vollbild und Querformat erzwingen (wo der Browser es erlaubt)
       if (mobile) {
@@ -138,26 +205,64 @@ export class TitleScene extends Phaser.Scene {
         }
       }
       this.cameras.main.flash(250, 255, 220, 160);
-      newGame(this);
+      act();
     };
     const openAch = () => {
-      if (started || this.scene.isActive('Achievements')) return;
+      if (this.started || this.overlayOpen()) return;
       audio.unlock();
       this.scene.launch('Achievements');
     };
-    const startBtn = new Btn(this, LX + 75, 208, 150, 22, mobile ? 'ZUM STARTEN TIPPEN' : 'SPIEL STARTEN', 0xa8342a, go);
-    const achBtn = new Btn(this, LX + 75, 233, 150, 16, 'ACHIEVEMENTS', 0x3a3040, openAch);
-    for (const b of [startBtn, achBtn]) b.box.setDepth(41).setAlpha(0);
-    this.tweens.add({ targets: [startBtn.box, achBtn.box], alpha: 1, duration: 500, delay: 900 });
-    this.tweens.add({ targets: startBtn.box, scale: 1.04, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 1400 });
-    txt(this, LX, 253, mobile ? 'Joystick: laufen   E: benutzen' : 'WASD: laufen   E: benutzen   Enter: Start', '#5a4a3a', 8).setDepth(40);
+    const openSaves = () => {
+      if (this.started || this.overlayOpen()) return;
+      audio.unlock();
+      this.scene.launch('Saves');
+    };
 
-    // feine Scanlines über allem: Röhrenfernseher-Look
-    const scan = this.add.graphics().setDepth(60);
-    for (let y = 0; y < H; y += 2) scan.fillStyle(0x000000, 0.12).fillRect(0, y, W, 1);
+    const buttons: Btn[] = [];
+    let pulse: Btn;
+    if (!last) {
+      const startBtn = new Btn(this, LX + 75, 208, 150, 22, mobile ? 'ZUM STARTEN TIPPEN' : 'SPIEL STARTEN', 0xa8342a, () => begin(() => newGame(this)));
+      const achBtn = new Btn(this, LX + 75, 233, 150, 16, 'ACHIEVEMENTS', 0x3a3040, openAch);
+      buttons.push(startBtn, achBtn);
+      pulse = startBtn;
+      this.primary = () => begin(() => newGame(this));
+    } else {
+      const cont = () => begin(() => loadChapter(this, last.id));
+      const contBtn = new Btn(this, LX + 75, 198, 150, 18, 'FORTSETZEN', 0xa8342a, cont);
+      // Neues Spiel überschreibt später die Kapitelstände: erst nach Rückfrage
+      let armed = false;
+      const newBtn = new Btn(this, LX + 75, 219, 150, 14, 'NEUES SPIEL', 0x5a3a2a, () => {
+        if (!armed) {
+          armed = true;
+          newBtn.setLabel('WIRKLICH NEU?');
+          newBtn.setColor(0xa03020);
+          hint.setText('Alte Kapitelstände werden dann überschrieben.').setColor('#c97a4a');
+          this.time.delayedCall(3000, () => {
+            if (this.started || !armed || !newBtn.box.active) return;
+            armed = false;
+            newBtn.setLabel('NEUES SPIEL');
+            newBtn.setColor(0x5a3a2a);
+            hint.setText(controls).setColor('#5a4a3a');
+          });
+          return;
+        }
+        begin(() => newGame(this));
+      });
+      const savesBtn = new Btn(this, LX + 37, 238, 74, 14, 'KAPITEL', 0x3a3040, openSaves);
+      const achBtn = new Btn(this, LX + 113, 238, 74, 14, 'ERFOLGE', 0x3a3040, openAch);
+      buttons.push(contBtn, newBtn, savesBtn, achBtn);
+      pulse = contBtn;
+      this.primary = cont;
+    }
+    for (const b of buttons) menu.add(b.box);
+    const controls = mobile ? 'Joystick: laufen   E: benutzen' : 'WASD: laufen   E: benutzen   Enter: Start';
+    const hint = txt(this, LX, 253, controls, '#5a4a3a', 8);
+    menu.add(hint);
 
-    this.input.keyboard!.on('keydown-SPACE', go);
-    this.input.keyboard!.on('keydown-ENTER', go);
-    void H;
+    if (intro) {
+      for (const b of buttons) b.box.setAlpha(0);
+      this.tweens.add({ targets: buttons.map((b) => b.box), alpha: 1, duration: 500, delay: 900 });
+    }
+    this.tweens.add({ targets: pulse.box, scale: 1.04, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: intro ? 1400 : 0 });
   }
 }

@@ -1,29 +1,38 @@
-// Die Storyline: Prolog, drei Kapitel-Zwischenspiele und der Epilog.
+// Die Storyline: Prolog, vier Kapitel-Zwischenspiele, der Epilog und Kapitel 5 im freien Spiel.
 
-export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'maya';
+export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'maya' | 'claudius' | 'kevin' | 'leni';
 
 export type Step =
-  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'laden' }
+  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'laden' | 'wc' }
   | { t: 'caption'; text: string }
   | { t: 'title'; text: string; sub: string }
   | { t: 'say'; who: Who; text: string; look?: number }
-  | { t: 'fx'; kind: 'thunder' | 'shake' | 'bell' | 'phone' | 'splash' | 'bulldozer' | 'monster' | 'roar' | 'flee' | 'queasy' | 'puke' | 'collapse' | 'hearts' }
+  | { t: 'fx'; kind: 'thunder' | 'shake' | 'bell' | 'phone' | 'splash' | 'bulldozer' | 'monster' | 'roar' | 'flee' | 'queasy' | 'puke' | 'collapse' | 'hearts' | 'blitz' | 'stille' | 'abblende' | 'pogo' }
   | { t: 'wait'; ms: number }
   | { t: 'pause' };
 
 export const STORY: Record<string, Step[]> = {
   // ---------------------------------------------------------------- Nebenhandlungen
 
-  /** Verlauf A: Der Wirt hat Borna fertiggemacht. Bewusst still und ohne Details. */
+  /**
+   * Verlauf A: Der Wirt hat Borna fertiggemacht. Gezeigt wird nur, was danach bleibt: der leere Dachboden,
+   * das offene Fenster, Gewitter, Stille. Keine Darstellung dessen, was passiert ist, kein Achievement.
+   */
   bornaWeg: [
     { t: 'bg', key: 'black' },
     { t: 'caption', text: 'Später in der Nacht.' },
     { t: 'bg', key: 'dachLeer' },
+    { t: 'wait', ms: 1400 },
+    { t: 'fx', kind: 'blitz' },
     { t: 'say', who: 'wirt', text: '(Es ist still hier oben. Zu still.)' },
-    { t: 'say', who: 'wirt', text: '(Kein Rauch. Kein Gekicher. Nur das offene Fenster und ein Zettel auf der Matratze.)' },
+    { t: 'say', who: 'wirt', text: '(Kein Rauch. Kein Gekicher. Nur das offene Fenster. Der Regen weht herein.)' },
+    { t: 'fx', kind: 'blitz' },
+    { t: 'say', who: 'wirt', text: '(Auf der Matratze liegt ein Zettel.)' },
     { t: 'caption', text: '„Hab nachgedacht über das, was du gesagt hast, Chef.\nMach dir keinen Kopf. – B.“' },
+    { t: 'fx', kind: 'stille' },
     { t: 'say', who: 'wirt', text: '(...)' },
     { t: 'say', who: 'wirt', text: '(Das hätte ich nicht sagen sollen.)' },
+    { t: 'fx', kind: 'abblende' },
     { t: 'title', text: 'BORNA', sub: 'Sein Platz auf dem Dachboden bleibt leer.' },
   ],
 
@@ -41,10 +50,10 @@ export const STORY: Record<string, Step[]> = {
     { t: 'title', text: 'DER DEUTSCHE TRAUM', sub: 'Ganz ohne Geld. Nur mit Dialekt.' },
   ],
 
-  /** Verlauf B: Lily zieht auf den Dachboden, sie und Borna finden sich. */
+  /** Verlauf B: Lilly zieht auf den Dachboden, sie und Borna finden sich. */
   lilyDach: [
     { t: 'bg', key: 'dach' },
-    { t: 'say', who: 'wirt', text: 'Borna? Besuch. Das ist Lily. Sie braucht einen Platz zum Pennen.' },
+    { t: 'say', who: 'wirt', text: 'Borna? Besuch. Das ist Lilly. Sie braucht einen Platz zum Pennen.' },
     { t: 'say', who: 'lily', text: 'Hi. Sorry, dass ich hier einfach so reinplatze.' },
     { t: 'say', who: 'borna', text: 'Whoa. Hallo. Kein Ding. Ich platz hier seit drei Jahren.' },
     { t: 'say', who: 'borna', text: 'Willst du die gute Seite der Matratze? Die ohne Fleck?' },
@@ -66,6 +75,49 @@ export const STORY: Record<string, Step[]> = {
     { t: 'title', text: 'UNTERMIETER', sub: 'Auf dem Dachboden wohnen jetzt zwei.' },
   ],
 
+
+  // ---------------------------------------------------------------- Kapitel 5 (freies Spiel nach der Glanz-Handlung)
+
+  /** Vor dem Goldenen Eimer: Captain Claudius sucht Kevin. Kevin verrät, wo die Akten liegen. */
+  kapitel5: [
+    { t: 'bg', key: 'street' },
+    { t: 'caption', text: 'Ein paar Nächte später.\nDer Goldene Eimer hat wieder geöffnet. Gäste kommen kaum.\nVor der Tür steht trotzdem jemand.' },
+    { t: 'say', who: 'wirt', text: '(Wer lehnt denn da einen Springstock an meine Hauswand?)' },
+    { t: 'say', who: 'claudius', text: 'BÜRGER! Treten Sie zurück. Sie stehen im Sicherheitsbereich meines Ruhms.' },
+    { t: 'say', who: 'wirt', text: 'Das ist mein Gehweg.' },
+    { t: 'say', who: 'claudius', text: 'Captain Israel Claudius. Oberkommandierender der Beweglichen Verteidigung. Träger von vierzehn Orden, davon zwölf selbst verliehen.' },
+    { t: 'say', who: 'claudius', text: 'Ich suche einen Deserteur. Groß. Lockig. Kaum bekleidet.' },
+    { t: 'say', who: 'kevin', text: 'Bruder. Ich bin nicht desertiert. Ich bin GEFLÜCHTET. Das ist was ganz anderes.' },
+    { t: 'say', who: 'wirt', text: '(Kevin. Aus Kabine eins. Ich hatte gehofft, ich seh ihn nie wieder. Zumindest nicht von vorne.)' },
+    { t: 'say', who: 'kevin', text: 'Der Captain hat mich angeworben, Bruder. „Operation Pogo“. Soldaten auf Springstöcken. Ich war Ausbilder für Rückstoß.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'Es gab nie eine Operation Pogo! Und sie war ein voller Erfolg!' },
+    { t: 'say', who: 'kevin', text: 'Siehst du? So redet der die ganze Zeit.' },
+    { t: 'say', who: 'kevin', text: 'Seine Akten hat er versteckt. Auf einem alten Rechner. Bei DIR auf dem Dachboden, Bruder. Weil da „keiner freiwillig hochgeht“.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'Lüge! Feindpropaganda! Und außerdem ist der Dachboden sehr gemütlich!' },
+    { t: 'say', who: 'wirt', text: '(Ich glaube, ich will wissen, was auf diesem Rechner ist.)' },
+    { t: 'title', text: 'KAPITEL 5', sub: 'Die Wahrheit hat Hausverbot' },
+  ],
+
+  /** Nach dem Veröffentlichen: Claudius widerspricht sich vor der Presse und hüpft davon. */
+  claudiusEnde: [
+    { t: 'bg', key: 'street' },
+    { t: 'caption', text: 'Zwanzig Minuten nach dem Hochladen.\nVor dem Eimer stehen drei Lokalreporter, ein Rentner mit Klappstuhl und Kalle.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'BÜRGER! Diese Dokumente sind gefälscht! Ich habe sie persönlich gefälscht, ich muss es wissen!' },
+    { t: 'say', who: 'wirt', text: 'Sie haben sie selbst unterschrieben. Auf jeder Seite. Mit Glitzerstift.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'Ich unterschreibe vieles! Das nennt man Führungsstärke!' },
+    { t: 'say', who: 'kevin', text: 'Captain. Im Bericht steht, der Ententeich hätte zuerst angegriffen.' },
+    { t: 'say', who: 'claudius', text: 'Der Teich war feindselig. Er hat uns ... gespiegelt.' },
+    { t: 'caption', text: 'Ein Reporter fragt, warum der „Untersuchungsbericht“\nzwei Tage VOR der Operation datiert ist.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'Gute Untersuchungen beginnen früh!' },
+    { t: 'say', who: 'claudius', text: 'Ich ziehe mich nun zurück. Strategisch. Mit Würde. Und mit Rückstoß.' },
+    { t: 'fx', kind: 'pogo' },
+    { t: 'say', who: 'kevin', text: 'Bruder. Er springt in die falsche Richtung. Da ist der Stadtpark.' },
+    { t: 'fx', kind: 'splash' },
+    { t: 'caption', text: 'Aus der Ferne: empörtes Quaken.\nDer Ententeich hat wieder angegriffen.' },
+    { t: 'say', who: 'kevin', text: 'Danke, Bruder. Ich bleib noch ein bisschen hier. Ohne Springstock.' },
+    { t: 'say', who: 'wirt', text: '(Solange er die Kabine nicht wieder abschließt.)' },
+    { t: 'title', text: 'PRESSEFREIHEIT', sub: 'Die Wahrheit hat wieder Hausrecht.' },
+  ],
 
   prolog: [
     { t: 'bg', key: 'street' },
@@ -151,6 +203,8 @@ export const STORY: Record<string, Step[]> = {
     { t: 'say', who: 'katze', text: 'Gut gemacht, Wirt. Ich bleibe. Im Keller. Und ich habe ... wieder Hunger.' },
     { t: 'bg', key: 'bar' },
     { t: 'caption', text: 'Der Goldene Eimer hat bis heute geöffnet.\n\nGäste gibt es kaum noch.\nAber unten im Keller ... schmatzt etwas.' },
-    { t: 'title', text: 'ENDE', sub: 'Die Pest im Keller' },
+    { t: 'caption', text: 'Der Abriss ist abgesagt. Der Eimer bleibt.\nDie Stadt ist offen. Schau dich um.' },
+    { t: 'title', text: 'ES IST ERWACHT', sub: 'Die Pest im Keller' },
   ],
 };
+

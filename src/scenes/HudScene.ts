@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ITEMS, VICTIM, bulky, speedy, state } from '../state';
 import { H, W, txt } from '../ui';
 import { addTouchControls } from '../touch';
+import { freiesSpiel } from '../progress/flags';
 
 /** Von den Draufsicht-Szenen beschrieben, vom HUD angezeigt. */
 export const hud = { prompt: '', goal: '', toast: '', toastSeq: 0, alert: '' };
@@ -58,8 +59,11 @@ export class HudScene extends Phaser.Scene {
       this.icons[i].setAlpha(n > 0 ? 1 : 0.25);
       this.counts[i].setText(n > 0 ? String(n) : '');
     });
+    // Sucht, Misstrauen und Glanz-Anzeigen gibt es nur während der Glanz-Handlung, in der offenen Welt nicht mehr
     this.status.setText(
-      state.dead ? `${VICTIM}: tot` : `SUCHT ${Math.round(state.sucht)}  WÜRDE ${Math.round(state.wuerde)}  MISSTR ${Math.round(state.misstrauen)}`,
+      freiesSpiel(state.flags)
+        ? ''
+        : state.dead ? `${VICTIM}: tot` : `SUCHT ${Math.round(state.sucht)}  MISSTRAUEN ${Math.round(state.misstrauen)}`,
     );
     this.goal.setText(hud.goal);
     const left = (until: number) => Math.max(0, Math.ceil(until - state.time));

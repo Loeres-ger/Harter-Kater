@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { unlock } from '../progress/achievements';
 import { audio } from '../audio';
-import { ITEMS, ItemId, MAX_HEALTH, VICTIM, give, impatient, item, lookStage, state } from '../state';
+import { ITEMS, ItemId, VICTIM, give, impatient, item, lookStage, state } from '../state';
 import { H, W, fadeTo, floatText, txt } from '../ui';
 import { BAR_TRESEN_SPAWN } from './BarScene';
 import { Btn } from './ShopScene';
@@ -39,6 +39,7 @@ export class TresenScene extends Phaser.Scene {
     this.bubbles = [];
     this.busy = false;
     this.leaving = false;
+    this.storyQueued = false;
     this.cameras.main.fadeIn(260);
     if (state.dead) return this.leave();
 
@@ -109,8 +110,8 @@ export class TresenScene extends Phaser.Scene {
 
   private buildUi() {
     // Werte-Panel
-    this.add.rectangle(6, 4, 150, 70, 0x120c0b, 0.8).setOrigin(0).setDepth(80);
-    ['SUCHT', 'GESUNDH', 'WÜRDE', 'MISSTR'].forEach((l, i) => txt(this, 12, 23 + i * 12, l, '#c8b898').setDepth(81));
+    this.add.rectangle(6, 4, 150, 46, 0x120c0b, 0.8).setOrigin(0).setDepth(80);
+    ['SUCHT', 'MISSTR'].forEach((l, i) => txt(this, 12, 23 + i * 12, l, '#c8b898').setDepth(81));
     this.bars = this.add.graphics().setDepth(81);
 
     this.money = txt(this, 12, 9, '', '#f8e070').setDepth(81);
@@ -209,19 +210,30 @@ export class TresenScene extends Phaser.Scene {
     this.victim.setTexture(`bust${s}`);
     const names = ['Tipptopp', 'Angeknackst', 'Verlottert', 'Räudig', 'Wrack'];
     floatText(this, VX, 140, `${names[s].toUpperCase()}!`, '#e08080');
-
-    // Story-Zwischenspiele an Wendepunkten
-    if (s >= 2 && !state.story.kapitel2) {
-      state.story.kapitel2 = true;
-      this.time.delayedCall(1400, () => this.playStory('kapitel2'));
-    } else if (s >= 4 && !state.story.kapitel3) {
-      state.story.kapitel3 = true;
-      this.time.delayedCall(1400, () => this.playStory('kapitel3'));
-    }
   }
 
+  /**
+   * Story-Zwischenspiele an Wendepunkten, unabhängig davon, ob eine Gabe mehrere Stufen auf einmal überspringt:
+   * erst Kapitel 2, dann Kapitel 3. Glanz stirbt erst, wenn Kapitel 3 gelaufen ist (siehe give()).
+   */
+  private checkStory() {
+    if (this.busy || this.leaving || this.storyQueued || state.dead) return;
+    const s = lookStage();
+    const script = s >= 2 && !state.story.kapitel2 ? 'kapitel2' : s >= 4 && state.story.kapitel2 && !state.story.kapitel3 ? 'kapitel3' : null;
+    if (!script) return;
+    this.storyQueued = true;
+    this.time.delayedCall(1400, () => {
+      this.storyQueued = false;
+      this.playStory(script);
+    });
+  }
+
+  private storyQueued = false;
+
   private playStory(script: 'kapitel2' | 'kapitel3') {
-    if (this.busy || this.leaving || state.dead || state.gameOver) return;
+    if (this.leaving || state.dead || state.gameOver) return;
+    // erst beim tatsächlichen Abspielen als gesehen markieren: verlässt der Wirt vorher den Tresen, kommt es beim nächsten Mal
+    state.story[script] = true;
     this.scene.launch('Cutscene', { script, resume: 'Tresen' });
     this.scene.pause();
   }
@@ -271,7 +283,7 @@ export class TresenScene extends Phaser.Scene {
 
     // Werte
     const g = this.bars.clear();
-    const vals: [number, number][] = [[state.sucht, 0xc07ae0], [(state.health / MAX_HEALTH) * 100, 0x6ad06a], [state.wuerde, 0x6aa0e0], [state.misstrauen, 0xe05a4a]];
+    const vals: [number, number][] = [[state.sucht, 0xc07ae0], [state.misstrauen, 0xe05a4a]];
     vals.forEach(([v, col], i) => {
       const x = 76, y = 23 + i * 12;
       g.fillStyle(0x2a2220).fillRect(x, y, 74, 7);
@@ -301,6 +313,7 @@ export class TresenScene extends Phaser.Scene {
     if (!this.busy) this.victim.setAngle(Math.sin(time / 700) * this.shownStage * 0.9);
 
     if (!this.busy && lookStage() !== this.shownStage) this.degrade();
+    this.checkStory();
     const st = this.shownStage;
     this.flies.forEach((f, i) => {
       f.setVisible(st >= 3 && i < st - 1 && !this.busy);

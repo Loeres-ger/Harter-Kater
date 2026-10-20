@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Track, audio } from '../audio';
 import { STORY, Step, Who } from '../story';
 import { state } from '../state';
+import { chapterByTitle, saveChapter } from '../progress/save';
 import { H, W, txt } from '../ui';
 import { Btn } from './ShopScene';
 
@@ -24,12 +25,18 @@ const NAMES: Record<Who, [string, string]> = {
   katze: ['DIE KATZE', '#b8f060'],
   telefon: ['BRENNINGER', '#ff6a6a'],
   borna: ['BEKIFFTER BORNA', '#a8d070'],
-  lily: ['LILY', '#c8a0e0'],
+  lily: ['LILLY', '#c8a0e0'],
   maya: ['MEISTERNUTTE MAYA', '#e05a7a'],
+  claudius: ['CAPTAIN CLAUDIUS', '#7ab0ff'],
+  kevin: ['KURDISCHER KEVIN', '#ff8a50'],
+  leni: ['LENI', '#ff90b0'],
 };
 
-/** Porträts der Nebenfiguren: Seite und Bild je nach look (0 = normal, 1 = glücklich) */
+/** Porträts der Nebenfiguren: Seite und Bild je nach look (0 = normal, 1 = glücklich bzw. bei Claudius: wütend) */
 const CAST: Partial<Record<Who, { side: 'left' | 'right'; key: (look: number) => string }>> = {
+  claudius: { side: 'right', key: (l) => (l ? 'nbust_claudiusAngry' : 'nbust_claudius') },
+  kevin: { side: 'right', key: () => 'nbust_kevin' },
+  leni: { side: 'right', key: () => 'nbust_leni' },
   borna: { side: 'left', key: (l) => (l ? 'nbust_bornaHappy' : 'nbust_borna') },
   lily: { side: 'right', key: (l) => (l ? 'nbust_lilyHappy' : 'nbust_lily') },
   maya: { side: 'right', key: (l) => (l ? 'nbust_mayaHappy' : 'nbust_maya') },
@@ -273,6 +280,9 @@ export class CutsceneScene extends Phaser.Scene {
         this.bg.add(candle);
         this.tweens.add({ targets: candle, alpha: 0.3, duration: 140, yoyo: true, repeat: -1, repeatDelay: 400 });
       }
+    } else if (key === 'wc') {
+      this.bg.add(this.add.image(0, 0, 'csWC').setOrigin(0));
+      this.bg.add(this.add.image(240, 20, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3, 1.2).setTint(0xd0f0d0).setAlpha(0.35));
     } else if (key === 'laden') {
       this.bg.add(this.add.image(0, 0, 'csLaden').setOrigin(0));
       this.bg.add(this.add.image(240, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3).setTint(0xffe0a0).setAlpha(0.3));
@@ -435,6 +445,9 @@ export class CutsceneScene extends Phaser.Scene {
     this.tweens.add({ targets: dim, fillAlpha: 0.85, duration: 400 });
     this.tweens.add({ targets: t, alpha: 1, scale: 1, duration: 500, ease: 'Back.easeOut' });
     this.tweens.add({ targets: st, alpha: 1, delay: 400, duration: 400 });
+    // Kapitel-Einblendung: automatisch speichern (andere Einblendungen wie „BORNA“ speichern nicht)
+    const chapter = chapterByTitle(text);
+    if (chapter) saveChapter(chapter.id);
     await this.sleep(700);
     this.cameras.main.shake(120, 0.004);
     audio.sfx('thud');
@@ -467,6 +480,41 @@ export class CutsceneScene extends Phaser.Scene {
         cam.flash(120, 220, 220, 255);
         await this.sleep(700);
         return;
+      case 'blitz': {
+        // Blitz ohne Schrift: das Fenster leuchtet kurz grell auf, der Donner kommt verzögert
+        const win = this.add.image(330, 80, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.6).setTint(0xd8e0ff).setAlpha(0.9).setDepth(120);
+        cam.flash(140, 200, 210, 255);
+        this.tweens.add({ targets: win, alpha: 0, duration: 700, ease: 'Quad.easeOut', onComplete: () => win.destroy() });
+        await this.sleep(450);
+        audio.sfx('thunder');
+        cam.shake(500, 0.006);
+        await this.sleep(900);
+        return;
+      }
+      case 'stille':
+        // Der Regen hört auf, nichts passiert
+        audio.setRain(false);
+        this.rain?.destroy();
+        this.rain = undefined;
+        await this.sleep(2600);
+        return;
+      case 'abblende': {
+        // langsam ins Schwarze; die Einblendung danach liegt darüber
+        const black = this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0).setDepth(855).setAlpha(0);
+        await new Promise<void>((res) => this.tweens.add({ targets: black, alpha: 1, duration: 2600, ease: 'Sine.easeIn', onComplete: () => res() }));
+        await this.sleep(600);
+        return;
+      }
+      case 'pogo': {
+        // Claudius springt auf seinem Pogo-Stab davon: nur Geräusche und ein Schatten, der kleiner wird
+        for (let i = 0; i < 4; i++) {
+          this.bang('*BOING*', W - 120 + i * 28, 120 - i * 18, '#90c0ff', 8);
+          audio.sfx('blip');
+          cam.shake(80, 0.003);
+          await this.sleep(380);
+        }
+        return;
+      }
       case 'bell':
         this.bang('*BIMMEL*', W - 90, 60, '#f8e070', 8);
         audio.sfx('bell');

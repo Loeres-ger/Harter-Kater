@@ -5,10 +5,14 @@ import { T, TileInfo, TopDown } from '../scenes/TopDown';
 import { fadeTo } from '../ui';
 import type { DialogAction } from '../dialog/data';
 import { BAR_LADDER_SPAWN } from './spawns';
+import { entdecke, zaehle } from '../progress/quests';
 
 // Der Dachboden über der Kneipe: Dachschrägen, Fenster, alter Krempel und Bornas Matratze.
 //  R Dachschräge  W Dachfenster  b Kisten  o Schaukelpferd  c Kerze auf Kiste  s Sessel
 //  m/n Matratze  H Luke mit Leiter nach unten
+/** Kachel, auf der in Kapitel 5 Claudius' Rechner steht */
+const PC_TILE: [number, number] = [9, 2];
+
 const MAP = [
   '##############',
   '#RRWRRRRRRWRR#',
@@ -48,8 +52,12 @@ export class AtticScene extends TopDown {
 
   protected goalText() {
     const f = state.flags;
+    if (f.claudius === 'getroffen') {
+      const n = f.pcGelesen?.length ?? 0;
+      return n >= 3 ? 'Alles gelesen. Jetzt veröffentlichen.' : `Claudius’ Rechner: ${n} von 3 Akten gelesen.`;
+    }
     if (f.borna === 'gebrochen') return 'Hier oben ist es jetzt still.';
-    if (f.borna === 'hoffnung') return 'Borna und Lily wohnen jetzt hier oben.';
+    if (f.borna === 'hoffnung') return 'Borna und Lilly wohnen jetzt hier oben.';
     if (!f.bornaGetroffen) return 'Auf der Matratze liegt jemand. Und es riecht süßlich.';
     return 'Borna hängt hier oben fest.';
   }
@@ -81,12 +89,36 @@ export class AtticScene extends TopDown {
     this.examine();
     if (state.flags.borna === 'gebrochen') this.emptyMattress();
     else this.addBorna();
+    if (state.flags.claudius) this.addPc();
+  }
+
+  /** Kapitel 5: Captain Claudius' versteckter Rechner auf einer Kiste. */
+  private addPc() {
+    const [tx, ty] = PC_TILE;
+    this.add.image(tx * T, ty * T, 'atticPc').setOrigin(0).setScale(0.5).setDepth(ty * T + T);
+    this.solid[ty][tx] = true;
+    const glow = this.addLight(tx * T + 8, ty * T + 5, 0.5, 0.45).setTint(0x40e070);
+    this.time.addEvent({ delay: 2200, loop: true, callback: () => { glow.setAlpha(0.1); this.time.delayedCall(70, () => glow.setAlpha(0.45)); } });
+    const locked = () => (state.flags.pcSperreBis ?? 0) > state.time;
+    this.interacts.push({
+      x: tx * T + 8, y: (ty + 1) * T + 4, r: 16,
+      label: () => (locked() ? `Claudius’ Rechner (gesperrt, ${Math.ceil((state.flags.pcSperreBis ?? 0) - state.time)}s)` : 'Claudius’ Rechner benutzen'),
+      act: () => {
+        if (locked()) return this.toast('Claudius hat das Passwort geändert. Noch ein bisschen warten.');
+        audio.sfx('click');
+        this.scene.launch('Pc', { resume: this.scene.key });
+        this.scene.bringToTop('Pc');
+        this.scene.pause();
+      },
+    });
   }
 
   private examine() {
     const spots: [string, string, () => string][] = [
       ['W', 'Dachfenster', () => 'Über den Dächern blinkt rot der Kran der Glanz-Lofts-Baustelle.'],
-      ['b', 'Kartons', () => 'Beschriftet: „Weihnachten“, „Steuer 2009“, „NICHT ÖFFNEN – Kalle“.'],
+      ['b', 'Kartons', () => (zaehle('karton') >= 3 && entdecke(state.flags, 'karton')
+        ? 'Du öffnest „NICHT ÖFFNEN – Kalle“. Drin: ein Pokal. „Schnecken-Derby 1987, 1. Platz“. Kalle hat also doch mal gewonnen.'
+        : 'Beschriftet: „Weihnachten“, „Steuer 2009“, „NICHT ÖFFNEN – Kalle“.')],
       ['o', 'Schaukelpferd', () => 'Ein Schaukelpferd mit nur einem Auge. Passt zur Katze.'],
       ['s', 'Sessel', () => 'Ein Sessel, der mehr gesehen hat als Felix’ Notizbuch.'],
       ['c', 'Kerze', () => (state.flags.borna === 'gebrochen' ? 'Die Kerze ist heruntergebrannt.' : 'Eine Kerze, ein Aschenbecher, drei Feuerzeuge. Keins funktioniert.')],
@@ -98,7 +130,7 @@ export class AtticScene extends TopDown {
     }
   }
 
-  /** Borna im Schneidersitz auf der Matratze, umgeben von Rauch. Nach dem Happy End sitzt Lily neben ihm. */
+  /** Borna im Schneidersitz auf der Matratze, umgeben von Rauch. Nach dem Happy End sitzt Lilly neben ihm. */
   private addBorna() {
     const [mx, my] = this.find('m');
     const x = mx * T + 8, y = my * T + 13;
@@ -128,7 +160,7 @@ export class AtticScene extends TopDown {
       const lx = x + 14;
       const lily = this.add.sprite(lx, y, 'lilySit', 2).setOrigin(0.5, 1).setScale(0.5).setDepth(y);
       this.tweens.add({ targets: lily, angle: { from: -3, to: 3 }, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      this.interacts.push({ x: lx, y: y - 4, r: 14, label: () => 'Mit Lily reden', act: () => this.talk('lilyDach') });
+      this.interacts.push({ x: lx, y: y - 4, r: 14, label: () => 'Mit Lilly reden', act: () => this.talk('lilyDach') });
       // kleine Herzchen ab und zu
       this.time.addEvent({
         delay: 2600, loop: true,
@@ -142,7 +174,7 @@ export class AtticScene extends TopDown {
 
   private bornaDone(a?: DialogAction) {
     if (a !== 'bornaGebrochen' || state.flags.borna) return;
-    // Verlauf A ist endgültig: Lily taucht nicht mehr auf
+    // Verlauf A ist endgültig: Lilly taucht nicht mehr auf
     state.flags.borna = 'gebrochen';
     this.leaving = true;
     fadeTo(this, 'Cutscene', { script: 'bornaWeg', music: 'none', next: { scene: 'Bar', data: { spawn: BAR_LADDER_SPAWN } } });

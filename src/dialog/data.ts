@@ -2,6 +2,7 @@ import { GUESTS } from '../guests/data';
 import { felixTree } from './felix';
 import { mayaTree } from './maya';
 import { anneTree, felixAnneTree } from './anne';
+import { claudiusTree, kevinGasseTree } from './claudius';
 import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
@@ -269,8 +270,8 @@ export const SPEAKERS: Record<string, Speaker> = {
   dame1: { name: 'JACKY', color: '#d090ff', portrait: 'nbust_dame1', bg: 'street', tree: dame },
   leonard: { name: 'KRÄFTIGER LEONARD', color: '#ff9a50', portrait: 'nbust_leonard', bg: 'street', drop: 30, tree: leonard },
   borna: { name: 'BEKIFFTER BORNA', color: '#a8d070', portrait: 'nbust_borna', bg: 'dach', tree: bornaTree },
-  lily: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lily', bg: 'street', tree: lilyTree },
-  lilyDach: { name: 'LILY', color: '#c8a0e0', portrait: 'nbust_lilyHappy', bg: 'dach', tree: lilyDachTree },
+  lily: { name: 'LILLY', color: '#c8a0e0', portrait: 'nbust_lily', bg: 'street', tree: lilyTree },
+  lilyDach: { name: 'LILLY', color: '#c8a0e0', portrait: 'nbust_lilyHappy', bg: 'dach', tree: lilyDachTree },
   kevin: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'wc', tree: kevinTree },
   leni: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniTree },
   leniDanach: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniDanachTree },
@@ -278,6 +279,8 @@ export const SPEAKERS: Record<string, Speaker> = {
   anne: { name: 'ANNE', color: '#ff9ac0', portrait: 'nbust_anne', bg: 'bar', drop: 6, scale: 0.72, tree: anneTree },
   felixAnne: { name: 'POLIZIST FELIX', color: '#7aa8ff', portrait: 'nbust_copAngry', bg: 'bar', tree: felixAnneTree },
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },
+  claudius: { name: 'CAPTAIN CLAUDIUS', color: '#7ab0ff', portrait: 'nbust_claudius', bg: 'street', tree: claudiusTree },
+  kevinGasse: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'street', tree: kevinGasseTree },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };
 
