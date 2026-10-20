@@ -10,6 +10,7 @@ import { makeRoomTextures } from '../rooms/gfx';
 import { makeLadenTextures } from '../rooms/ladenGfx';
 import { makeAnneTextures } from '../events/anne';
 import { makeClaudiusTextures } from '../events/claudius';
+import { makeStreetTextures } from '../world/street';
 import { getMap, isTestRun } from '../maps';
 import { CHAPTERS, lastChapter, snapshotData } from '../progress/save';
 import { VICTIM, loadState, resetState, state } from '../state';
@@ -66,6 +67,7 @@ export class TitleScene extends Phaser.Scene {
       ['Dachboden und Toiletten', () => makeRoomTextures(this)],
       ['Feinkostladen', () => makeLadenTextures(this)],
       ['Anne', () => makeAnneTextures(this)],
+      ['Straßenansicht', () => makeStreetTextures(this)],
       ['Captain Claudius', () => makeClaudiusTextures(this)],
     ];
     for (const [name, make] of groups) {

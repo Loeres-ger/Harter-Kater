@@ -12,7 +12,7 @@ import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
 import { getMap } from '../maps';
-import { ALLEY_TILES, alleyFloor, tileKey } from '../maps/palettes';
+import { ALLEY_TILES, MAP_DEFS, alleyFloor, tileKey } from '../maps/palettes';
 
 // Draußen: Straße und Gasse. Die Karte steht in maps/alley.json (bearbeitbar mit dem Map-Editor, editor.html),
 // die Bedeutung der Zeichen in maps/palettes.ts.
@@ -88,7 +88,7 @@ export class AlleyScene extends TopDown {
   protected mapData() { return getMap('alley'); }
   protected mapRows() { return getMap('alley').rows; }
   protected isWall(ch: string) { return !!ALLEY_TILES[ch]?.wall; }
-  protected darkness() { return 0.5; }
+  protected darkness() { return MAP_DEFS.alley.dunkel; }
   protected floorKey(x: number, y: number) { return alleyFloor(this.rows, x, y); }
 
   protected tileFor(ch: string, x = 0, y = 0): TileInfo {
@@ -233,8 +233,8 @@ export class AlleyScene extends TopDown {
     this.scheduleStory(() => !!this.corpse);
 
     // Lampen an der Wand
-    for (let x = 0; x < this.rows[1].length; x++) if (this.rows[1][x] === 'L') this.lamps.push(this.addLight(x * T + 8, 2 * T + 8, 1.2, 0.85));
-    this.addLight(ax * T + 8, (ay + 1) * T + 4, 0.5, 0.5).setTint(0xff6060);
+    // Wandlampen und Laternen kommen aus der Straßenansicht (maps/streetView.ts); bei der Mutation flackern sie
+    this.lamps = this.mapLamps;
 
     // Regen
     this.add.particles(0, 0, 'coin', {
@@ -256,18 +256,19 @@ export class AlleyScene extends TopDown {
     this.addLeonard(dx);
     if (lilyWartet(state.flags)) this.addLilly();
     // Schild über dem Eingang, Außenlampe, Lichtschein der Fenster auf dem Gehweg
-    this.add.image(dx * T + 8, (dy - 1) * T + 7, 'barSign').setScale(0.5).setDepth(2);
-    this.addLight(dx * T + 8, (dy - 1) * T + 6, 0.55, 0.45).setTint(0xff6ab4);
-    this.addLight(dx * T + 8, (dy + 1) * T, 0.8, 0.75).setTint(0xffd080);
-    this.addLight(qx * T + 8, qy * T - 2, 0.6, 0.6).setTint(0xfff0b0);
-    for (let x = 0; x < this.rows[dy].length; x++) if (this.rows[dy][x] === 'H') this.addLight(x * T + 8, (dy + 1) * T + 2, 0.45, 0.32).setTint(0xffb860);
+    // Neonschild über der (zwei Kacheln hohen) Tür, im Obergeschoss; rosa Schein auf Fassade und nassem Gehweg
+    const sign = this.add.image(dx * T + 8, (dy - 2) * T + 9, 'barSign').setScale(0.5).setDepth(2);
+    this.tweens.add({ targets: sign, alpha: 0.82, duration: 70, yoyo: true, repeat: -1, repeatDelay: 2600 });
+    this.addLight(dx * T + 8, (dy - 2) * T + 9, 0.6, 0.5).setTint(0xff6ab4);
+    const neon = this.add.image(dx * T + 8, (dy + 1) * T + 14, 'lightSoft').setBlendMode(Phaser.BlendModes.ADD).setScale(0.5, 0.18).setTint(0xff4aa0).setAlpha(0.45).setDepth(2);
+    this.tweens.add({ targets: neon, alpha: 0.3, duration: 70, yoyo: true, repeat: -1, repeatDelay: 2600 });
+    void qx; void qy;
     for (let y = 0; y < this.rows.length; y++)
       for (let x = 0; x < this.rows[y].length; x++) {
         const ch = this.rows[y][x];
         if (ch === 'l') {
           // Straßenlaterne: hoher Sprite, steht mit dem Fuß auf der Kachel
           this.add.image(x * T + 8, (y + 1) * T - 1, 'lampPost').setOrigin(0.5, 1).setScale(0.5).setDepth((y + 1) * T - 1);
-          this.addLight(x * T + 8, y * T - 6, 1.1, 0.8).setTint(0xfff0c0);
         } else if (ch === 'z') {
           this.add.image(x * T, y * T + 15, 'car').setOrigin(0, 1).setScale(0.5).setDepth(y * T + 15);
           this.interacts.push({
@@ -282,8 +283,7 @@ export class AlleyScene extends TopDown {
           this.interacts.push({ x: x * T + 8, y: y * T + 8, r: 16, label: () => 'Bank', act: () => this.toast('Eingeritzt: „BRENNINGER STINKT“.') });
         } else if (ch === 'U') {
           // Mayas Feinkost: Schild über der Tür, warmes Licht, rein geht es (nicht mit Leiche)
-          this.add.image(x * T + 8, y * T - 5, 'ladenSign').setScale(0.5).setDepth(2);
-          this.addLight(x * T + 8, (y + 1) * T, 0.6, 0.6).setTint(0xffe0a0);
+          this.add.image(x * T + 8, y * T - 22, 'ladenSign').setScale(0.5).setDepth(300);
           this.interacts.push({
             x: x * T + 8, y: (y + 1) * T + 4, r: 16,
             label: () => (state.carrying ? null : this.corpse ? 'Erst die Leiche loswerden!' : 'Mayas Feinkost betreten'),

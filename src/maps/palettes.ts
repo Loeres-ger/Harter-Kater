@@ -22,6 +22,8 @@ export interface MapDef {
   /** Zeichen für leeren, begehbaren Boden (Radierer) */
   empty: string;
   floor: (rows: string[], x: number, y: number) => string;
+  /** Dunkelheit der Lichtkarte (0..1), gilt für Spiel und Editor-Spielansicht */
+  dunkel: number;
 }
 
 const v = (a: string, b: string, f: (x: number, y: number) => boolean) => (x: number, y: number) => (f(x, y) ? a : b);
@@ -78,18 +80,19 @@ function base(ch: string | undefined): 'road' | 'walk' | 'cobble' | null {
 
 export function alleyFloor(rows: string[], x: number, y: number) {
   const ch = rows[y]?.[x];
-  if (ch === '=') return 'roadDash';
-  if (ch === '-') return 'roadDashH';
+  if (ch === '=') return 'asphDash';
+  if (ch === '-') return 'asphDashH';
   if (ch === 'o') return 'manhole';
   if (ch === 'x') return 'crackCobble';
   const b = base(ch) ?? base(rows[y]?.[x - 1]) ?? base(rows[y]?.[x + 1]) ?? base(rows[y + 1]?.[x]) ?? base(rows[y - 1]?.[x]) ?? 'cobble';
-  if (b === 'road') return 'road';
-  if (b === 'walk') return (x * 7 + y * 3) % 5 ? 'walk' : 'walk2';
+  const h = (x * 7 + y * 13) % 11;
+  if (b === 'road') return h === 0 ? 'asph1' : h === 5 ? 'asph2' : 'asph0';
+  if (b === 'walk') return h === 3 ? 'slab1' : h === 8 ? 'slab2' : 'slab0';
   return `cobble${(x * 5 + y * 11) % 3}`;
 }
 
 export const MAP_DEFS: Record<string, MapDef> = {
-  alley: { id: 'alley', name: 'Straße und Gasse', tiles: ALLEY_TILES, empty: '.', floor: alleyFloor },
+  alley: { id: 'alley', name: 'Straße und Gasse', tiles: ALLEY_TILES, empty: '.', floor: alleyFloor, dunkel: 0.66 },
 };
 
 export function tileKey(def: TileDef | undefined, x: number, y: number) {

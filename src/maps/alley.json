@@ -17,7 +17,7 @@
     "__=__,,,,RRRRRRRRRRRRRRRVRR..EEEEEEE",
     "_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
     "__=__,,,,rrrrrrrrrrrrrrrrrr..EEEEEEE",
-    "_____,,,,FHFFHFFHFFHFFHFFHF..NONNONN",
+    "_____,,,,FHFFFHFFFFFHFHFFHF..NONNONN",
     "__=__,,,,FHFAFHFFDFFHFHFFHF..NUNNONN",
     "_____,,,,,,T,,,,,,,,,,,,,,,,,,,,,,,,",
     "__=__,,,,,,,,,,,,,,,n,,,,,,,,,Y,,,,,",
@@ -27,7 +27,72 @@
     "__=_________________________________",
     "____________________________________"
   ],
-  "objects": [],
+  "objects": [
+    {
+      "id": "pub-laterne-l",
+      "kind": "deko",
+      "key": "pubLantern",
+      "frame": 0,
+      "x": 268,
+      "y": 250
+    },
+    {
+      "id": "pub-laterne-r",
+      "kind": "deko",
+      "key": "pubLantern",
+      "frame": 0,
+      "x": 292,
+      "y": 250
+    },
+    {
+      "id": "pub-fass-l",
+      "kind": "deko",
+      "key": "barrel",
+      "frame": 0,
+      "x": 258,
+      "y": 279
+    },
+    {
+      "id": "pub-fass-r",
+      "kind": "deko",
+      "key": "barrel",
+      "frame": 0,
+      "x": 303,
+      "y": 279
+    },
+    {
+      "id": "laden-markise-tuer",
+      "kind": "deko",
+      "key": "awningShop",
+      "frame": 0,
+      "x": 488,
+      "y": 248
+    },
+    {
+      "id": "laden-markise-fenster",
+      "kind": "deko",
+      "key": "awningShop",
+      "frame": 0,
+      "x": 536,
+      "y": 248
+    },
+    {
+      "id": "laden-gemuese-1",
+      "kind": "deko",
+      "key": "crateVeg",
+      "frame": 0,
+      "x": 530,
+      "y": 281
+    },
+    {
+      "id": "laden-gemuese-2",
+      "kind": "deko",
+      "key": "crateVeg",
+      "frame": 0,
+      "x": 548,
+      "y": 281
+    }
+  ],
   "zones": [],
   "collision": {
     "block": [],

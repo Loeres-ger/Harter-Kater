@@ -8,6 +8,8 @@ import type { DialogAction } from '../dialog/data';
 import { naechsterStrang, starteStrang } from '../progress/quests';
 import { SPEAKERS } from '../dialog/data';
 import { MapData, MapObject, MapZone, bedingungErfuellt, zoneGesperrt } from '../maps/types';
+import { MAP_DEFS } from '../maps/palettes';
+import { LightHint, streetCell, streetLights } from '../maps/streetView';
 
 export const T = 16;
 const ZOOM = 2;
@@ -60,6 +62,9 @@ export abstract class TopDown extends Phaser.Scene {
 
   init() {
     this.interacts = [];
+    this.lightSources = [];
+    this.mapLamps = [];
+    this.lightRT = undefined;
     this.leaving = false;
     this.actBlockedUntil = 0;
     this.actsBlocked = false;
@@ -75,12 +80,23 @@ export abstract class TopDown extends Phaser.Scene {
     const mh = this.rows.length;
     this.solid = [];
 
+    // Außenkarten (maps/*.json) zeichnet die gemeinsame Straßenansicht – dieselbe Regel wie im Map-Editor
+    const md = this.mapData();
+    const sdef = md ? MAP_DEFS[md.id] : undefined;
     for (let y = 0; y < mh; y++) {
       this.solid[y] = [];
       for (let x = 0; x < mw; x++) {
         const ch = this.rows[y][x];
         const px = x * T, py = y * T;
         const info = this.tileFor(ch, x, y);
+        if (sdef) {
+          const c = streetCell(this.rows, sdef, x, y);
+          if (c.floor) this.add.image(px, py, c.floor).setOrigin(0).setScale(0.5).setDepth(0);
+          for (const o of c.overlays) this.add.image(px, py, o).setOrigin(0).setScale(0.5).setDepth(0.6);
+          if (c.key && this.textures.exists(c.key)) this.add.image(px, py, c.key).setOrigin(0).setScale(0.5).setDepth(c.building ? 0.4 : c.object ? py + T : 0.5);
+          this.solid[y][x] = info.solid;
+          continue;
+        }
         if (this.isWall(ch)) {
           const below = this.rows[y + 1]?.[x];
           const front = below !== undefined && !this.isWall(below);
@@ -95,9 +111,9 @@ export abstract class TopDown extends Phaser.Scene {
       }
     }
 
-    // Karten aus dem Map-Editor: Objekte, Zonen und Kollisions-Korrekturen
-    const md = this.mapData();
+    // Karten aus dem Map-Editor: Objekte, Zonen und Kollisions-Korrekturen, Lichter aus der Straßenansicht
     if (md) this.applyMap(md);
+    if (sdef) for (const h of streetLights(this.rows, sdef)) this.hintLight(h);
 
     // Spawns stehen in Koordinaten der ursprünglichen Karte; wurde sie im Editor nach oben/links erweitert, wandern sie mit
     const [ox, oy] = this.origin();
@@ -109,16 +125,23 @@ export abstract class TopDown extends Phaser.Scene {
 
     if (state.carrying) this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5);
 
-    // Stimmung: Abdunkeln, Lichter liegen darüber (addLight)
-    this.add.rectangle(-T, -T, (mw + 2) * T, (mh + 2) * T, 0x0a0610, this.darkness()).setOrigin(0).setDepth(5000);
+    // Stimmung: Lichtkarte. Die Dunkelheit liegt über der Welt, jede Lichtquelle (addLight) radiert einen weichen Lichtkegel
+    // hinein. So hellt eine Laterne ihre Umgebung wirklich auf, statt nur einen Leuchtfleck darüber zu legen.
+    this.lightRT = this.add.renderTexture(-T, -T, (mw + 2) * T, (mh + 2) * T).setOrigin(0).setDepth(5000);
+    this.lightStamp = this.make.image({ key: this.textures.exists('lightPool') ? 'lightPool' : 'light', add: false });
+    this.drawLights();
 
     const cam = this.cameras.main;
     cam.setZoom(ZOOM);
     cam.setBounds(0, -12, mw * T, mh * T + 22); // Platz für HUD-Leisten
-    cam.startFollow(this.player, true, 0.15, 0.15);
+    cam.startFollow(this.player, true, 0.12, 0.12);
+    // kleine Totzone: Schritte hin und her bewegen die Kamera nicht, Richtungswechsel wirken ruhig
+    cam.setDeadzone(18, 10);
     // auf den Oberkörper statt auf die Füße zielen: so bleibt über dem Wirt mehr Platz, Schilder über Türen
     // verschwinden nicht unter der oberen HUD-Leiste
-    cam.setFollowOffset(0, 14);
+    // Außenkarten: weiter nach oben schauen, damit Obergeschoss und Gesims der Fassaden im Bild sind (Blick die Straße
+    // entlang auf die Häuser, nicht auf leeren Asphalt)
+    cam.setFollowOffset(0, sdef ? 26 : 14);
     cam.setRoundPixels(true);
     cam.setBackgroundColor('#0a0608');
     cam.fadeIn(260);
@@ -221,10 +244,40 @@ export abstract class TopDown extends Phaser.Scene {
 
   // ---------------------------------------------------------------- Helfer für Unterklassen
 
-  protected addLight(x: number, y: number, scale = 1, alpha = 0.8) {
-    const l = this.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setDepth(5001).setScale(scale).setAlpha(alpha);
+  /** Lichtquelle: weicher Schein (ADD) plus Lichtkegel in der Lichtkarte. Alpha/Sichtbarkeit des Bildes steuern beides. */
+  protected addLight(x: number, y: number, scale = 1, alpha = 0.8, pool = true) {
+    const l = this.add.image(x, y, this.textures.exists('lightSoft') ? 'lightSoft' : 'light').setBlendMode(Phaser.BlendModes.ADD).setDepth(5001).setScale(scale).setAlpha(alpha);
     this.tweens.add({ targets: l, alpha: alpha * 0.8, duration: 900 + Math.random() * 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    if (pool) this.lightSources.push(l);
     return l;
+  }
+
+  /** Licht aus der Straßenansicht; Laternen merkt sich die Szene (z. B. zum Flackern) */
+  protected mapLamps: Phaser.GameObjects.Image[] = [];
+  private hintLight(h: LightHint) {
+    const l = this.addLight(h.x, h.y, h.scale, h.alpha, h.pool).setTint(h.tint);
+    if (h.kind === 'lamp') this.mapLamps.push(l);
+    if (h.reflect) {
+      // Spiegelung auf nassem Pflaster: schmaler, senkrechter Schein unter der Lichtquelle
+      const s = this.add.image(h.x, h.y + 10, 'lightSoft').setBlendMode(Phaser.BlendModes.ADD).setScale(0.12, 0.55).setTint(h.tint).setAlpha(0.35).setDepth(2);
+      this.tweens.add({ targets: s, scaleX: 0.1, alpha: 0.25, duration: 1300 + Math.random() * 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+  }
+
+  private lightRT?: Phaser.GameObjects.RenderTexture;
+  private lightStamp?: Phaser.GameObjects.Image;
+  private lightSources: Phaser.GameObjects.Image[] = [];
+
+  /** Lichtkarte neu zeichnen: Dunkelheit füllen, Lichtkegel aller sichtbaren Lichtquellen herausradieren. */
+  private drawLights() {
+    const rt = this.lightRT, st = this.lightStamp;
+    if (!rt || !st) return;
+    rt.clear().fill(0x0a0612, this.darkness());
+    for (const l of this.lightSources) {
+      if (!l.active || !l.visible || l.alpha < 0.02) continue;
+      st.setPosition(l.x + T, l.y + T).setScale(l.scaleX * 1.15, l.scaleY * 1.15).setAlpha(Math.min(1, l.alpha * 1.25));
+      rt.erase(st);
+    }
   }
 
   protected toast(s: string) {
@@ -311,6 +364,7 @@ export abstract class TopDown extends Phaser.Scene {
   }
 
   update(_t: number, delta: number) {
+    this.drawLights();
     if (state.gameOver === 'flucht' || state.gameOver === 'polizei') {
       state.running = false;
       this.go('End');

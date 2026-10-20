@@ -10,12 +10,14 @@ import { makeRoomTextures } from '../rooms/gfx';
 import { makeLadenTextures } from '../rooms/ladenGfx';
 import { makeAnneTextures } from '../events/anne';
 import { makeClaudiusTextures } from '../events/claudius';
+import { makeStreetTextures } from '../world/street';
 import alleyFile from '../maps/alley.json';
 import { MAP_DEFS, MapDef, TileDef, tileKey } from '../maps/palettes';
 import type { MapData, MapObject, MapZone, ObjectKind, ZoneState } from '../maps/types';
 import { TEST_KEY } from '../maps';
 import { SPEAKERS } from '../dialog/data';
 import { Prefab, ausschnitt, eingebaut } from './prefabs';
+import { streetCell, streetLights } from '../maps/streetView';
 
 // Map-Editor für Harter Karter (nur Dev-Server: npm run dev, dann /editor.html).
 // Zeichnet mit den echten Spielgrafiken (dieselben Funktionen wie im Spiel erzeugen sie), bearbeitet maps/*.json
@@ -79,8 +81,8 @@ let tileSel: { x: number; y: number; w: number; h: number } | null = null;
 let objClip: MapObject[] = [];
 let customPrefabs: Prefab[] = [];
 const view = { x: -24, y: -24, z: 2 };
-const L = { boden: true, waende: true, objekte: true, figuren: true, deko: true, interaktion: true, zonen: true, kollision: false, raster: true };
-const LAYER_NAMES: Record<keyof typeof L, string> = { boden: 'Boden', waende: 'Wände & Dächer', objekte: 'Kachel-Objekte', figuren: 'Figuren', deko: 'Deko & Schilder', interaktion: 'Interaktion & Start', zonen: 'Zonen', kollision: 'Kollision', raster: 'Raster' };
+const L = { boden: true, waende: true, objekte: true, figuren: true, deko: true, interaktion: true, zonen: true, kollision: false, raster: true, licht: false, pruefen: true };
+const LAYER_NAMES: Record<keyof typeof L, string> = { boden: 'Boden', waende: 'Fassaden', objekte: 'Kachel-Objekte', figuren: 'Figuren', deko: 'Deko & Schilder', interaktion: 'Interaktion & Start', zonen: 'Zonen', kollision: 'Kollision', raster: 'Raster', licht: 'Spielansicht (Licht)', pruefen: 'Prüfmarken' };
 let hover = { wx: 0, wy: 0, tx: 0, ty: 0 };
 let spaceDown = false;
 
@@ -346,14 +348,15 @@ function render() {
   // Kacheln
   for (let y = y0; y <= y1; y++)
     for (let x = x0; x <= x1; x++) {
-      const d = def.tiles[charAt(x, y)];
-      if (d?.wall) {
-        if (L.waende) drawImg(img(wallKey(d, x, y)), x * T, y * T);
+      // dieselbe Straßenansicht wie im Spiel (maps/streetView.ts)
+      const c = streetCell(map.rows, def, x, y);
+      if (c.building) {
+        if (L.waende && c.key) drawImg(img(c.key), x * T, y * T);
         continue;
       }
-      if (L.boden) drawImg(img(def.floor(map.rows, x, y)), x * T, y * T);
-      const k = tileKey(d, x, y);
-      if (d && k && (d.object ? L.objekte : d.group === 'Boden' ? L.boden : L.waende)) drawImg(img(k), x * T, y * T);
+      if (L.boden && c.floor) drawImg(img(c.floor), x * T, y * T);
+      if (L.boden) for (const o of c.overlays) drawImg(img(o), x * T, y * T);
+      if (c.key && (c.object ? L.objekte : L.boden)) drawImg(img(c.key), x * T, y * T);
     }
   // im Spiel eigens gezeichnete Kacheln (Laternen, Autos, Figuren)
   for (let y = y0; y <= y1; y++)
@@ -391,6 +394,9 @@ function render() {
       ctx.fillRect(o.x + 4, o.y - 4, 3, 3);
     }
   }
+
+  // Spielansicht: Dunkelheit und Lichtkegel wie im Spiel
+  if (L.licht) drawLighting();
 
   // Zonen
   if (L.zonen)
@@ -440,6 +446,22 @@ function render() {
   ctx.strokeStyle = '#c9a24a';
   ctx.lineWidth = 1 / view.z;
   ctx.strokeRect(0, 0, W() * T, H() * T);
+
+  // Prüfergebnis: nicht erreichbare Flächen schraffiert, Fehler als rote Markierung
+  if (L.pruefen && checked) {
+    ctx.strokeStyle = 'rgba(224,64,58,.55)';
+    ctx.lineWidth = 1;
+    for (const k of checked.unreachable) {
+      const [x, y] = k.split(',').map(Number);
+      ctx.beginPath(); ctx.moveTo(x * T, y * T + T); ctx.lineTo(x * T + T, y * T); ctx.stroke();
+    }
+    for (const i of checked.issues) {
+      ctx.fillStyle = i.ernst ? '#e0403a' : '#f0a020';
+      ctx.beginPath(); ctx.arc(i.x * T + 8, i.y * T + 8, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#120c0b'; ctx.font = '6px "Press Start 2P"'; ctx.textAlign = 'center';
+      ctx.fillText('!', i.x * T + 8.5, i.y * T + 11);
+    }
+  }
 
   // Auswahl
   ctx.lineWidth = 1 / view.z;
@@ -501,6 +523,121 @@ const snapOn = () => $<HTMLInputElement>('snap').checked;
 function placePoint(): [number, number] {
   if (!snapOn()) return [Math.round(hover.wx), Math.round(hover.wy)];
   return [hover.tx * T + 8, hover.ty * T + 15];
+}
+
+// ---------------------------------------------------------------- Spielansicht und Prüfung
+
+let lightCanvas: HTMLCanvasElement | null = null;
+const rgba = (tint: number, a: number) => `rgba(${(tint >> 16) & 255},${(tint >> 8) & 255},${tint & 255},${a})`;
+
+/** Dunkelheit und Lichtkegel nach denselben Lichtquellen und Werten wie im Spiel (TopDown.drawLights). */
+function drawLighting() {
+  const w = W() * T, h = H() * T;
+  lightCanvas ??= document.createElement('canvas');
+  const off = lightCanvas;
+  if (off.width !== w || off.height !== h) { off.width = w; off.height = h; }
+  const g = off.getContext('2d')!;
+  g.globalCompositeOperation = 'source-over';
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = `rgba(10,6,18,${def.dunkel})`;
+  g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'destination-out';
+  const lights = streetLights(map.rows, def);
+  for (const l of lights) {
+    if (!l.pool) continue;
+    const rad = 64 * l.scale * 1.15, a = Math.min(1, l.alpha * 1.25);
+    const gr = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, rad);
+    gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(0.45, `rgba(0,0,0,${a * 0.75})`); gr.addColorStop(0.8, `rgba(0,0,0,${a * 0.2})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.fillRect(l.x - rad, l.y - rad, rad * 2, rad * 2);
+  }
+  ctx.drawImage(off, 0, 0);
+  ctx.globalCompositeOperation = 'lighter';
+  for (const l of lights) {
+    const rad = 64 * l.scale;
+    const gr = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, rad);
+    gr.addColorStop(0, rgba(l.tint, 0.42 * l.alpha)); gr.addColorStop(0.35, rgba(l.tint, 0.18 * l.alpha)); gr.addColorStop(1, rgba(l.tint, 0));
+    ctx.fillStyle = gr;
+    ctx.fillRect(l.x - rad, l.y - rad, rad * 2, rad * 2);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+interface Issue { x: number; y: number; text: string; ernst: boolean }
+let checked: { issues: Issue[]; unreachable: string[] } | null = null;
+
+/**
+ * Prüft, was im Spiel schiefgehen würde: nicht erreichbare Eingänge und Figuren, doppelte Türen,
+ * Objekte, die hinter dem Gesims (auf Dachflächen) liegen, begehbare Flächen ohne Zugang.
+ * Erreichbarkeit wie nach der Glanz-Mission: Baustellen offen, andere gesperrte Zonen zu.
+ */
+function runCheck() {
+  const issues: Issue[] = [];
+  const solid = solidSet();
+  for (const z of map.zones) if (z.state !== 'offen' && z.state !== 'baustelle') for (let y = z.y; y < z.y + z.h; y++) for (let x = z.x; x < z.x + z.w; x++) solid.add(`${x},${y}`);
+  const start = map.objects.find((o) => o.kind === 'spawn' && (o.label ?? 'start') === 'start');
+  const sx = start ? Math.floor(start.x / T) : 17 + (map.origin?.x ?? 0);
+  const sy = start ? Math.floor((start.y - 2) / T) : 18 + (map.origin?.y ?? 0);
+  if (!start) issues.push({ x: sx, y: sy, text: 'Kein Startpunkt „start“: geprüft ab dem Eingang der Kneipe.', ernst: false });
+  const seen = new Set<string>();
+  const queue: [number, number][] = [[sx, sy]];
+  while (queue.length) {
+    const [x, y] = queue.pop()!;
+    const k = `${x},${y}`;
+    if (x < 0 || y < 0 || x >= W() || y >= H() || seen.has(k) || solid.has(k)) continue;
+    seen.add(k);
+    queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  const NAMEN: Record<string, string> = { D: 'Kneipentür', Q: 'Hintertür der Kneipe', U: 'Eingang Feinkostladen', A: 'Kippenautomat' };
+  const anzahl: Record<string, number> = {};
+  for (let y = 0; y < H(); y++)
+    for (let x = 0; x < W(); x++) {
+      const ch = charAt(x, y);
+      if (!NAMEN[ch]) continue;
+      anzahl[ch] = (anzahl[ch] ?? 0) + 1;
+      if (anzahl[ch] === 2) issues.push({ x, y, text: `${NAMEN[ch]} kommt mehrfach vor: das Spiel benutzt nur die erste.`, ernst: true });
+      const [ax, ay] = ch === 'Q' ? [x, y - 1] : [x, y + 1];
+      if (!seen.has(`${ax},${ay}`)) issues.push({ x, y, text: `${NAMEN[ch]} ist nicht erreichbar (davor fest oder abgeschnitten).`, ernst: true });
+    }
+  for (const ch of Object.keys(NAMEN)) if (!anzahl[ch]) issues.push({ x: sx, y: sy, text: `${NAMEN[ch]} fehlt auf der Karte.`, ernst: true });
+  for (const o of map.objects) {
+    const tx = Math.floor(o.x / T), ty = Math.floor((o.y - 2) / T);
+    const c = streetCell(map.rows, def, tx, ty);
+    if ((o.kind === 'deko' || o.kind === 'schild' || o.kind === 'npc') && ['void', 'backEdge', 'backDoorTop'].includes(c.key ?? ''))
+      issues.push({ x: tx, y: ty, text: `„${o.key ?? o.text ?? o.kind}“ liegt hinter dem Gesims (Dachfläche): im Spiel schwebt es im Dunkeln.`, ernst: false });
+    if (o.kind === 'npc' || o.kind === 'interaktion') {
+      const near = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen.has(`${tx + dx},${ty + dy}`));
+      if (!near) issues.push({ x: tx, y: ty, text: `${o.kind === 'npc' ? 'Figur' : 'Interaktion'} „${o.label ?? o.key ?? ''}“ ist nicht erreichbar.`, ernst: true });
+    }
+  }
+  const unreachable: string[] = [];
+  for (let y = 0; y < H(); y++) for (let x = 0; x < W(); x++) { const k = `${x},${y}`; if (!solid.has(k) && !seen.has(k)) unreachable.push(k); }
+  if (unreachable.length) {
+    const [x, y] = unreachable[0].split(',').map(Number);
+    issues.push({ x, y, text: `${unreachable.length} begehbare Kacheln sind vom Start aus nicht erreichbar (schraffiert).`, ernst: false });
+  }
+  checked = { issues, unreachable };
+  L.pruefen = true;
+  layersUi();
+  showIssues();
+  render();
+}
+
+function showIssues() {
+  const body = $('propsBody');
+  body.innerHTML = '';
+  body.className = '';
+  if (!checked) return;
+  body.append(checked.issues.length ? `${checked.issues.length} Hinweis(e):` : 'Keine Probleme gefunden.');
+  for (const i of checked.issues) {
+    const b = button(`${i.ernst ? '⛔' : '⚠'} ${i.text}`, () => {
+      view.x = i.x * T + 8 - cv.width / view.z / 2;
+      view.y = i.y * T + 8 - cv.height / view.z / 2;
+      render();
+    });
+    b.style.cssText = 'display:block;width:100%;text-align:left;margin-top:4px;white-space:normal';
+    body.append(b);
+  }
 }
 
 // ---------------------------------------------------------------- Maus und Tastatur
@@ -757,10 +894,12 @@ function prefabThumb(p: Prefab) {
   const g = c.getContext('2d')!;
   g.imageSmoothingEnabled = false;
   p.rows.forEach((row, y) => [...row].forEach((ch, x) => {
-    const d = def.tiles[ch];
-    if (!d) return;
-    const i = img(tileKey(d, x, y) || def.floor(p.rows, x, y));
-    if (i) g.drawImage(i.src, i.sx, i.sy, i.sw, i.sh, x * T, y * T, T, T);
+    if (!def.tiles[ch]) return;
+    const c = streetCell(p.rows, def, x, y);
+    for (const k of [c.floor, c.key]) {
+      const i = img(k);
+      if (i) g.drawImage(i.src, i.sx, i.sy, i.sw, i.sh, x * T, y * T, T, T);
+    }
   }));
   for (const z of p.zones ?? []) { g.strokeStyle = ZONE_COLORS[z.state]; g.strokeRect(z.x * T + 1, z.y * T + 1, z.w * T - 2, z.h * T - 2); }
   const out = thumb({ src: c, sx: 0, sy: 0, sw: c.width, sh: c.height }, 130, 60);
@@ -1086,6 +1225,7 @@ function wireHeader() {
     msg(`Karte ist jetzt ${W()} × ${H()} Kacheln.`);
   };
   $('search').oninput = () => library();
+  $('check').onclick = runCheck;
 }
 
 async function boot() {
@@ -1142,7 +1282,7 @@ game = new Phaser.Game({
   audio: { noAudio: true },
   scene: class extends Phaser.Scene {
     create() {
-      for (const make of [makeAllTextures, makeCasinoTextures, makeGuestTextures, makeWorldTextures, makeLeonardTextures, makeAchievementIcons, makeRoomTextures, makeLadenTextures, makeAnneTextures, makeClaudiusTextures]) {
+      for (const make of [makeAllTextures, makeCasinoTextures, makeGuestTextures, makeWorldTextures, makeLeonardTextures, makeAchievementIcons, makeRoomTextures, makeLadenTextures, makeAnneTextures, makeClaudiusTextures, makeStreetTextures]) {
         try {
           make(this);
         } catch (err) {
