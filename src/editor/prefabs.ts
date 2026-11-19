@@ -1,9 +1,8 @@
-import type { MapObject, MapZone } from '../maps/types';
+import type { MapData, MapObject, MapZone } from '../maps/types';
 
 // Gebäudevorlagen für den Map-Editor. Kacheln als Zeichenblock (Leerzeichen = Untergrund bleibt), dazu Objekte
-// (Pixel relativ zur linken oberen Ecke) und Zonen (Kacheln relativ). Kneipe und Feinkostladen stammen direkt aus der
-// aktuellen Karte. Für Gebäude, die es im Spiel noch nicht gibt, bauen die Vorlagen eine Fassade aus vorhandenen
-// Kacheln und hängen ein Namensschild dran (Platzhalter, bis es eigene Grafiken gibt).
+// (Pixel relativ zur linken oberen Ecke) und Zonen (Kacheln relativ). Die Gebäude der Stadt werden direkt aus der
+// aktuellen Karte ausgeschnitten (mit Schildern, Markisen und Türtexten), dazu schlichte Fassaden je Material.
 
 export interface Prefab {
   name: string;
@@ -19,48 +18,55 @@ export function ausschnitt(rows: string[], x: number, y: number, w: number, h: n
   return rows.slice(y, y + h).map((r) => r.slice(x, x + w).padEnd(w, ' '));
 }
 
-function fassade(name: string, w: number, stil: 'ziegel' | 'putz', hoehe = 2): Prefab {
-  const muster = stil === 'ziegel' ? ['N', 'O'] : ['F', 'H'];
-  const reihe = (o: number) => Array.from({ length: w }, (_, i) => muster[(i + o) % 3 === 1 ? 1 : 0]).join('');
-  const rows = ['E'.repeat(w), 'E'.repeat(w), 'r'.repeat(w), ...Array.from({ length: hoehe }, (_, i) => reihe(i))];
-  return {
-    name,
-    rows,
-    objects: [{ kind: 'schild', x: (w * 16) / 2, y: 3 * 16 + 4, text: name.toUpperCase() }],
-    hinweis: 'Platzhalter aus vorhandenen Fassaden, mit Namensschild',
-  };
+/** Bereich der Karte samt Objekten (Schilder, Markisen, Türtexte) als Vorlage */
+function ausKarte(map: MapData, name: string, x: number, y: number, w: number, h: number, hinweis?: string): Prefab {
+  const T = 16;
+  const objects = map.objects
+    .filter((o) => o.x >= x * T && o.x < (x + w) * T && o.y > y * T && o.y <= (y + h) * T + 6)
+    .map(({ id: _id, ...o }) => ({ ...o, x: o.x - x * T, y: o.y - y * T }));
+  return { name, rows: ausschnitt(map.rows, x, y, w, h), objects, hinweis };
 }
 
-export function eingebaut(alley: string[]): Prefab[] {
+/** Schlichte Fassade eines Materials: Dach/Obergeschoss (E) und zwei Reihen Erdgeschoss mit Fenstern und Tür */
+function fassade(name: string, wand: string, fenster: string, w: number): Prefab {
+  const muster = Array.from({ length: w }, (_, i) => (i === Math.floor(w / 2) ? 'd' : i % 3 === 1 ? 'x' : 'w'));
+  const reihe = (unten: boolean) => muster.map((m) => (m === 'x' ? fenster : m === 'd' && unten ? 'd' : wand)).join('');
+  return { name, rows: ['E'.repeat(w), 'E'.repeat(w), 'E'.repeat(w), 'E'.repeat(w), reihe(false), reihe(true)], hinweis: 'Erdgeschoss, Obergeschoss und Gesims entstehen automatisch.' };
+}
+
+/** Bereiche der Stadt (Kacheln) – stimmen mit der ausgelieferten Karte überein; nach größeren Umbauten ggf. anpassen */
+const BEREICHE: [string, number, number, number, number, string?][] = [
+  ['Kneipe „Goldener Eimer“', 35, 22, 18, 12, 'Einmalig: Tür, Hintertür und Automat gibt es nur einmal. Zum Verschieben Bereich ausschneiden.'],
+  ['Feinkostladen (Maya)', 55, 22, 7, 12, 'Einmalig: der Eingang führt in Mayas Laden.'],
+  ['Masala Basar (Indischer Laden)', 14, 15, 9, 9],
+  ['Wohnhaus', 0, 15, 14, 9],
+  ['Muskelkater (Stripclub)', 0, 27, 11, 8],
+  ['Shisha 1001', 11, 27, 12, 10],
+  ['Özen Markt (Türkischer Markt)', 62, 27, 11, 8],
+  ['Leerstand', 75, 27, 6, 8],
+  ['Waschsalon', 67, 8, 13, 7],
+  ['Botschaft', 82, 8, 8, 9],
+  ['Altbau (Finale)', 72, 0, 18, 6, 'Für das Finale reserviert.'],
+  ['Innenhof mit Tor (Kult)', 67, 17, 16, 10, 'Zone „quest“ mit Flag kultHof hält ihn verschlossen.'],
+  ['Tunnel mit WC im Fels', 81, 27, 9, 10],
+  ['Parkplatz', 0, 0, 23, 13],
+];
+
+export function eingebaut(map: MapData): Prefab[] {
+  const stadt = map.origin?.x ? BEREICHE.map(([n, x, y, w, h, hint]) => ausKarte(map, n, x, y, w, h, hint)) : [];
   return [
-    { name: 'Kneipe „Goldener Eimer“', rows: ausschnitt(alley, 9, 5, 18, 12), hinweis: 'Einmalig: Tür, Hintertür und Automat gibt es nur einmal. Zum Verschieben Bereich ausschneiden.' },
-    { name: 'Feinkostladen (Maya)', rows: ausschnitt(alley, 29, 5, 7, 12), hinweis: 'Einmalig: der Eingang führt in Mayas Laden.' },
-    fassade('Türkischer Markt', 7, 'putz'),
-    fassade('Indischer Laden', 6, 'putz'),
-    fassade('Shisha-Bar', 7, 'ziegel'),
-    fassade('Stripclub', 8, 'ziegel'),
-    fassade('Waschsalon', 7, 'putz'),
-    fassade('Botschaft', 8, 'ziegel', 3),
-    fassade('Gebäude (Finale)', 9, 'ziegel', 3),
-    { ...fassade('Öffentliches WC', 3, 'ziegel'), objects: [{ kind: 'schild', x: 24, y: 52, text: 'WC' }] },
-    {
-      name: 'Parkplatz',
-      rows: ['________', '_zZ__zZ_', '_------_', '_zZ__zZ_', '________'],
-      hinweis: 'Autos aus dem Spiel, Asphalt mit Markierung',
-    },
-    {
-      name: 'Innenhof (abgesperrt)',
-      rows: ['########', '#......#', '#..u...#', '#......#', '#......#', '###..###'],
-      zones: [{ x: 1, y: 1, w: 6, h: 5, state: 'quest', flag: '', label: 'ABGESPERRT' }],
-      hinweis: 'Zone öffnet sich mit dem eingetragenen Story-Flag',
-    },
-    {
-      name: 'Tunnel (gesperrt)',
-      rows: ['EEEE', 'EEEE', 'r..r', '#..#'],
-      zones: [{ x: 1, y: 2, w: 2, h: 2, state: 'gesperrt', label: 'TUNNEL' }],
-    },
-    { name: 'Baustellen-Absperrung 4×3', rows: ['    ', '    ', '    '], zones: [{ x: 0, y: 0, w: 4, h: 3, state: 'baustelle' }], hinweis: 'Offen nach der Glanz-Mission' },
+    ...stadt,
+    fassade('Fassade Putz', 'F', 'H', 7),
+    fassade('Fassade Ziegel', 'N', 'O', 7),
+    fassade('Fassade Beton', 'M', 'W', 7),
+    fassade('Fassade Ocker', 'P', 'S', 7),
+    fassade('Fassade Violett', 'J', 'I', 7),
+    fassade('Fassade Holz', 'h', 'i', 7),
+    fassade('Fassade Kacheln', 'k', 'q', 7),
+    fassade('Fassade Safran', 'a', 'e', 7),
+    fassade('Fassade Quaderstein', 'y', 't', 7),
+    { name: 'Baustellen-Absperrung 2×4', rows: ['  ', '  ', '  ', '  '], zones: [{ x: 0, y: 0, w: 2, h: 4, state: 'baustelle', label: 'GLANZBAU' }], hinweis: 'Offen nach der Glanz-Mission' },
     { name: 'Laternen-Gehweg', rows: [',,,,,,', ',,l,,,', ',,,,,,'] },
-    { name: 'Gassenecke mit Müll', rows: ['#####', '#bbm.', '#T...', '#G...'] },
+    { name: 'Gassenecke mit Müll', rows: ['#####', '#bbm.', '#T...', '#....'] },
   ];
 }

@@ -15,3 +15,7 @@ export const DAMEN_SPAWN: [number, number] = [5, 5];
 /** Mayas Feinkost: im Laden vor der Tür, draußen vor dem Ladeneingang */
 export const LADEN_SPAWN: [number, number] = [6, 6];
 export const ALLEY_LADEN_SPAWN: [number, number] = [30, 17];
+
+/** Muskelkater: im Club vor dem Ausgang, draußen vor dem Clubeingang (Koordinaten der ursprünglichen Gassenkarte) */
+export const CLUB_SPAWN: [number, number] = [18, 16];
+export const ALLEY_CLUB_SPAWN: [number, number] = [-21, 18];

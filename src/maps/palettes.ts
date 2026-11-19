@@ -67,12 +67,39 @@ export const ALLEY_TILES: Record<string, TileDef> = {
   K: { label: 'Katze (Glanz-Mission)', key: '', solid: false, group: 'Figuren & Spezial', preview: 'cat' },
   X: { label: 'Dealer', key: '', solid: false, group: 'Figuren & Spezial', preview: 'dealer' },
   Y: { label: 'Dame der Nacht', key: '', solid: false, group: 'Figuren & Spezial', preview: 'dame0' },
+  // ---- Stadterweiterung: Boden
+  v: { label: 'Gras', key: '', solid: false, group: 'Boden' },
+  '|': { label: 'Parkplatz-Markierung', key: '', solid: false, group: 'Boden' },
+  // ---- Fassaden je Material: Wand und Fenster (Erdgeschoss unten, darüber Dachkacheln E für Obergeschoss und Gesims)
+  M: { label: 'Beton (Botschaft) – Wand', key: 'beton0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  W: { label: 'Beton (Botschaft) – Fenster', key: 'betonWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  P: { label: 'Ocker (Markt) – Wand', key: 'ocker0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  S: { label: 'Ocker (Markt) – Fenster', key: 'ockerWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  J: { label: 'Violett (Club) – Wand', key: 'violett0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  I: { label: 'Violett (Club) – Fenster', key: 'violettWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  h: { label: 'Dunkles Holz (Shisha) – Wand', key: 'holz0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  i: { label: 'Dunkles Holz (Shisha) – Fenster', key: 'holzWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  k: { label: 'Kacheln (Waschsalon) – Wand', key: 'kachel0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  q: { label: 'Kacheln (Waschsalon) – Fenster', key: 'kachelWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  a: { label: 'Safran (Gewürzladen) – Wand', key: 'safran0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  e: { label: 'Safran (Gewürzladen) – Fenster', key: 'safranWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  y: { label: 'Quaderstein (Altbau) – Wand', key: 'stein0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  t: { label: 'Quaderstein (Altbau) – Fenster', key: 'steinWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  j: { label: 'Vernageltes Fenster (Leerstand)', key: 'leerWin0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  d: { label: 'Tür (Material der Nachbarwand)', key: 'putzGDoor0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  s: { label: 'Hohe Mauer', key: 'mauer0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  '+': { label: 'Eisentor (verschlossen)', key: 'tor0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  f: { label: 'Fels', key: 'rock0', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  '[': { label: 'Tunnelportal links', key: 'portalL', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  ']': { label: 'Tunnelportal rechts', key: 'portalR', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  '^': { label: 'Tunnel (gesperrt)', key: 'tunnelDark', solid: true, wall: true, group: 'Mauern & Fassaden' },
 };
 
 /** Grundbelag einer Kachel (für Objekte und Figuren: der Belag der Nachbarn). */
-function base(ch: string | undefined): 'road' | 'walk' | 'cobble' | null {
+function base(ch: string | undefined): 'road' | 'walk' | 'cobble' | 'grass' | null {
   if (ch === undefined) return null;
-  if ('_=-'.includes(ch)) return 'road';
+  if (ch === 'v') return 'grass';
+  if ('_=-|'.includes(ch)) return 'road';
   if (ch === ',') return 'walk';
   if ('.oxu'.includes(ch)) return 'cobble';
   return null;
@@ -84,10 +111,12 @@ export function alleyFloor(rows: string[], x: number, y: number) {
   if (ch === '-') return 'asphDashH';
   if (ch === 'o') return 'manhole';
   if (ch === 'x') return 'crackCobble';
+  if (ch === '|') return 'parkLine';
   const b = base(ch) ?? base(rows[y]?.[x - 1]) ?? base(rows[y]?.[x + 1]) ?? base(rows[y + 1]?.[x]) ?? base(rows[y - 1]?.[x]) ?? 'cobble';
   const h = (x * 7 + y * 13) % 11;
   if (b === 'road') return h === 0 ? 'asph1' : h === 5 ? 'asph2' : 'asph0';
   if (b === 'walk') return h === 3 ? 'slab1' : h === 8 ? 'slab2' : 'slab0';
+  if (b === 'grass') return h % 3 ? 'grass0' : 'grass1';
   return `cobble${(x * 5 + y * 11) % 3}`;
 }
 

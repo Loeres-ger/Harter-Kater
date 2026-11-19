@@ -2,7 +2,7 @@
 // Im Sound-Studio (recorder.html) aufgenommene Sounds liegen in public/sounds/ und ersetzen den jeweiligen Synth-Sound.
 
 type Wave = OscillatorType;
-export type Track = 'title' | 'bar' | 'alley' | 'tension' | 'monster' | 'none';
+export type Track = 'title' | 'bar' | 'alley' | 'tension' | 'monster' | 'club' | 'none';
 export const SFX_NAMES = [
   'click', 'coin', 'kaching', 'error', 'step', 'glug', 'lighter', 'refuse', 'sting', 'chime',
   'thud', 'slap', 'siren', 'bell', 'phone', 'splash', 'thunder', 'rumble', 'roar', 'growl',
@@ -424,6 +424,24 @@ const TRACKS: Record<Exclude<Track, 'none'>, TrackDef> = {
     },
   },
   // Monster: tiefes Dröhnen, metallische Schläge, Tritonus
+  // Muskelkater: Disco-Schlager, vier auf den Boden, Oktavbass, Am – F – C – G
+  club: {
+    bpm: 122,
+    bars: 4,
+    play(a, s, t, d) {
+      const bar = Math.floor(s / 16) % 4;
+      const i = s % 16;
+      const root = [A2, F2, C3, 43][bar];
+      if (i % 4 === 0) a.kick(t, 0.36);
+      if (i % 4 === 2) a.hat(t, 0.06);
+      if (i === 4 || i === 12) a.snare(t, 0.09);
+      if (i % 2 === 0) a.n('square', root + (i % 4 === 2 ? 12 : 0), t, d * 1.6, 0.06);
+      if (i === 6 || i === 14) [12, 12 + (bar === 0 ? 3 : 4), 19].forEach((x) => a.n('sawtooth', root + x + 12, t, d * 1.2, 0.016));
+      const mel: (number | null)[] = [76, null, 76, 79, null, 76, 74, null, 72, null, 72, 74, null, 76, null, null];
+      const m = mel[i];
+      if (bar % 2 === 1 && m !== null) a.n('triangle', m, t, d * 1.5, 0.045);
+    },
+  },
   monster: {
     bpm: 52,
     bars: 2,

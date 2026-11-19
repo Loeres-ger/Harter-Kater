@@ -2,14 +2,14 @@ import { GUESTS } from '../guests/data';
 import { felixTree } from './felix';
 import { mayaTree } from './maya';
 import { anneTree, felixAnneTree } from './anne';
-import { claudiusTree, kevinGasseTree } from './claudius';
+import { claudiusTree, kevinClubTree, kevinGasseTree } from './claudius';
 import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
 // Ein Knoten hat Zeilen der Figur (mit „W:“ davor spricht der Wirt) und Antworten zur Auswahl.
 
-export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden';
+export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'club';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
@@ -281,6 +281,7 @@ export const SPEAKERS: Record<string, Speaker> = {
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },
   claudius: { name: 'CAPTAIN CLAUDIUS', color: '#7ab0ff', portrait: 'nbust_claudius', bg: 'street', tree: claudiusTree },
   kevinGasse: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'street', tree: kevinGasseTree },
+  kevinClub: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'club', tree: kevinClubTree },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };
 

@@ -1,5 +1,6 @@
-// Die drei Akten auf Captain Claudius' Rechner (Dachboden, Kapitel 5). Frei erfunden und absurd:
-// Soldaten auf Springstöcken, ein Ententeich, keine echten Opfer. Seiten mit höchstens 42 Zeichen pro Zeile.
+// Die Dateien auf Captain Claudius' Rechner (Dachboden, Kapitel 5): sein Mailverkehr mit der „BLÖD-Zeitung“
+// über erfundene Statistiken für ein weltweites Alkoholverbot. Satire auf Boulevardjournalismus und Propaganda;
+// Tavirien ist ein erfundener Staat. Seiten mit höchstens 42 Zeichen pro Zeile.
 
 export interface PcFile {
   id: string;
@@ -9,31 +10,26 @@ export interface PcFile {
 
 export const PC_FILES: PcFile[] = [
   {
-    id: 'pogo',
-    name: 'OPERATION_POGO.DOC',
+    id: 'mail',
+    name: 'MAIL_BLOED-ZEITUNG.EML',
     pages: [
-      'STRENG GEHEIM – BITTE WEITERSAGEN\n\nBetreff: Operation Pogo\nZiel: Überquerung des Stadtparks.\nFeind: unklar, aber bestimmt da.\nMittel: 40 Springstöcke (Baumarkt,\nSonderangebot), 12 Freiwillige,\n1 Captain (ich).',
-      'Taktik: Der Gegner kann nicht treffen,\nwas ständig auf und ab hüpft.\n\nMinute 1: Alle hüpfen.\nMinute 2: Alle hüpfen in verschiedene\nRichtungen.\nMinute 4: Ausbilder K. meldet:\n„Ententeich voraus.“',
-      'Minute 5: Befehl: Weiterhüpfen.\nMinute 6: Platsch. Zwölfmal.\n\nVerletzte: keine.\nNasse Socken: alle.\nEnten: empört.',
-      'Persönliche Notiz des Captains:\nDiese Akte ist zu vernichten.\nVorher bitte dreimal ausdrucken,\neinrahmen und im Flur aufhängen.\n\ngez. Cpt. I. Claudius\n(mit Glitzerstift)',
+      'VON: Cpt. I. Claudius, Tavirien\nAN:  Chefredaktion BLÖD-Zeitung\nBETREFF: Kampagne „Prost? Pfui!“\n\nWie besprochen die neuen Zahlen.\nBitte groß, rot, mit Ausrufezeichen.\nSie wissen ja: Wer zahlt, titelt.',
+      'STATISTIK (frei erfunden, patriotisch):\n\n- 99,99 % aller Biertrinker leiden an\n  chronischen Flatulenzen.\n- Ein Glas Wein kostet drei Wochen\n  Lebenszeit. Das zweite sechs.\n- Viagra ist eine Droge. Es macht\n  Männer unerträglich zufrieden.',
+      'ANTWORT DER BLÖD-ZEITUNG:\n„Flatulenzen? Lieben wir. Brauchen\nwir noch ein Foto von einem\nweinenden Bierglas? Und was sagt\neigentlich die Wissenschaft?“\n\nCLAUDIUS: „Die Wissenschaft bin ich.“',
     ],
   },
   {
-    id: 'verteidigung',
-    name: 'BEWEGLICHE_VERTEIDIGUNG.DOC',
+    id: 'titel',
+    name: 'TITELSEITE_ENTWURF.DOC',
     pages: [
-      'DOKTRIN: BEWEGLICHE VERTEIDIGUNG\n\n1. Wer stillsteht, verliert.\n2. Wer hüpft, gewinnt.\n3. Wer ins Wasser hüpft, hat den Feind\n   zum Rückzug gezwungen.\n4. Rückzug heißt bei uns\n   „Vorwärtsbewegung nach hinten“.',
-      'Ausrüstung je Soldat:\n1 Springstock, 1 Helm mit Federbusch,\n1 Taschenbuch „Ich und mein Ruhm“\n(Verfasser: Cpt. I. Claudius).\n\nBudget: 4.000 Euro.\nAusgegeben: 11 Euro für Springstöcke,\n3.989 Euro für Orden für den Captain.',
-      'Anmerkung der Buchhaltung:\n„Wofür braucht ein Mann 14 Orden?“\n\nAntwort des Captains:\n„Für den fünfzehnten.“',
-    ],
-  },
-  {
-    id: 'bericht',
-    name: 'UNTERSUCHUNGSBERICHT.DOC',
-    pages: [
-      'OFFIZIELLER UNTERSUCHUNGSBERICHT\n\nDatum: zwei Tage VOR der Operation.\nUntersucht von: Cpt. I. Claudius.\nGegenstand: Cpt. I. Claudius.\n\nErgebnis: Cpt. I. Claudius hat alles\nrichtig gemacht.',
-      'Feststellungen:\n1. Operation Pogo hat nie stattgefunden.\n2. Operation Pogo war ein voller Erfolg.\n3. Der Ententeich hat zuerst angegriffen.\n4. Der Ententeich war gar nicht da.\n5. Wer 1 bis 4 widersprüchlich findet,\n   ist ein Feind der Wahrheit.',
-      'Empfehlung: Akte schließen.\nRechner verstecken. Ort: Dachboden\neiner Kneipe, „da geht keiner\nfreiwillig hoch“.\n\nPasswort: 1-2-3-4 (streng geheim)',
+      'BLÖD-ZEITUNG – ENTWURF TITELSEITE\n\n      BIER-SCHOCK!\n  FORSCHER: JEDER SCHLUCK\n       EIN FURZ!\n\nWeltweites Alkoholverbot ab Montag?\nTavirien macht es vor!',
+      'Seite 2: „Ich trinke nur Wasser –\nund bin General!“ Exklusiv-Interview\nmit Cpt. Claudius.\n\nSeite 3: VIAGRA – DIE STILLE GEFAHR\n„Mein Mann ist seit Jahren glücklich“,\nsagt eine Ehefrau. Experten entsetzt.',
+      'Notiz am Rand (Handschrift):\nDeserteur K. (Sanitäter, Tanga,\nViagra-abhängig) hat Kopien. Finden.\nVor Montag.\n\nPasswort dieses Rechners: 1-2-3-4',
     ],
   },
 ];
+
+/** Gelesene Dateien, nur die es noch gibt (ältere Spielstände kennen andere Dateinamen) */
+export function gelesen(list: string[] | undefined) {
+  return (list ?? []).filter((id) => PC_FILES.some((f) => f.id === id));
+}

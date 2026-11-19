@@ -78,43 +78,44 @@ export const STORY: Record<string, Step[]> = {
 
   // ---------------------------------------------------------------- Kapitel 5 (freies Spiel nach der Glanz-Handlung)
 
-  /** Vor dem Goldenen Eimer: Captain Claudius sucht Kevin. Kevin verrät, wo die Akten liegen. */
+  /**
+   * Vor dem Goldenen Eimer: Captain Claudius, General des (erfundenen) Staates Tavirien, will weltweit Alkohol und
+   * Drogen verbieten und sucht seinen Deserteur Kevin. Kevin verrät, wo die Beweise für die Fake-Kampagne liegen.
+   */
   kapitel5: [
     { t: 'bg', key: 'street' },
-    { t: 'caption', text: 'Ein paar Nächte später.\nDer Goldene Eimer hat wieder geöffnet. Gäste kommen kaum.\nVor der Tür steht trotzdem jemand.' },
-    { t: 'say', who: 'wirt', text: '(Wer lehnt denn da einen Springstock an meine Hauswand?)' },
+    { t: 'caption', text: 'Ein paar Nächte später.\nDer Goldene Eimer hat wieder geöffnet.\nVor der Tür steht jemand in Galauniform.' },
     { t: 'say', who: 'claudius', text: 'BÜRGER! Treten Sie zurück. Sie stehen im Sicherheitsbereich meines Ruhms.' },
     { t: 'say', who: 'wirt', text: 'Das ist mein Gehweg.' },
-    { t: 'say', who: 'claudius', text: 'Captain Israel Claudius. Oberkommandierender der Beweglichen Verteidigung. Träger von vierzehn Orden, davon zwölf selbst verliehen.' },
+    { t: 'say', who: 'claudius', text: 'Captain Israel Claudius, Generalstab der Republik Tavirien. Wir befreien die Welt vom Alkohol. Ob sie will oder nicht.' },
+    { t: 'say', who: 'wirt', text: '(Vor einer Kneipe. Mutig.)' },
     { t: 'say', who: 'claudius', text: 'Ich suche einen Deserteur. Groß. Lockig. Kaum bekleidet.' },
     { t: 'say', who: 'kevin', text: 'Bruder. Ich bin nicht desertiert. Ich bin GEFLÜCHTET. Das ist was ganz anderes.' },
     { t: 'say', who: 'wirt', text: '(Kevin. Aus Kabine eins. Ich hatte gehofft, ich seh ihn nie wieder. Zumindest nicht von vorne.)' },
-    { t: 'say', who: 'kevin', text: 'Der Captain hat mich angeworben, Bruder. „Operation Pogo“. Soldaten auf Springstöcken. Ich war Ausbilder für Rückstoß.' },
-    { t: 'say', who: 'claudius', look: 1, text: 'Es gab nie eine Operation Pogo! Und sie war ein voller Erfolg!' },
-    { t: 'say', who: 'kevin', text: 'Siehst du? So redet der die ganze Zeit.' },
-    { t: 'say', who: 'kevin', text: 'Seine Akten hat er versteckt. Auf einem alten Rechner. Bei DIR auf dem Dachboden, Bruder. Weil da „keiner freiwillig hochgeht“.' },
+    { t: 'say', who: 'kevin', text: 'Der Captain will Alkohol verbieten. Weltweit. Und alle Drogen. Und weißt du, was in Tavirien als Droge zählt?' },
+    { t: 'say', who: 'kevin', text: 'Viagra, Bruder. VIAGRA. Ohne meine blauen Freunde bin ich nur ein großer, trauriger Mann im Tanga.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'Ihr Tanga ist Eigentum der Armee!' },
+    { t: 'say', who: 'kevin', text: 'Er hat mit der BLÖD-Zeitung Fake-Statistiken ausgeheckt. Alles auf einem alten Rechner. Bei DIR auf dem Dachboden, Bruder.' },
     { t: 'say', who: 'claudius', look: 1, text: 'Lüge! Feindpropaganda! Und außerdem ist der Dachboden sehr gemütlich!' },
-    { t: 'say', who: 'wirt', text: '(Ich glaube, ich will wissen, was auf diesem Rechner ist.)' },
+    { t: 'say', who: 'wirt', text: '(Erst mein Bier verbieten wollen und dann meinen Dachboden benutzen. Na warte.)' },
     { t: 'title', text: 'KAPITEL 5', sub: 'Die Wahrheit hat Hausverbot' },
   ],
 
-  /** Nach dem Veröffentlichen: Claudius widerspricht sich vor der Presse und hüpft davon. */
+  /** Nach dem Hack: Claudius widerspricht sich vor der Presse und flüchtet – ausgerechnet in die Kneipe. */
   claudiusEnde: [
     { t: 'bg', key: 'street' },
-    { t: 'caption', text: 'Zwanzig Minuten nach dem Hochladen.\nVor dem Eimer stehen drei Lokalreporter, ein Rentner mit Klappstuhl und Kalle.' },
-    { t: 'say', who: 'claudius', look: 1, text: 'BÜRGER! Diese Dokumente sind gefälscht! Ich habe sie persönlich gefälscht, ich muss es wissen!' },
-    { t: 'say', who: 'wirt', text: 'Sie haben sie selbst unterschrieben. Auf jeder Seite. Mit Glitzerstift.' },
-    { t: 'say', who: 'claudius', look: 1, text: 'Ich unterschreibe vieles! Das nennt man Führungsstärke!' },
-    { t: 'say', who: 'kevin', text: 'Captain. Im Bericht steht, der Ententeich hätte zuerst angegriffen.' },
-    { t: 'say', who: 'claudius', text: 'Der Teich war feindselig. Er hat uns ... gespiegelt.' },
-    { t: 'caption', text: 'Ein Reporter fragt, warum der „Untersuchungsbericht“\nzwei Tage VOR der Operation datiert ist.' },
-    { t: 'say', who: 'claudius', look: 1, text: 'Gute Untersuchungen beginnen früh!' },
-    { t: 'say', who: 'claudius', text: 'Ich ziehe mich nun zurück. Strategisch. Mit Würde. Und mit Rückstoß.' },
-    { t: 'fx', kind: 'pogo' },
-    { t: 'say', who: 'kevin', text: 'Bruder. Er springt in die falsche Richtung. Da ist der Stadtpark.' },
-    { t: 'fx', kind: 'splash' },
-    { t: 'caption', text: 'Aus der Ferne: empörtes Quaken.\nDer Ententeich hat wieder angegriffen.' },
-    { t: 'say', who: 'kevin', text: 'Danke, Bruder. Ich bleib noch ein bisschen hier. Ohne Springstock.' },
+    { t: 'caption', text: 'Zwanzig Minuten nach dem Hack.\nDie Mails liegen bei seriösen Redaktionen und Faktencheckern.\nVor dem Eimer: drei Reporter, ein Rentner mit Klappstuhl und Kalle.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'BÜRGER! Diese Mails sind gefälscht! Ich habe sie persönlich geschrieben, ich muss es wissen!' },
+    { t: 'say', who: 'wirt', text: 'Und die Statistik mit den Flatulenzen?' },
+    { t: 'say', who: 'claudius', look: 1, text: 'Wissenschaftlich! Ich habe selbst gezählt!' },
+    { t: 'caption', text: 'Ein Faktenchecker fragt, wie man 99,99 Prozent\naller Biertrinker untersucht hat.' },
+    { t: 'say', who: 'claudius', text: 'Stichprobe. Ein Mann. Ein sehr verlässlicher Mann. Mein Schwager.' },
+    { t: 'say', who: 'kevin', text: 'Captain. Die BLÖD-Zeitung hat die Geschichte zurückgezogen. Also die Hälfte. Auf Seite 17. Neben dem Wetter.' },
+    { t: 'say', who: 'claudius', look: 1, text: 'Verrat! Ich ziehe mich zurück. Strategisch. Mit Würde.' },
+    { t: 'caption', text: 'Captain Claudius marschiert davon. In die falsche Richtung.\nDirekt in den Goldenen Eimer.' },
+    { t: 'fx', kind: 'bell' },
+    { t: 'say', who: 'claudius', text: 'Ein Bier. Rein dienstlich. Zur ... Beweissicherung.' },
+    { t: 'say', who: 'kevin', text: 'Bruder. Ich bleib noch ein bisschen hier. Meine blauen Freunde und ich fühlen uns endlich sicher.' },
     { t: 'say', who: 'wirt', text: '(Solange er die Kabine nicht wieder abschließt.)' },
     { t: 'title', text: 'PRESSEFREIHEIT', sub: 'Die Wahrheit hat wieder Hausrecht.' },
   ],

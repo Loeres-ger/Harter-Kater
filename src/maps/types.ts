@@ -22,6 +22,8 @@ export interface MapObject {
   /** Schild: Text; Interaktion: Beschriftung und Text, der beim Benutzen erscheint */
   text?: string;
   label?: string;
+  /** leuchtet in dieser Farbe (z. B. '#ff5ac8' für ein Neonschild) */
+  glow?: string;
   /** NPC: Gespräch aus dialog/data.ts (SPEAKERS) */
   talk?: string;
   /** nur sichtbar/aktiv, wenn dieses Story-Flag gesetzt ist (z. B. glanzErledigt); mit ! davor: nur solange es fehlt */

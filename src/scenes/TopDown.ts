@@ -13,6 +13,8 @@ import { LightHint, streetCell, streetLights } from '../maps/streetView';
 
 export const T = 16;
 const ZOOM = 2;
+/** Rand der Lichtkarte um den Bildausschnitt (Weltpixel), damit beim Laufen keine Kante sichtbar wird */
+const LIGHT_PAD = 40;
 
 export interface Interact {
   x: number;
@@ -83,6 +85,14 @@ export abstract class TopDown extends Phaser.Scene {
     // Außenkarten (maps/*.json) zeichnet die gemeinsame Straßenansicht – dieselbe Regel wie im Map-Editor
     const md = this.mapData();
     const sdef = md ? MAP_DEFS[md.id] : undefined;
+    // Feste Kacheln (Boden, Fassaden, Bordsteine, Schatten) werden in ein Bild in doppelter Auflösung gebacken:
+    // gleiche Schärfe wie die Einzelbilder, aber ein einziges Objekt statt tausender pro Bild. Objekte mit Tiefe
+    // (Mülltonnen, Container …) bleiben einzelne Bilder, damit sie vor und hinter Figuren stehen können.
+    const MAX_TEX = 4096;
+    const bake = sdef && mw * T * 2 <= MAX_TEX && mh * T * 2 <= MAX_TEX
+      ? this.add.renderTexture(0, 0, mw * T * 2, mh * T * 2).setOrigin(0).setScale(0.5).setDepth(0.5)
+      : undefined;
+    const pass: [number, number, string][][] = [[], [], []]; // Boden, Kacheln, Überlagerungen
     for (let y = 0; y < mh; y++) {
       this.solid[y] = [];
       for (let x = 0; x < mw; x++) {
@@ -91,9 +101,17 @@ export abstract class TopDown extends Phaser.Scene {
         const info = this.tileFor(ch, x, y);
         if (sdef) {
           const c = streetCell(this.rows, sdef, x, y);
-          if (c.floor) this.add.image(px, py, c.floor).setOrigin(0).setScale(0.5).setDepth(0);
-          for (const o of c.overlays) this.add.image(px, py, o).setOrigin(0).setScale(0.5).setDepth(0.6);
-          if (c.key && this.textures.exists(c.key)) this.add.image(px, py, c.key).setOrigin(0).setScale(0.5).setDepth(c.building ? 0.4 : c.object ? py + T : 0.5);
+          const key = c.key && this.textures.exists(c.key) ? c.key : undefined;
+          if (bake) {
+            if (c.floor) pass[0].push([px, py, c.floor]);
+            if (key && !c.object) pass[1].push([px, py, key]);
+            for (const o of c.overlays) pass[2].push([px, py, o]);
+            if (key && c.object) this.add.image(px, py, key).setOrigin(0).setScale(0.5).setDepth(py + T);
+          } else {
+            if (c.floor) this.add.image(px, py, c.floor).setOrigin(0).setScale(0.5).setDepth(0);
+            for (const o of c.overlays) this.add.image(px, py, o).setOrigin(0).setScale(0.5).setDepth(0.6);
+            if (key) this.add.image(px, py, key).setOrigin(0).setScale(0.5).setDepth(c.building ? 0.4 : c.object ? py + T : 0.5);
+          }
           this.solid[y][x] = info.solid;
           continue;
         }
@@ -109,6 +127,12 @@ export abstract class TopDown extends Phaser.Scene {
         if (info.key) this.add.image(px, py, info.key).setOrigin(0).setScale(0.5).setDepth(info.object ? py + T : 0.5);
         this.solid[y][x] = info.solid;
       }
+    }
+
+    if (bake) {
+      bake.beginDraw();
+      for (const list of pass) for (const [px, py, key] of list) bake.batchDrawFrame(key, undefined, px * 2, py * 2);
+      bake.endDraw();
     }
 
     // Karten aus dem Map-Editor: Objekte, Zonen und Kollisions-Korrekturen, Lichter aus der Straßenansicht
@@ -127,7 +151,8 @@ export abstract class TopDown extends Phaser.Scene {
 
     // Stimmung: Lichtkarte. Die Dunkelheit liegt über der Welt, jede Lichtquelle (addLight) radiert einen weichen Lichtkegel
     // hinein. So hellt eine Laterne ihre Umgebung wirklich auf, statt nur einen Leuchtfleck darüber zu legen.
-    this.lightRT = this.add.renderTexture(-T, -T, (mw + 2) * T, (mh + 2) * T).setOrigin(0).setDepth(5000);
+    // Lichtkarte nur so groß wie der Bildausschnitt (plus Rand); sie wandert mit der Kamera
+    this.lightRT = this.add.renderTexture(0, 0, Math.ceil(this.scale.width / ZOOM) + LIGHT_PAD * 2, Math.ceil(this.scale.height / ZOOM) + LIGHT_PAD * 2).setOrigin(0).setDepth(5000);
     this.lightStamp = this.make.image({ key: this.textures.exists('lightPool') ? 'lightPool' : 'light', add: false });
     this.drawLights();
 
@@ -208,16 +233,30 @@ export abstract class TopDown extends Phaser.Scene {
       return;
     }
     if (z.state === 'baustelle') {
-      // Absperrgitter der Glanzbau Corporation: rot-weiße Baken an den Rändern
-      g.fillStyle(0x000000, 0.25).fillRect(x, y, w, h);
-      for (let i = 0; i < w; i += 8) for (const yy of [y + 2, y + h - 6]) g.fillStyle((i / 8) % 2 ? 0xffffff : 0xd02a2a).fillRect(x + i, yy, 8, 4);
-      for (let i = 0; i < h; i += 8) for (const xx of [x + 2, x + w - 6]) g.fillStyle((i / 8) % 2 ? 0xffffff : 0xd02a2a).fillRect(xx, y + i, 4, 8);
-      const t = this.add.text(x + w / 2, y + h / 2, z.label || 'GLANZBAU\nBAUSTELLE', { fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color: '#f8e070', align: 'center' })
-        .setOrigin(0.5).setResolution(2).setScale(0.5).setDepth(y + h + 1).setStroke('#120c0b', 3);
-      void t;
+      // Absperrung der Glanzbau Corporation: Bauzaun auf jeder gesperrten Kachel, Warnbaken mit Blinklicht an den Enden,
+      // Firmenschild in der Mitte. Alles verschwindet mit der Freischaltung (Zone wird dann gar nicht erst gezeichnet).
+      if (this.textures.exists('bauzaun')) {
+        for (let ty = z.y; ty < z.y + z.h; ty++)
+          for (let tx = z.x; tx < z.x + z.w; tx++) this.add.image(tx * T + 8, (ty + 1) * T, 'bauzaun').setOrigin(0.5, 1).setScale(0.5).setDepth((ty + 1) * T - 1);
+        const ends: [number, number][] = z.w >= z.h ? [[x + 3, y + h], [x + w - 3, y + h]] : [[x + w / 2, y + 6], [x + w / 2, y + h]];
+        ends.forEach(([bx, by], i) => {
+          this.add.image(bx, by, 'bake').setOrigin(0.5, 1).setScale(0.5).setDepth(by + 1);
+          const blink = this.addLight(bx, by - 8, 0.22, 0.8, false).setTint(0xffa020);
+          this.tweens.killTweensOf(blink);
+          this.tweens.add({ targets: blink, alpha: 0.05, duration: 380, yoyo: true, repeat: -1, delay: i * 380 });
+        });
+        this.add.image(x + w / 2, y + h - 4, 'signGlanzbau').setOrigin(0.5, 1).setScale(0.5).setDepth(y + h + 2);
+      } else {
+        g.fillStyle(0xd02a2a, 0.5).fillRect(x, y, w, h);
+      }
       return;
     }
-    // gesperrt / Quest: dunkles Gitter
+    // Quest-Bereich (z. B. der Kult-Innenhof): bleibt im Halbdunkel, bis die Quest ihn öffnet – man ahnt, was drin ist
+    if (z.state === 'quest') {
+      g.setDepth(4999).fillStyle(0x05040a, 0.5).fillRect(x, y, w, h);
+      return;
+    }
+    // dauerhaft gesperrt: dunkles Gitter
     g.fillStyle(0x0a0a10, 0.55).fillRect(x, y, w, h);
     g.lineStyle(1, 0x6a6a7a, 0.9);
     for (let i = 0; i <= w; i += 4) g.lineBetween(x + i, y, x + i, y + h);
@@ -228,7 +267,9 @@ export abstract class TopDown extends Phaser.Scene {
     if (o.solid) this.solid[Math.floor((o.y - 2) / T)]?.splice(Math.floor(o.x / T), 1, true);
     if (o.kind === 'deko' || o.kind === 'npc') {
       if (!o.key || !this.textures.exists(o.key)) return;
-      this.add.sprite(o.x, o.y, o.key, o.frame ?? 0).setOrigin(0.5, 1).setScale(0.5 * (o.scale ?? 1)).setFlipX(!!o.flipX).setDepth(depth);
+      const sp = this.add.sprite(o.x, o.y, o.key, o.frame ?? 0).setOrigin(0.5, 1).setScale(0.5 * (o.scale ?? 1)).setFlipX(!!o.flipX).setDepth(depth);
+      // leuchtende Schilder, Laternen, Schaufenster-Deko: kleiner Lichtkegel in der Farbe des Objekts
+      if (o.glow) this.addLight(o.x, o.y - sp.displayHeight / 2, Math.max(0.35, sp.displayWidth / 70), 0.6).setTint(parseInt(o.glow.replace('#', ''), 16));
       if (o.kind === 'npc') {
         this.add.image(o.x, o.y - 1, 'shadow').setDepth(1);
         const who = o.talk;
@@ -272,12 +313,20 @@ export abstract class TopDown extends Phaser.Scene {
   private drawLights() {
     const rt = this.lightRT, st = this.lightStamp;
     if (!rt || !st) return;
+    const v = this.cameras.main.worldView;
+    const ox = Math.floor(v.x) - LIGHT_PAD, oy = Math.floor(v.y) - LIGHT_PAD;
+    rt.setPosition(ox, oy);
     rt.clear().fill(0x0a0612, this.darkness());
+    rt.beginDraw();
     for (const l of this.lightSources) {
       if (!l.active || !l.visible || l.alpha < 0.02) continue;
-      st.setPosition(l.x + T, l.y + T).setScale(l.scaleX * 1.15, l.scaleY * 1.15).setAlpha(Math.min(1, l.alpha * 1.25));
-      rt.erase(st);
+      // nur Lichtkegel, die ins Bild reichen
+      const rad = 64 * Math.max(l.scaleX, l.scaleY) * 1.15;
+      if (l.x + rad < ox || l.x - rad > ox + rt.width || l.y + rad < oy || l.y - rad > oy + rt.height) continue;
+      st.setPosition(l.x - ox, l.y - oy).setScale(l.scaleX * 1.15, l.scaleY * 1.15).setAlpha(Math.min(1, l.alpha * 1.25));
+      rt.erase(st); // innerhalb von beginDraw/endDraw gesammelt statt einzeln
     }
+    rt.endDraw();
   }
 
   protected toast(s: string) {

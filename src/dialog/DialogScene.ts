@@ -17,6 +17,8 @@ const BAR_H = 22;
 const BOX_Y = 178;
 const BOX_H = 60;
 const ROW_H = 13;
+/** so lange sind neue Antworten gesperrt, damit schnelles Weitertippen nicht gleich eine Antwort auswählt (ms) */
+const CHOICE_LOCK = 450;
 
 /** Gespräch unter vier Augen: Wirt links, Gegenüber rechts, Antworten zum Anklicken. */
 export class DialogScene extends Phaser.Scene {
@@ -40,6 +42,10 @@ export class DialogScene extends Phaser.Scene {
   private bob?: Phaser.Tweens.Tween;
   private done = false;
   private openedAt = 0;
+  /** wann die aktuellen Antworten erschienen sind */
+  private offeredAt = 0;
+  /** Antwort, auf der der aktuelle Tipp/Klick begonnen hat (-1: keine) */
+  private pressed = -1;
 
   constructor() {
     super('Dialog');
@@ -215,7 +221,10 @@ export class DialogScene extends Phaser.Scene {
     this.nameBg.setVisible(false);
     this.nameText.setVisible(false);
     this.focus(true);
-    this.hint.setText('Antwort wählen');
+    this.hint.setText('');
+    this.offeredAt = this.time.now;
+    this.pressed = -1;
+    this.time.delayedCall(CHOICE_LOCK, () => this.choices === choices && this.hint.setText('Antwort wählen'));
     const rh = Math.min(ROW_H, Math.floor((BOX_H - 4) / choices.length));
     const y0 = Math.round((BOX_H - choices.length * rh) / 2) + 1;
     choices.forEach((c, i) => {
@@ -223,17 +232,30 @@ export class DialogScene extends Phaser.Scene {
       const bg = this.add.rectangle(4, y - 1, W - 24, rh - 1, 0x3a2a1c, 0).setOrigin(0).setInteractive({ useHandCursor: true });
       const color = c.action === 'kill' || c.action === 'felixKnueppel' || c.action === 'bornaGebrochen' ? '#ff7070' : c.action ? '#9ae09a' : c.text.startsWith('„') ? '#f0c070' : '#f4ead0';
       const label = txt(this, 14, y + 1, `${i + 1}  ${c.text}`, color);
-      const row = this.add.container(8, BOX_Y, [bg, label]).setDepth(810);
+      const row = this.add.container(8, BOX_Y, [bg, label]).setDepth(810).setAlpha(0);
+      // sanft einblenden: zeigt, dass die Antworten erst nach der Sperre antippbar sind
+      this.tweens.add({ targets: row, alpha: 1, duration: CHOICE_LOCK - 100, delay: 100 + i * 25 });
       bg.on('pointerover', () => { bg.setFillStyle(0x3a2a1c, 1); label.setText(`>  ${c.text}`); });
       bg.on('pointerout', () => { bg.setFillStyle(0x3a2a1c, 0); label.setText(`${i + 1}  ${c.text}`); });
-      bg.on('pointerup', () => this.choose(i));
+      // zählt nur, wenn der Tipp nach der Sperre AUF dieser Antwort begonnen hat; der Tipp, der den letzten Satz
+      // weitergeblättert hat, wählt also nie versehentlich mit
+      bg.on('pointerdown', () => { this.pressed = this.choiceReady() ? i : -1; });
+      bg.on('pointerup', () => {
+        const ok = this.pressed === i;
+        this.pressed = -1;
+        if (ok) this.choose(i);
+      });
       this.rows.push(row);
     });
   }
 
+  private choiceReady() {
+    return this.time.now - this.offeredAt >= CHOICE_LOCK;
+  }
+
   private async choose(i: number) {
     const c = this.choices[i];
-    if (!c || this.done) return;
+    if (!c || this.done || !this.choiceReady()) return;
     audio.sfx('click');
     this.choices = [];
     for (const r of this.rows) r.destroy();
@@ -283,6 +305,15 @@ export class DialogScene extends Phaser.Scene {
     } else if (kind === 'laden') {
       this.add.image(0, 0, 'csLaden').setOrigin(0);
       this.add.image(240, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3).setTint(0xffe0a0).setAlpha(0.3);
+    } else if (kind === 'club') {
+      // Muskelkater: Bühne mit Vorhang, Neonschild, wandernde Scheinwerfer
+      this.add.image(0, 0, 'csClub').setOrigin(0);
+      const neon = txt(this, 240, 52, 'MUSKELKATER', '#ff7ad8', 16).setOrigin(0.5).setShadow(0, 0, '#ff2ab0', 8, true, true);
+      this.tweens.add({ targets: neon, alpha: 0.6, duration: 80, yoyo: true, repeat: -1, repeatDelay: 2300 });
+      for (const [x, tint, d] of [[150, 0xff4ac0, 2600], [330, 0x9a5aff, 3100]] as const) {
+        const l = this.add.image(x, 150, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.2).setTint(tint).setAlpha(0.35);
+        this.tweens.add({ targets: l, x: 480 - x, duration: d, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
     } else if (kind === 'wc') {
       // Toilette: flackernde Neonröhre
       this.add.image(0, 0, 'csWC').setOrigin(0);

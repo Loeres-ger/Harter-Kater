@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { txt } from '../ui';
+import { H, W, txt } from '../ui';
 
 // Gemeinsame Bausteine für Titel- und Verloren-Bildschirm: Kalle als Kulisse, Verläufe, Regen, Rauch,
 // und der plastische Schriftzug „HARTER KARTER“.
@@ -90,4 +90,45 @@ export function drawRain(g: Phaser.GameObjects.Graphics, time: number, x: number
     const ry = y + ((i * 53 + time * 0.25) % h);
     g.lineBetween(rx, ry, rx - 1, Math.min(y + h, ry + 6));
   }
+}
+
+/** Kulisse von Titel- und Pausenbildschirm: die Kneipe bei Nacht, Regen am Fenster, Katzenaugen, Hängelampe, Kalle pennt. */
+export function tavernBackdrop(scene: Phaser.Scene) {
+  scene.add.image(0, 0, 'tresenBg').setOrigin(0).setTint(0x8a7a9a);
+  scene.add.rectangle(0, 200, W, 70, 0x120a08).setOrigin(0);
+  // Regen am Fenster, draußen glühen zwei Katzenaugen
+  const rain = scene.add.graphics().setDepth(1);
+  const eyes = [scene.add.rectangle(64, 104, 2, 1, 0x9aff60), scene.add.rectangle(70, 104, 2, 1, 0x9aff60)];
+  eyes.forEach((e) => e.setDepth(1));
+  scene.time.addEvent({ delay: 2600, loop: true, callback: () => { eyes.forEach((e) => e.setVisible(false)); scene.time.delayedCall(140, () => eyes.forEach((e) => e.setVisible(true))); } });
+  const onUpdate = (t: number) => drawRain(rain, t, 28, 32, 96, 80);
+  scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate));
+
+  // Hängelampe über Kalles Tisch mit Lichtkegel und tanzendem Staub
+  const KX = 392, TY = 204;
+  const lamp = scene.add.graphics().setDepth(20);
+  lamp.fillStyle(0x1a1410).fillRect(KX - 1, 0, 2, 22);
+  lamp.fillStyle(0x2a3a2a).fillTriangle(KX - 16, 32, KX + 16, 32, KX, 20);
+  lamp.fillStyle(0xfff0b0).fillRect(KX - 4, 31, 8, 3);
+  const cone = scene.add.image(KX, 120, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.2, 3.4).setTint(0xffc870).setAlpha(0.35).setDepth(15);
+  scene.tweens.add({ targets: cone, alpha: 0.27, duration: 120, yoyo: true, repeat: -1, repeatDelay: 2600 });
+  scene.add.particles(0, 0, 'light', {
+    x: { min: KX - 60, max: KX + 60 }, y: { min: 40, max: 190 }, lifespan: 4000, speedX: { min: -3, max: 3 }, speedY: { min: -2, max: 2 },
+    scale: { start: 0.015, end: 0.03 }, alpha: { start: 0.5, end: 0 }, tint: 0xffe0a0, frequency: 120, blendMode: 'ADD',
+  }).setDepth(16);
+
+  // Kalle pennt am Tisch
+  kalleAtTable(scene, KX, TY, { depth: 10 });
+
+  // dunkler Verlauf links (Platz für Schrift), dunkle Ränder oben und unten
+  hGradient(scene, 0, 300, 0, H, 0x0a0608, 0.94, 0, 30);
+  vGradient(scene, 0, W, 0, 30, 0x000000, 0.7, 0, 30);
+  vGradient(scene, 0, W, 210, H, 0x000000, 0, 0.85, 30);
+}
+
+/** feine Scanlines über allem: Röhrenfernseher-Look */
+export function scanlines(scene: Phaser.Scene, depth = 60) {
+  const scan = scene.add.graphics().setDepth(depth);
+  for (let y = 0; y < H; y += 2) scan.fillStyle(0x000000, 0.12).fillRect(0, y, W, 1);
 }

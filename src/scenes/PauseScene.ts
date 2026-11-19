@@ -1,12 +1,19 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
+import { chapterList, lastChapter } from '../progress/save';
 import { state } from '../state';
+import { isTouchDevice } from '../touch';
 import { H, W, txt } from '../ui';
+import { hud } from './HudScene';
 import { Btn } from './ShopScene';
 import { menuNav } from './menuNav';
-import { newGame } from './TitleScene';
+import { loadChapter, newGame } from './TitleScene';
+import { bigTitle, scanlines, tavernBackdrop } from './screenFx';
 
-/** Pausemenü über allem: Weiterspielen, Achievements, Neustart, Ton an/aus, Impressum, Datenschutz. */
+/**
+ * Pausemenü im Look des Titelbildschirms (Kneipe bei Nacht, Kalle pennt, Schriftzug links):
+ * Weiterspielen, Kapitel wählen, Erfolge, Ton, Neustart, Impressum, Datenschutz.
+ */
 export class PauseScene extends Phaser.Scene {
   private paused: string[] = [];
   private wasRunning = false;
@@ -22,7 +29,8 @@ export class PauseScene extends Phaser.Scene {
 
   /** Spiel anhalten und Menü öffnen (von außen aufrufbar). */
   static open(game: Phaser.Game) {
-    if (game.scene.isActive('Pause')) return;
+    // auch nicht neu starten, solange darüber Erfolge oder Kapitel offen sind
+    if (game.scene.isActive('Pause') || game.scene.isPaused('Pause')) return;
     game.scene.start('Pause');
   }
 
@@ -38,52 +46,79 @@ export class PauseScene extends Phaser.Scene {
     this.wasRunning = state.running;
     state.running = false;
     this.scene.bringToTop();
+    this.cameras.main.setBackgroundColor('#0d0b0a').fadeIn(180);
 
-    const dim = this.add.rectangle(0, 0, W, H, 0x000000, 0).setOrigin(0).setInteractive();
-    this.tweens.add({ targets: dim, fillAlpha: 0.7, duration: 150 });
+    // Kulisse wie auf dem Titelbildschirm; die Fläche dahinter fängt Klicks ab
+    this.add.rectangle(0, 0, W, H, 0x0d0b0a).setOrigin(0).setInteractive();
+    tavernBackdrop(this);
 
-    const PW = 220, PH = 240;
-    const panel = this.add.container(W / 2, H / 2);
-    const bg = this.add.rectangle(0, 0, PW, PH, 0x1a1210).setStrokeStyle(2, 0xc9a24a).setInteractive();
-    const inner = this.add.rectangle(0, 0, PW - 8, PH - 8, 0x000000, 0).setStrokeStyle(1, 0x3a2a1e);
-    const title = txt(this, 0, -PH / 2 + 18, 'PAUSE', '#f0c030', 16).setOrigin(0.5).setStroke('#5a2a0a', 4);
-    panel.add([bg, inner, title]);
+    // ---------------------------------------------------------------- Schrift
+    const LX = 26;
+    txt(this, LX, 20, 'PAUSE', '#c9a24a', 8).setDepth(40);
+    const title = bigTitle(this, LX, 32, ['HARTER', 'KARTER'], 24).setDepth(40);
+    this.add.image(LX + 80, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2, 1).setTint(0xff9a30).setAlpha(0.26).setDepth(39);
+    this.add.rectangle(LX, 94, 150, 1, 0xc9a24a).setOrigin(0).setDepth(40);
+    let y = 100;
+    const last = lastChapter();
+    if (last) y += txt(this, LX, y, `${last.title}: ${last.name}`, '#c9a24a', 8).setWordWrapWidth(250).setMaxLines(2).setDepth(40).height + 4;
+    if (hud.goal) txt(this, LX, y, hud.goal, '#8a7a6a', 8).setWordWrapWidth(250).setMaxLines(2).setDepth(40);
+    // wie auf dem Titel: der Schriftzug flackert ab und zu wie eine Neonröhre
+    this.time.addEvent({
+      delay: 3800, loop: true,
+      callback: () => {
+        title.setAlpha(0.55);
+        this.time.delayedCall(60, () => title.setAlpha(1));
+        this.time.delayedCall(140, () => title.setAlpha(0.7));
+        this.time.delayedCall(200, () => title.setAlpha(1));
+      },
+    });
 
-    const BW = 170;
+    // ---------------------------------------------------------------- Menü
     const toggleSound = () => {
       audio.unlock();
       audio.toggleMute();
       this.refreshSound();
     };
     const doClose = () => this.close();
+    const doChapters = () => this.openChapters();
     const doAch = () => this.openAchievements();
-    const doImp = () => this.openPage('impressum');
-    const doDsg = () => this.openPage('datenschutz');
     const doRestart = () => this.restart();
-    const resume = new Btn(this, 0, -62, BW, 24, 'WEITERSPIELEN', 0x3a6a2a, doClose);
-    const ach = new Btn(this, 0, -34, BW, 20, 'ACHIEVEMENTS', 0x6a5020, doAch);
-    this.restartBtn = new Btn(this, 0, -8, BW, 20, 'NEUSTART', 0x6a2a20, doRestart);
-    this.soundBtn = new Btn(this, 0, 18, BW, 20, '', 0x5a4a2a, toggleSound);
-    const imp = new Btn(this, 0, 50, BW, 18, 'IMPRESSUM', 0x3a3040, doImp);
-    const dsg = new Btn(this, 0, 74, BW, 18, 'DATENSCHUTZ', 0x3a3040, doDsg);
-    const hint = txt(this, 0, PH / 2 - 16, 'öffnet neuen Tab', '#6a5a4a').setOrigin(0.5);
-    panel.add([resume.box, ach.box, this.restartBtn.box, this.soundBtn.box, imp.box, dsg.box, hint]);
+    const CX = LX + 75, BW = 150;
+    const resume = new Btn(this, CX, 170, BW, 18, 'WEITERSPIELEN', 0xa8342a, doClose);
+    const chapters = new Btn(this, CX, 191, BW, 14, 'KAPITEL WÄHLEN', 0x3a3040, doChapters);
+    chapters.setEnabled(chapterList().some((c) => c.savedAt));
+    const ach = new Btn(this, LX + 37, 209, 74, 14, 'ERFOLGE', 0x3a3040, doAch);
+    this.soundBtn = new Btn(this, LX + 113, 209, 74, 14, '', 0x3a3040, toggleSound);
+    this.restartBtn = new Btn(this, CX, 227, BW, 14, 'NEUSTART', 0x5a3a2a, doRestart);
+    const menu = this.add.container(0, 0).setDepth(41);
+    menu.add([resume.box, chapters.box, ach.box, this.soundBtn.box, this.restartBtn.box]);
+    menu.add(txt(this, LX, H - 14, isTouchDevice(this) ? 'Tippen: auswählen' : 'ESC/P: weiter', '#5a4a3a', 8));
     this.refreshSound();
-    // Tastatur: Pfeile wählen, Enter bestätigt
-    menuNav(this, panel, [
-      { btn: resume, w: BW, h: 24, act: doClose },
-      { btn: ach, w: BW, h: 20, act: doAch },
-      { btn: this.restartBtn, w: BW, h: 20, act: doRestart },
-      { btn: this.soundBtn, w: BW, h: 20, act: toggleSound },
-      { btn: imp, w: BW, h: 18, act: doImp },
-      { btn: dsg, w: BW, h: 18, act: doDsg },
+    menuNav(this, menu, [
+      { btn: resume, w: BW, h: 18, act: doClose },
+      { btn: chapters, w: BW, h: 14, act: doChapters },
+      { btn: ach, w: 74, h: 14, act: doAch },
+      { btn: this.soundBtn, w: 74, h: 14, act: toggleSound },
+      { btn: this.restartBtn, w: BW, h: 14, act: doRestart },
     ]);
+    this.tweens.add({ targets: resume.box, scale: 1.04, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    panel.setScale(0.85).setAlpha(0);
-    this.tweens.add({ targets: panel, scale: 1, alpha: 1, duration: 160, ease: 'Back.easeOut' });
+    // Impressum und Datenschutz unten rechts wie die Links auf dem Titel (öffnen einen neuen Tab, das Spiel bleibt)
+    const link = (x: number, label: string, page: 'impressum' | 'datenschutz') => {
+      const t = txt(this, x, H - 14, label, '#a89878', 8).setOrigin(1, 0).setDepth(41).setInteractive({ useHandCursor: true });
+      t.on('pointerover', () => t.setColor('#f0c030'));
+      t.on('pointerout', () => t.setColor('#a89878'));
+      t.on('pointerup', () => window.open(`./${page}.html`, '_blank', 'noopener'));
+      return t;
+    };
+    const dsg = link(W - 10, 'Datenschutz', 'datenschutz');
+    txt(this, dsg.x - dsg.width - 6, H - 14, '·', '#6a5a4a', 8).setOrigin(1, 0).setDepth(41);
+    link(dsg.x - dsg.width - 18, 'Impressum', 'impressum');
 
-    // Klick neben das Menü oder ESC: weiterspielen (P schaltet main.ts um)
-    dim.on('pointerdown', () => this.close());
+    scanlines(this);
+
+    menu.setAlpha(0);
+    this.tweens.add({ targets: menu, alpha: 1, duration: 250, delay: 80 });
     this.input.keyboard!.on('keydown-ESC', () => this.close());
   }
 
@@ -103,28 +138,41 @@ export class PauseScene extends Phaser.Scene {
         if (this.closing) return;
         this.restartArmed = false;
         this.restartBtn.setLabel('NEUSTART');
-        this.restartBtn.setColor(0x6a2a20);
+        this.restartBtn.setColor(0x5a3a2a);
       });
       return;
     }
     this.closing = true;
-    // alle angehaltenen Spielszenen beenden; die Achievement-Einblendung läuft weiter
+    this.stopGame();
+    newGame(this);
+  }
+
+  /** alle angehaltenen Spielszenen beenden; die Achievement-Einblendung läuft weiter */
+  private stopGame() {
     for (const k of this.paused) {
       if (k === 'Notify') this.scene.resume(k);
       else this.scene.stop(k);
     }
-    newGame(this);
+  }
+
+  private openChapters() {
+    if (this.closing) return;
+    this.scene.launch('Saves', { from: 'Pause' });
+    this.scene.pause();
+  }
+
+  /** Aus der Kapitelliste: laufendes Spiel beenden und das gewählte Kapitel laden. */
+  startChapter(id: string) {
+    if (this.closing) return;
+    this.closing = true;
+    this.stopGame();
+    loadChapter(this, id);
   }
 
   private openAchievements() {
     if (this.closing) return;
     this.scene.launch('Achievements');
     this.scene.pause();
-  }
-
-  private openPage(page: 'impressum' | 'datenschutz') {
-    // neuer Tab, damit der Spielstand erhalten bleibt
-    window.open(`./${page}.html`, '_blank', 'noopener');
   }
 
   close() {

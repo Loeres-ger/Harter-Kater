@@ -1,5 +1,6 @@
 import { unlock } from './achievements';
 import type { StoryFlags } from './flags';
+import { PC_FILES, gelesen } from '../dialog/pcFiles';
 
 // Offene Welt: Die Glanz-Mission ist der Anfang; danach ist der Eimer gerettet und die Stadt offen. Ereignisse, die auf
 // bereits Erlebtem aufbauen, kommen in zufälliger Reihenfolge. Neues Ereignis: Eintrag in STRAENGE ergänzen
@@ -42,7 +43,7 @@ export const STRAENGE: Strang[] = [
     gestartet: (f) => !!f.claudius,
     fertig: (f) => f.claudius === 'veroeffentlicht',
     starten: (f) => { f.claudius = 'getroffen'; },
-    ziel: (f) => ((f.pcGelesen?.length ?? 0) >= 3 ? 'Dachboden: Claudius’ Akten veröffentlichen.' : `Claudius’ Rechner (Dachboden): ${f.pcGelesen?.length ?? 0}/3 Akten.`),
+    ziel: (f) => (gelesen(f.pcGelesen).length >= PC_FILES.length ? 'Dachboden: Claudius’ Mails abschicken.' : `Claudius’ Rechner (Dachboden): ${gelesen(f.pcGelesen).length}/${PC_FILES.length} Dateien.`),
     danach: VOR_DER_TUER,
   },
 ];

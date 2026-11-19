@@ -6,6 +6,7 @@ import { fadeTo } from '../ui';
 import type { DialogAction } from '../dialog/data';
 import { BAR_LADDER_SPAWN } from './spawns';
 import { entdecke, zaehle } from '../progress/quests';
+import { PC_FILES, gelesen } from '../dialog/pcFiles';
 
 // Der Dachboden über der Kneipe: Dachschrägen, Fenster, alter Krempel und Bornas Matratze.
 //  R Dachschräge  W Dachfenster  b Kisten  o Schaukelpferd  c Kerze auf Kiste  s Sessel
@@ -53,8 +54,8 @@ export class AtticScene extends TopDown {
   protected goalText() {
     const f = state.flags;
     if (f.claudius === 'getroffen') {
-      const n = f.pcGelesen?.length ?? 0;
-      return n >= 3 ? 'Alles gelesen. Jetzt veröffentlichen.' : `Claudius’ Rechner: ${n} von 3 Akten gelesen.`;
+      const n = gelesen(f.pcGelesen).length;
+      return n >= PC_FILES.length ? 'Alles gelesen. Jetzt abschicken.' : `Claudius’ Rechner: ${n} von ${PC_FILES.length} Dateien gelesen.`;
     }
     if (f.borna === 'gebrochen') return 'Hier oben ist es jetzt still.';
     if (f.borna === 'hoffnung') return 'Borna und Lilly wohnen jetzt hier oben.';

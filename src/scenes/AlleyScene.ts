@@ -7,7 +7,7 @@ import { unlock } from '../progress/achievements';
 import { freiesSpiel, lilyWartet } from '../progress/flags';
 import { entdecke, weltZiel, zaehle } from '../progress/quests';
 import { countBarEntry } from '../events/anne';
-import { BAR_LADDER_SPAWN, LADEN_SPAWN } from '../rooms/spawns';
+import { BAR_LADDER_SPAWN, CLUB_SPAWN, LADEN_SPAWN } from '../rooms/spawns';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
@@ -38,6 +38,8 @@ const LILY_TILE: [number, number] = [29, 2];
 /** Kapitel 5: wo Captain Claudius und Kevin vor der Kneipe stehen, und wo der Wirt danach steht (Kacheln) */
 const CLAUDIUS_TILE: [number, number] = [21, 17];
 const KEVIN_TILE: [number, number] = [23, 17];
+/** Eingang des Stripclubs „Muskelkater“ (Kachel in Koordinaten der ursprünglichen Karte) */
+const CLUB_DOOR: [number, number] = [-21, 17];
 export const ALLEY_FRONT_SPAWN: [number, number] = [17, 18];
 
 export class AlleyScene extends TopDown {
@@ -61,6 +63,7 @@ export class AlleyScene extends TopDown {
   private copTo = 0;
   private copLane = 0;
   private copHome = 0;
+  private rainFx?: Phaser.GameObjects.Particles.ParticleEmitter;
   private copDetours = 0;
   private copBlockT = 0;
   /** Damen der Nacht (bewegliche Hindernisse für Felix) */
@@ -230,15 +233,16 @@ export class AlleyScene extends TopDown {
 
     // Offene Welt: Figuren der laufenden Stränge, Finale, nächste Story-Fortsetzung
     if (state.flags.claudius) this.addClaudius();
+    this.addClub();
     this.scheduleStory(() => !!this.corpse);
 
     // Lampen an der Wand
     // Wandlampen und Laternen kommen aus der Straßenansicht (maps/streetView.ts); bei der Mutation flackern sie
     this.lamps = this.mapLamps;
 
-    // Regen
-    this.add.particles(0, 0, 'coin', {
-      x: { min: 0, max: this.rows[0].length * T },
+    // Regen: Emitter wandert mit dem Bildausschnitt, die Tropfen fallen in der Welt
+    this.rainFx = this.add.particles(0, 0, 'coin', {
+      x: { min: -40, max: 300 },
       y: -10,
       lifespan: 1200,
       speedY: { min: 200, max: 260 },
@@ -249,11 +253,14 @@ export class AlleyScene extends TopDown {
       tint: 0x8aa0c8,
       frequency: 12,
     }).setDepth(5002);
+    const follow = () => { const v = this.cameras.main.worldView; this.rainFx?.setPosition(v.x, v.y); };
+    this.events.on(Phaser.Scenes.Events.POST_UPDATE, follow);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, follow));
   }
 
   /** Fassade, Straßenmöbel und Lichter rund ums Haus. */
   private buildStreet(dx: number, dy: number, qx: number, qy: number) {
-    this.addLeonard(dx);
+    this.addLeonard(dx, dy);
     if (lilyWartet(state.flags)) this.addLilly();
     // Schild über dem Eingang, Außenlampe, Lichtschein der Fenster auf dem Gehweg
     // Neonschild über der (zwei Kacheln hohen) Tür, im Obergeschoss; rosa Schein auf Fassade und nassem Gehweg
@@ -290,12 +297,12 @@ export class AlleyScene extends TopDown {
             act: () => (this.corpse ? this.toast('Mit einer Leiche in den Feinkostladen? Lieber nicht.') : this.go('Laden', { spawn: LADEN_SPAWN })),
           });
         } else if (ch === 'o') {
-          // Easter Egg: aus dem Gully quakt es (nach Operation Pogo haben sich die Enten organisiert)
+          // Easter Egg: aus dem Gully klingt es nach Kneipe (nach Claudius' Niederlage feiert die Unterwelt)
           this.interacts.push({
             x: x * T + 8, y: y * T + 8, r: 12, label: () => 'Gullydeckel',
             act: () => {
               entdecke(state.flags, 'gully');
-              this.toast(state.flags.claudius === 'veroeffentlicht' ? 'Aus dem Gully: rhythmisches Quaken. Klingt nach Marschmusik. Die Enten haben sich organisiert.' : 'Aus dem Gully: ein leises Quaken. Enten? Hier unten?');
+              this.toast(state.flags.claudius === 'veroeffentlicht' ? 'Aus dem Gully: Gläserklirren und ein dreistimmiges „Prost!“. Die Kanalisation feiert die Pressefreiheit.' : 'Aus dem Gully: ein leises Quaken. Enten? Hier unten?');
             },
           });
           // Dampf aus dem Gully
@@ -309,9 +316,10 @@ export class AlleyScene extends TopDown {
 
   /** Kapitel 5: Captain Claudius posiert vor dem Eimer (bis zur Veröffentlichung), Kevin steht daneben (gleiche Figur wie in der Toilette). */
   private addClaudius() {
-    const done = state.flags.claudius === 'veroeffentlicht';
+    // nach der Veröffentlichung: Claudius trinkt im Eimer, Kevin sitzt im Muskelkater (ClubScene)
+    if (state.flags.claudius === 'veroeffentlicht') return;
     const [kx, ky] = this.at(KEVIN_TILE);
-    const kevin = this.add.sprite(kx * T + 8, ky * T + 14, 'kevin', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(ky * T + 14).setFlipX(!done);
+    const kevin = this.add.sprite(kx * T + 8, ky * T + 14, 'kevin', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(ky * T + 14).setFlipX(true);
     this.npcs.push(kevin, this.add.image(kevin.x, kevin.y - 1, 'shadow').setDepth(1).setScale(1.2, 1));
     this.solid[ky][kx] = true;
     this.time.addEvent({
@@ -323,7 +331,6 @@ export class AlleyScene extends TopDown {
       },
     });
     this.interacts.push({ x: kevin.x, y: kevin.y - 4, r: 18, label: () => (kevin.active && !this.corpse && !state.carrying ? 'Mit Kevin reden' : null), act: () => this.talk('kevinGasse') });
-    if (done) return;
 
     const [cx, cy] = this.at(CLAUDIUS_TILE);
     const cap = this.add.sprite(cx * T + 8, cy * T + 14, 'claudius', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(cy * T + 14);
@@ -335,7 +342,7 @@ export class AlleyScene extends TopDown {
       callback: () => {
         if (!cap.active) return;
         cap.setFrame(1);
-        floatText(this, cap.x, cap.y - 26, Phaser.Utils.Array.GetRandom(['BÜRGER!', 'KEINE FRAGEN!', 'ALLES UNTER KONTROLLE!', 'ES GAB NIE EINEN TEICH!']), '#9ac0ff');
+        floatText(this, cap.x, cap.y - 26, Phaser.Utils.Array.GetRandom(['BÜRGER!', 'KEINE FRAGEN!', 'PROST IST VERRAT!', 'NÜCHTERN BLEIBEN!']), '#9ac0ff');
         this.time.delayedCall(1200, () => cap.active && cap.setFrame(0));
       },
     });
@@ -343,11 +350,22 @@ export class AlleyScene extends TopDown {
   }
 
   /** Der kräftige Leonard lehnt an der Laterne, die dem Eingang am nächsten steht. */
-  private addLeonard(doorX: number) {
+  /** Muskelkater: Stripclub mit Ladies Night, jederzeit offen (nur nicht mit Leiche) */
+  private addClub() {
+    const [x, y] = this.at(CLUB_DOOR);
+    this.interacts.push({
+      x: x * T + 8, y: (y + 1) * T + 4, r: 16,
+      label: () => (state.carrying ? null : this.corpse ? 'Erst die Leiche loswerden!' : 'Muskelkater betreten'),
+      act: () => (this.corpse ? this.toast('Mit einer Leiche in den Stripclub? Der Türsteher hat schon genug gesehen.') : this.go('Club', { spawn: CLUB_SPAWN })),
+    });
+  }
+
+  private addLeonard(doorX: number, doorY: number) {
     let best: [number, number] | null = null;
+    const dist = ([x, y]: [number, number]) => Math.abs(x - doorX) + Math.abs(y - doorY) * 2;
     for (let y = 0; y < this.rows.length; y++)
       for (let x = 0; x < this.rows[y].length; x++)
-        if (this.rows[y][x] === 'l' && (!best || Math.abs(x - doorX) < Math.abs(best[0] - doorX))) best = [x, y];
+        if (this.rows[y][x] === 'l' && (!best || dist([x, y]) < dist(best))) best = [x, y];
     if (!best) return;
     const [lx, ly] = best;
     const x = lx * T + 2, y = (ly + 1) * T - 1;

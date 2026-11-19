@@ -11,6 +11,7 @@ import { makeLadenTextures } from '../rooms/ladenGfx';
 import { makeAnneTextures } from '../events/anne';
 import { makeClaudiusTextures } from '../events/claudius';
 import { makeStreetTextures } from '../world/street';
+import { makeCityTextures } from '../world/city';
 import alleyFile from '../maps/alley.json';
 import { MAP_DEFS, MapDef, TileDef, tileKey } from '../maps/palettes';
 import type { MapData, MapObject, MapZone, ObjectKind, ZoneState } from '../maps/types';
@@ -399,6 +400,10 @@ function render() {
   if (L.licht) drawLighting();
 
   // Zonen
+  // Baustellen wie im Spiel vor der Glanz-Mission: Bauzaun auf jeder gesperrten Kachel
+  if (L.zonen)
+    for (const z of map.zones.filter((zz) => zz.state === 'baustelle'))
+      for (let ty = z.y; ty < z.y + z.h; ty++) for (let tx = z.x; tx < z.x + z.w; tx++) drawSprite('bauzaun', 0, tx * T + 8, (ty + 1) * T);
   if (L.zonen)
     for (const z of map.zones) {
       const c = ZONE_COLORS[z.state];
@@ -930,7 +935,7 @@ function library() {
       lib.append(item(`${d.label} (${ch})`, thumb(img(k)), brush === ch, () => { brush = ch; if (!['brush', 'rect', 'line'].includes(tool)) setTool('brush'); }));
     }
   } else if (tab === 'Gebäude') {
-    const all = [...eingebaut(map.rows), ...customPrefabs];
+    const all = [...eingebaut(map), ...customPrefabs];
     let shownCustom = false;
     head('Vorlagen');
     for (const p of all) {
@@ -1282,7 +1287,7 @@ game = new Phaser.Game({
   audio: { noAudio: true },
   scene: class extends Phaser.Scene {
     create() {
-      for (const make of [makeAllTextures, makeCasinoTextures, makeGuestTextures, makeWorldTextures, makeLeonardTextures, makeAchievementIcons, makeRoomTextures, makeLadenTextures, makeAnneTextures, makeClaudiusTextures, makeStreetTextures]) {
+      for (const make of [makeAllTextures, makeCasinoTextures, makeGuestTextures, makeWorldTextures, makeLeonardTextures, makeAchievementIcons, makeRoomTextures, makeLadenTextures, makeAnneTextures, makeClaudiusTextures, makeStreetTextures, makeCityTextures]) {
         try {
           make(this);
         } catch (err) {

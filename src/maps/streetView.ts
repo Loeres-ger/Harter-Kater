@@ -46,14 +46,36 @@ export function heightInColumn(rows: string[], def: MapDef, x: number, y: number
   return { d: b - y, bottom: b };
 }
 
-const PUTZ = 'FHDA';
+/** Material einer Fassade nach ihrem Zeichen (Wand oder Fenster); Türen 'd' übernehmen das Material der Nachbarwand */
+const MAT: Record<string, string> = {
+  F: 'putz', H: 'putz', D: 'putz', A: 'putz',
+  N: 'ziegel', O: 'ziegel', U: 'ziegel', '#': 'ziegel', w: 'ziegel', L: 'ziegel', g: 'ziegel', p: 'ziegel',
+  M: 'beton', W: 'beton', P: 'ocker', S: 'ocker', J: 'violett', I: 'violett', h: 'holz', i: 'holz',
+  k: 'kachel', q: 'kachel', a: 'safran', e: 'safran', y: 'stein', t: 'stein', j: 'leer', s: 'mauer', f: 'fels',
+};
+/** Wand- und Fensterzeichen der neuen Materialien */
+const NEU_WAND = 'MPJhkay';
+const NEU_FENSTER = 'WSIiqetj';
+/** Lichtfarbe aus Schaufenstern je Material */
+const LICHT: Record<string, number> = { putz: 0xffb860, ziegel: 0xffd890, ocker: 0xf0c070, violett: 0xff5ac8, holz: 0xff7a3a, kachel: 0xe8f0d8, safran: 0xf8c060, beton: 0xc8d4e0, stein: 0x8a6ad0 };
 const hash = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) >>> 0;
+
+/** Material einer Gebäudespalte (Fuß), bei Türen das der Nachbarwand */
+export function materialAt(rows: string[], x: number, y: number) {
+  for (const dx of [0, -1, 1, -2, 2]) {
+    const m = MAT[rows[y]?.[x + dx] ?? ''];
+    if (m) return m;
+  }
+  return 'ziegel';
+}
+/** Türmaterial: Putz und Ziegel haben eigene, schlichte Türen (die Kneipentür D bleibt einmalig) */
+const doorMat = (m: string) => (m === 'putz' ? 'putzG' : m === 'ziegel' ? 'ziegelG' : m === 'mauer' || m === 'fels' ? 'ziegelG' : m);
 
 function floorType(rows: string[], def: MapDef, x: number, y: number): 'road' | 'walk' | 'other' | null {
   const ch = rows[y]?.[x];
   if (ch === undefined || isBuilding(def, ch)) return null;
   const k = def.floor(rows, x, y);
-  return k.startsWith('asph') ? 'road' : k.startsWith('slab') ? 'walk' : 'other';
+  return k.startsWith('asph') || k === 'parkLine' ? 'road' : k.startsWith('slab') ? 'walk' : 'other';
 }
 
 export function streetCell(rows: string[], def: MapDef, x: number, y: number): Cell {
@@ -61,13 +83,40 @@ export function streetCell(rows: string[], def: MapDef, x: number, y: number): C
   const td = def.tiles[ch];
   if (isBuilding(def, ch)) {
     const { d, bottom } = heightInColumn(rows, def, x, y);
-    const mat = PUTZ.includes(rows[bottom][x]) ? 'putz' : 'ziegel';
-    if (d >= FASSADE) {
-      const above = rows[y - 1]?.[x];
-      const offen = above !== undefined && !isBuilding(def, above);
-      return { key: offen ? (ch === 'Q' ? 'backDoorTop' : 'backEdge') : 'void', overlays: [], building: true };
-    }
+    const fuss = materialAt(rows, x, bottom);
+    const mat = fuss === 'mauer' || fuss === 'fels' ? 'ziegel' : fuss;
+    const above = rows[y - 1]?.[x];
+    const obenOffen = above !== undefined && !isBuilding(def, above);
     const below = rows[y + 1]?.[x];
+    // Sonderfälle mit eigener Höhe: Fels, hohe Mauer, Tor, Tunnelportal, Türen
+    if (ch === 'f') return { key: obenOffen ? 'rockTop' : hash(x, y) % 3 ? 'rock0' : 'rock1', overlays: [], building: true };
+    if (ch === 's') {
+      if (d === 0) return { key: 'mauer0', overlays: [], building: true };
+      if (d < 3) return { key: 'mauer1', overlays: [], building: true };
+      // Mauerkrone von oben: quer, wenn die Mauer seitlich offen ist und senkrecht weiterläuft, sonst längs
+      const seitlichOffen = !isBuilding(def, rows[y]?.[x - 1]) || !isBuilding(def, rows[y]?.[x + 1]);
+      const senkrecht = rows[y - 1]?.[x] === 's' || rows[y + 1]?.[x] === 's';
+      return { key: seitlichOffen && senkrecht ? 'mauerTopV' : 'mauerTop', overlays: [], building: true };
+    }
+    if (ch === '+') return { key: d === 0 ? 'tor0' : d === 1 ? 'tor1' : 'mauer1', overlays: [], building: true };
+    if (ch === '[' || ch === ']' || ch === '^') {
+      const key = d >= 4 ? 'rock0' : d === 3 ? 'portalTop' : ch === '[' ? 'portalL' : ch === ']' ? 'portalR' : d === 2 ? 'tunnelArch' : 'tunnelDark';
+      return { key, overlays: [], building: true };
+    }
+    if (ch === 'd') return { key: `${doorMat(materialAt(rows, x, y))}${d === 0 ? 'Door0' : 'Door1'}`, overlays: [], building: true };
+    if (below === 'd' && d < FASSADE) return { key: `${doorMat(materialAt(rows, x, y + 1))}Door1`, overlays: [], building: true };
+    if (NEU_WAND.includes(ch) || NEU_FENSTER.includes(ch)) {
+      const m = MAT[ch];
+      const fenster = NEU_FENSTER.includes(ch);
+      const key = d >= FASSADE ? (obenOffen ? 'backEdge' : 'void')
+        : d === 3 ? `${m}Cornice`
+        : d === 2 ? (fenster || hash(x, y) % 3 === 0 ? `${m}UpLit` : `${m}Up`)
+        : fenster ? (d === 0 ? `${m}Win0` : `${m}Win1`) : d === 0 ? `${m}0` : `${m}1`;
+      return { key, overlays: [], building: true };
+    }
+    if (d >= FASSADE) {
+      return { key: obenOffen ? (ch === 'Q' ? 'backDoorTop' : 'backEdge') : 'void', overlays: [], building: true };
+    }
     let key: string;
     if (d === FASSADE - 1 && !td.wall) key = `${mat}Cornice`;
     else if (below === 'D' && ch !== 'D') key = 'pubDoor1';
@@ -125,7 +174,11 @@ export function streetLights(rows: string[], def: MapDef): LightHint[] {
         default:
           if (isBuilding(def, ch)) {
             const c = streetCell(rows, def, x, y);
-            if (c.key === 'putzWin0') out.push({ x: cx, y: (y + 1) * T + 6, scale: 0.55, alpha: 0.42, tint: 0xffb860, pool: true, kind: 'window' });
+            if (c.key?.endsWith('Win0') && !c.key.startsWith('leer')) {
+              const m = c.key.slice(0, -4);
+              out.push({ x: cx, y: (y + 1) * T + 6, scale: 0.55, alpha: 0.42, tint: LICHT[m] ?? 0xffb860, pool: true, kind: 'window' });
+            }
+            if (ch === 'd') out.push({ x: cx, y: (y + 1) * T + 3, scale: 0.6, alpha: 0.6, tint: 0xffd890, pool: true, kind: 'door' });
             if (c.key?.endsWith('UpLit')) out.push({ x: cx, y: y * T + 8, scale: 0.22, alpha: 0.5, tint: 0xffc070, pool: false, kind: 'window' });
           }
       }

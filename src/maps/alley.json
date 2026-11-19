@@ -2,30 +2,50 @@
   "version": 1,
   "id": "alley",
   "rows": [
-    "__=__###############################",
-    "_____##w#L#g##w##L#p#w#g##L#w##p#L##",
-    "__=__,,...m............GG.T.....bb.#",
-    "_____,,.....Y....u....K.....x.o....#",
-    "__=__,,.T......................X..m#",
-    "_____,,,,BBBBBBBBBBBBBQBBBB..EEEEEEE",
-    "__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
-    "_____,,,,RRRCRRRRRRRRRRRRRR..EEEEEEE",
-    "__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
-    "_____,,,,RRRRRRRRRRRVRRRRRR..EEEEEEE",
-    "__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
-    "_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
-    "__=__,,,,RRRRRRRRRRRRRRRVRR..EEEEEEE",
-    "_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEE",
-    "__=__,,,,rrrrrrrrrrrrrrrrrr..EEEEEEE",
-    "_____,,,,FHFFFHFFFFFHFHFFHF..NONNONN",
-    "__=__,,,,FHFAFHFFDFFHFHFFHF..NUNNONN",
-    "_____,,,,,,T,,,,,,,,,,,,,,,,,,,,,,,,",
-    "__=__,,,,,,,,,,,,,,,n,,,,,,,,,Y,,,,,",
-    "_____,,,l,,,,,,,,,,l,,,,,,,,,,l,,,,,",
-    "_____________zZ_____________________",
-    "__=__-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-",
-    "__=_________________________________",
-    "____________________________________"
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,NONNNNONNONNNNONONNNNONNONNONvvvvvvvvvvEEEEEEEEEEEEEEEEEEffff",
+    "E|__|__|__|__|__|__|_vv,,,_____,,NONNLNONNONLNNONONNLNONNONNONvvvvvvvvvvEEEEEEEEEEEEEEEEEEffff",
+    "E|zZ|zZ|__|zZ|zZ|zZ|_vv,,,__=__,,..................................vvvvvEEEEEEEEEEEEEEEEEEffff",
+    "E____________________vv,,,_____,,.......l...............l..........vvvvvEEEEEEEEEEEEEEEEEEffff",
+    "E____________________vv,,,__=__,,EEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....vvvvvytytytyyyyytytytytffff",
+    "E|__|__|__|__|__|__|_vv,,,_____,,EEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....vvvvvytytytyydyytytytytffff",
+    "E|zZ|__|zZ|zZ|__|zZ|_vv,,,__=__,,EEEEEEEEEEEEEEEEEEEEEEEEEEEEE............................ffff",
+    "E____________________vv,,,_____,,EEEEEEEEEEEEEEEEEEEEEEEEEEEEE......................l.....ffff",
+    "E____________________vv,,,__=__,,EEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....EEEEEEEEEEEEE..EEEEEEEEffff",
+    "E|__|__|__|__|__|__|___________,,EEEEEEEEEEEEEEEEEEEEEEEEEEEEE.....EEEEEEEEEEEEE..EEEEEEEEffff",
+    "E|zZ|zZ|zZ|__|zZ|__|________=__,,EEEEEEEEEEENONNONEEEEEEEEEEEE..l..EEEEEEEEEEEEE..EEEEEEEEffff",
+    "E___________________l__________,,EEEEEEEEEEENONdONEEEEEEEEEEEE.....EEEEEEEEEEEEE..EEEEEEEEffff",
+    "E___________________________=__,,EEEEEEEEEEEvvvvvvEEEEEEEEEEEE.....EEEEEEEEEEEEE..EEEEEEEEffff",
+    "vvvvvvvvvvvvvvvvvvvvvvv,,,_____,,EEEEEEEEEEEvvvvvvEEEEEEEEEEEE.....kqqkqkqkqqkqk..MWMMMWMWffff",
+    "vvvvvvvvvvvvvvvvvvvvvvv,,,__=__,,EEEEEEEEEEEvvvvvvEEEEEEEEEEEE.....kqqkqdqkqqkqk..MWMdMWMWffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,EEEEEEEEEEEvvnvvvEEEEEEEEEEEE............................ffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,EEEEEEEEEEEvvvvvvEEEEEEEEEEEE..............l.........l...ffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,###########vvvvvv############.....ssssssssssssssssvvvvvvvffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,w#L#g##w##Lvvvvvv##L#w##p#L##.....svvvvvvvvvvvvvvsvvvvvvvffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,...m............GG.T.....bb.......svvvvvvvvvvvvvvsvvvvvvvffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,.....Y....u....K.....x.o..........svvvvvvvvvvvvvvsvvvvvvvffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,.T......................X..m......svvvvvvvvvvvvvvsvvvvvvvffff",
+    "NONNONNNONNONNaeeaaaeea,,,_____,,,,BBBBBBBBBBBBBQBBBB..EEEEEEEEEEEEsvvvvvvvvvvvvvvsvvvvvvvffff",
+    "NONLONdNONLONNaeeadaeea,,,__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEEEEEEEsvvvvvvvvvvvvvvsvvvvvvvffff",
+    "..T..................u.,,,_____,,,,RRRCRRRRRRRRRRRRRR..EEEEEEEEEEEEssssssssssssssssvvvvvvvffff",
+    ".......................,,,__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEEEEEEEssssss++ssssssssvvvvvvvffff",
+    "m...........l..........,,,_____,,,,RRRRRRRRRRRVRRRRRR..EEEEEEEEEEEEssssss++ssssssssvvvvvvvffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEEEEEEEEEEEEE..EEEEEEfffffffffffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEEEEEEEEEEEEE..EEEEEEfffffffffffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,,,RRRRRRRRRRRRRRRVRR..EEEEEEEEEEEEEEEEEE.lEEEEEEfffffffffffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,,,RRRRRRRRRRRRRRRRRR..EEEEEEEEEEEEEEEEEE..EEEEEEfkkk[^^^]ffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,,,rrrrrrrrrrrrrrrrrr..EEEEEEEEEEEEEEEEEE..EEEEEEfkkk[^^^]ffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,,,FHFFFHFFFFFHFHFFHF..NONNONNPSSPSPSPSSP..NjNNjNfkkk[^^^]ffff",
+    "JIIJJJJJIIJhiihhhhiihih,,,__=__,,,,FHFAFHFFDFFHFHFFHF..NUNNONNPSSPSdSPSSP..NjNNjNfkdk[^^^]ffff",
+    "JIIJJdJJIIJhiihdhhiihih,,,_____,,,,,,T,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,___fffff",
+    ",,,,,,,,,,,,,,,,,,,,,,,,,,__=__,,,,,,,,,,,,,,,n,,,,,,,,,Y,,,,,,,,,,,,,,,,,,,,,,,,,,,,,___fffff",
+    ",,,,,,,,,,,l,,,,,,,,,,,,,,_____,,,l,,,,,,,,,,l,,,,,,,,,,l,,,,,,,,,,,l,,,,,,,,,,,l,,,,,___fffff",
+    "_______________________________________zZ________________________________________________fffff",
+    "_-_-_-_-_-_-_-_-_-_-_-_-_-__=__-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_fffff",
+    "____________________________=____________________________________________________________fffff",
+    "_________________________________________________________________________________________fffff",
+    ",,,,,,l,,,,,,,,,,,l,,,,,,,,,,,l,,,,,,,,,,,,,,,,,,,,,,,l,,,,,,,,,,,l,,,,,,,,,,,l,,,,,,,,,,fffff",
+    "##w#g##w####wg###w####g####w###gw####w##g#w####w#g##w####wg###w####g####w###gw####w##g#w##ffff",
+    "##########################################################################################ffff"
   ],
   "objects": [
     {
@@ -33,69 +53,822 @@
       "kind": "deko",
       "key": "pubLantern",
       "frame": 0,
-      "x": 268,
-      "y": 250
+      "x": 684,
+      "y": 522
     },
     {
       "id": "pub-laterne-r",
       "kind": "deko",
       "key": "pubLantern",
       "frame": 0,
-      "x": 292,
-      "y": 250
+      "x": 708,
+      "y": 522
     },
     {
       "id": "pub-fass-l",
       "kind": "deko",
       "key": "barrel",
       "frame": 0,
-      "x": 258,
-      "y": 279
+      "x": 674,
+      "y": 551
     },
     {
       "id": "pub-fass-r",
       "kind": "deko",
       "key": "barrel",
       "frame": 0,
-      "x": 303,
-      "y": 279
+      "x": 719,
+      "y": 551
     },
     {
       "id": "laden-markise-tuer",
       "kind": "deko",
       "key": "awningShop",
       "frame": 0,
-      "x": 488,
-      "y": 248
+      "x": 904,
+      "y": 520
     },
     {
       "id": "laden-markise-fenster",
       "kind": "deko",
       "key": "awningShop",
       "frame": 0,
-      "x": 536,
-      "y": 248
+      "x": 952,
+      "y": 520
     },
     {
       "id": "laden-gemuese-1",
       "kind": "deko",
       "key": "crateVeg",
       "frame": 0,
-      "x": 530,
-      "y": 281
+      "x": 946,
+      "y": 553
     },
     {
       "id": "laden-gemuese-2",
       "kind": "deko",
       "key": "crateVeg",
       "frame": 0,
-      "x": 548,
-      "y": 281
+      "x": 964,
+      "y": 553
+    },
+    {
+      "id": "stadt-signParken-0",
+      "kind": "deko",
+      "key": "signParken",
+      "frame": 0,
+      "x": 352,
+      "y": 140
+    },
+    {
+      "id": "stadt-tree-1",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 344,
+      "y": 47,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-2",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 360,
+      "y": 111,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-3",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 72,
+      "y": 239,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-4",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 200,
+      "y": 223,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-5",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 312,
+      "y": 239,
+      "solid": true
+    },
+    {
+      "id": "stadt-bush-6",
+      "kind": "deko",
+      "key": "bush",
+      "frame": 0,
+      "x": 136,
+      "y": 222
+    },
+    {
+      "id": "stadt-bush-7",
+      "kind": "deko",
+      "key": "bush",
+      "frame": 0,
+      "x": 264,
+      "y": 238
+    },
+    {
+      "id": "stadt-bush-8",
+      "kind": "deko",
+      "key": "bush",
+      "frame": 0,
+      "x": 24,
+      "y": 222
+    },
+    {
+      "id": "stadt-tuer-9",
+      "kind": "interaktion",
+      "x": 104,
+      "y": 388,
+      "label": "Klingelschilder",
+      "text": "Müller, Yilmaz, Nguyen und „Kalle (Zweitwohnsitz)“. Niemand macht auf."
+    },
+    {
+      "id": "stadt-signIndia-10",
+      "kind": "deko",
+      "key": "signIndia",
+      "frame": 0,
+      "x": 296,
+      "y": 348,
+      "glow": "#f8c040"
+    },
+    {
+      "id": "stadt-awningSaffron-11",
+      "kind": "deko",
+      "key": "awningSaffron",
+      "frame": 0,
+      "x": 256,
+      "y": 366
+    },
+    {
+      "id": "stadt-awningSaffron-12",
+      "kind": "deko",
+      "key": "awningSaffron",
+      "frame": 0,
+      "x": 336,
+      "y": 366
+    },
+    {
+      "id": "stadt-tuer-13",
+      "kind": "interaktion",
+      "x": 296,
+      "y": 388,
+      "label": "Masala Basar",
+      "text": "Geschlossen. Durch die Scheibe riecht es nach Kardamom, Räucherstäbchen und Hoffnung."
+    },
+    {
+      "id": "stadt-signStrip-14",
+      "kind": "deko",
+      "key": "signStrip",
+      "frame": 0,
+      "x": 88,
+      "y": 524,
+      "glow": "#ff5ac8"
+    },
+    {
+      "id": "stadt-awningPurple-15",
+      "kind": "deko",
+      "key": "awningPurple",
+      "frame": 0,
+      "x": 40,
+      "y": 542
+    },
+    {
+      "id": "stadt-awningPurple-16",
+      "kind": "deko",
+      "key": "awningPurple",
+      "frame": 0,
+      "x": 144,
+      "y": 542
+    },
+    {
+      "id": "stadt-posterBox-17",
+      "kind": "deko",
+      "key": "posterBox",
+      "frame": 0,
+      "x": 68,
+      "y": 556,
+      "glow": "#ff5ac8"
+    },
+    {
+      "id": "stadt-posterBox-18",
+      "kind": "deko",
+      "key": "posterBox",
+      "frame": 0,
+      "x": 124,
+      "y": 556,
+      "glow": "#ff5ac8"
+    },
+    {
+      "id": "stadt-signShisha-20",
+      "kind": "deko",
+      "key": "signShisha",
+      "frame": 0,
+      "x": 264,
+      "y": 524,
+      "glow": "#ff7a3a"
+    },
+    {
+      "id": "stadt-awningRed-21",
+      "kind": "deko",
+      "key": "awningRed",
+      "frame": 0,
+      "x": 216,
+      "y": 542
+    },
+    {
+      "id": "stadt-awningRed-22",
+      "kind": "deko",
+      "key": "awningRed",
+      "frame": 0,
+      "x": 312,
+      "y": 542
+    },
+    {
+      "id": "stadt-cafeTable-23",
+      "kind": "deko",
+      "key": "cafeTable",
+      "frame": 0,
+      "x": 216,
+      "y": 588
+    },
+    {
+      "id": "stadt-cafeTable-24",
+      "kind": "deko",
+      "key": "cafeTable",
+      "frame": 0,
+      "x": 312,
+      "y": 588
+    },
+    {
+      "id": "stadt-tuer-25",
+      "kind": "interaktion",
+      "x": 248,
+      "y": 564,
+      "label": "Shisha 1001",
+      "text": "Geschlossen. Drinnen blubbert es trotzdem. Irgendwer raucht hier immer."
+    },
+    {
+      "id": "stadt-tuer-26",
+      "kind": "interaktion",
+      "x": 760,
+      "y": 196,
+      "label": "Hinterhaus",
+      "text": "Die Tür klemmt seit 1987. Daran hat auch der Hausmeister nichts geändert."
+    },
+    {
+      "id": "stadt-tree-27",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 712,
+      "y": 223,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-28",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 792,
+      "y": 271,
+      "solid": true
+    },
+    {
+      "id": "stadt-bush-29",
+      "kind": "deko",
+      "key": "bush",
+      "frame": 0,
+      "x": 728,
+      "y": 286
+    },
+    {
+      "id": "stadt-bush-30",
+      "kind": "deko",
+      "key": "bush",
+      "frame": 0,
+      "x": 776,
+      "y": 222
+    },
+    {
+      "id": "stadt-tree-31",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1016,
+      "y": 15,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-32",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1096,
+      "y": 47,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-33",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1128,
+      "y": 95,
+      "solid": true
+    },
+    {
+      "id": "stadt-signAlt-34",
+      "kind": "deko",
+      "key": "signAlt",
+      "frame": 0,
+      "x": 1288,
+      "y": 60
+    },
+    {
+      "id": "stadt-pubLantern-35",
+      "kind": "deko",
+      "key": "pubLantern",
+      "frame": 0,
+      "x": 1270,
+      "y": 74,
+      "glow": "#c8a8ff"
+    },
+    {
+      "id": "stadt-pubLantern-36",
+      "kind": "deko",
+      "key": "pubLantern",
+      "frame": 0,
+      "x": 1322,
+      "y": 74,
+      "glow": "#c8a8ff"
+    },
+    {
+      "id": "stadt-tuer-37",
+      "kind": "interaktion",
+      "x": 1288,
+      "y": 100,
+      "label": "Altbau",
+      "text": "Verschlossen. Über der Tür: ANNO 1888. Hinter den bunten Scheiben bewegt sich nichts. Noch nicht."
+    },
+    {
+      "id": "stadt-signWasch-38",
+      "kind": "deko",
+      "key": "signWasch",
+      "frame": 0,
+      "x": 1176,
+      "y": 204,
+      "glow": "#e8f0d8"
+    },
+    {
+      "id": "stadt-tuer-39",
+      "kind": "interaktion",
+      "x": 1160,
+      "y": 244,
+      "label": "Waschsalon",
+      "text": "„24 Stunden geöffnet.“ Die Tür ist trotzdem zu. Drinnen dreht sich eine einzige Trommel. Leer."
+    },
+    {
+      "id": "stadt-kellerluke",
+      "kind": "interaktion",
+      "x": 1290,
+      "y": 218,
+      "label": "Kellerluke",
+      "text": "Eine Kellerluke, frisch geölt. Von unten brummen Trockner. Viel zu viele Trockner. Verschlossen."
+    },
+    {
+      "id": "stadt-signBotschaft-40",
+      "kind": "deko",
+      "key": "signBotschaft",
+      "frame": 0,
+      "x": 1376,
+      "y": 204
+    },
+    {
+      "id": "stadt-poller-41",
+      "kind": "deko",
+      "key": "poller",
+      "frame": 0,
+      "x": 1336,
+      "y": 260
+    },
+    {
+      "id": "stadt-poller-42",
+      "kind": "deko",
+      "key": "poller",
+      "frame": 0,
+      "x": 1352,
+      "y": 260
+    },
+    {
+      "id": "stadt-poller-43",
+      "kind": "deko",
+      "key": "poller",
+      "frame": 0,
+      "x": 1400,
+      "y": 260
+    },
+    {
+      "id": "stadt-poller-44",
+      "kind": "deko",
+      "key": "poller",
+      "frame": 0,
+      "x": 1416,
+      "y": 260
+    },
+    {
+      "id": "stadt-tuer-45",
+      "kind": "interaktion",
+      "x": 1368,
+      "y": 244,
+      "label": "Botschaft",
+      "text": "Ein Wachmann schaut durch die Scheibe und schüttelt knapp den Kopf. Termine nur nach Vereinbarung."
+    },
+    {
+      "id": "stadt-tree-46",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1112,
+      "y": 319,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-47",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1288,
+      "y": 303,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-48",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1208,
+      "y": 367,
+      "solid": true
+    },
+    {
+      "id": "stadt-grave-49",
+      "kind": "deko",
+      "key": "grave",
+      "frame": 0,
+      "x": 1144,
+      "y": 351
+    },
+    {
+      "id": "stadt-grave-50",
+      "kind": "deko",
+      "key": "grave",
+      "frame": 0,
+      "x": 1176,
+      "y": 335
+    },
+    {
+      "id": "stadt-grave-51",
+      "kind": "deko",
+      "key": "grave",
+      "frame": 0,
+      "x": 1240,
+      "y": 319
+    },
+    {
+      "id": "stadt-grave-52",
+      "kind": "deko",
+      "key": "grave",
+      "frame": 0,
+      "x": 1256,
+      "y": 367
+    },
+    {
+      "id": "stadt-grave-53",
+      "kind": "deko",
+      "key": "grave",
+      "frame": 0,
+      "x": 1128,
+      "y": 383
+    },
+    {
+      "id": "stadt-tuer-54",
+      "kind": "interaktion",
+      "x": 1176,
+      "y": 436,
+      "label": "Eisentor",
+      "text": "Eine schwere Kette, ein neues Schloss. Dahinter Grabsteine und Bäume. Wer pflegt hier Gräber, die keiner kennt?"
+    },
+    {
+      "id": "stadt-signMarkt-55",
+      "kind": "deko",
+      "key": "signMarkt",
+      "frame": 0,
+      "x": 1080,
+      "y": 508,
+      "glow": "#f0e8c0"
+    },
+    {
+      "id": "stadt-awningGreen-56",
+      "kind": "deko",
+      "key": "awningGreen",
+      "frame": 0,
+      "x": 1024,
+      "y": 526
+    },
+    {
+      "id": "stadt-awningGreen-57",
+      "kind": "deko",
+      "key": "awningGreen",
+      "frame": 0,
+      "x": 1120,
+      "y": 526
+    },
+    {
+      "id": "stadt-crateVeg-58",
+      "kind": "deko",
+      "key": "crateVeg",
+      "frame": 0,
+      "x": 1016,
+      "y": 557
+    },
+    {
+      "id": "stadt-crateVeg-59",
+      "kind": "deko",
+      "key": "crateVeg",
+      "frame": 0,
+      "x": 1044,
+      "y": 557
+    },
+    {
+      "id": "stadt-crateVeg-60",
+      "kind": "deko",
+      "key": "crateVeg",
+      "frame": 0,
+      "x": 1128,
+      "y": 557
+    },
+    {
+      "id": "stadt-tuer-61",
+      "kind": "interaktion",
+      "x": 1080,
+      "y": 548,
+      "label": "Özen Markt",
+      "text": "Geschlossen. Morgen früh gibt es frisches Fladenbrot, sagt der Zettel an der Tür. Mit Herz drauf."
+    },
+    {
+      "id": "stadt-signVermieten-62",
+      "kind": "deko",
+      "key": "signVermieten",
+      "frame": 0,
+      "x": 1240,
+      "y": 508
+    },
+    {
+      "id": "stadt-tuer-63",
+      "kind": "interaktion",
+      "x": 1240,
+      "y": 548,
+      "label": "Leerstand",
+      "text": "Zu vermieten. Seit Jahren. Im Fenster vergilbt ein Plakat: „Bald hier: Glanz-Lofts“."
+    },
+    {
+      "id": "stadt-tree-64",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1368,
+      "y": 319,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-65",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1416,
+      "y": 399,
+      "solid": true
+    },
+    {
+      "id": "stadt-tree-66",
+      "kind": "deko",
+      "key": "tree",
+      "frame": 0,
+      "x": 1352,
+      "y": 415,
+      "solid": true
+    },
+    {
+      "id": "stadt-bush-67",
+      "kind": "deko",
+      "key": "bush",
+      "frame": 0,
+      "x": 1400,
+      "y": 302
+    },
+    {
+      "id": "stadt-bush-68",
+      "kind": "deko",
+      "key": "bush",
+      "frame": 0,
+      "x": 1384,
+      "y": 366
+    },
+    {
+      "id": "stadt-signWC-69",
+      "kind": "deko",
+      "key": "signWC",
+      "frame": 0,
+      "x": 1336,
+      "y": 508
+    },
+    {
+      "id": "stadt-tuer-70",
+      "kind": "interaktion",
+      "x": 1336,
+      "y": 548,
+      "label": "Öffentliches WC",
+      "text": "„Außer Betrieb.“ Das Schild sieht aus, als hinge es seit der letzten Eiszeit."
+    },
+    {
+      "id": "stadt-signGesperrt-71",
+      "kind": "deko",
+      "key": "signGesperrt",
+      "frame": 0,
+      "x": 1400,
+      "y": 524
+    },
+    {
+      "id": "stadt-tunnel",
+      "kind": "interaktion",
+      "x": 1400,
+      "y": 550,
+      "label": "Tunnel",
+      "text": "Gesperrt. Dahinter liegen weitere Stadtteile. Irgendwann geht es hier weiter."
+    },
+    {
+      "id": "stadt-bulldozer-72",
+      "kind": "deko",
+      "key": "bulldozer",
+      "frame": 0,
+      "x": 456,
+      "y": 188,
+      "bedingung": "!glanzErledigt",
+      "scale": 0.8
+    },
+    {
+      "id": "stadt-bulldozer-73",
+      "kind": "deko",
+      "key": "bulldozer",
+      "frame": 0,
+      "x": 1072,
+      "y": 634,
+      "bedingung": "!glanzErledigt",
+      "scale": 0.8,
+      "flipX": true
+    },
+    {
+      "id": "stadt-signGlanzbau-74",
+      "kind": "deko",
+      "key": "signGlanzbau",
+      "frame": 0,
+      "x": 160,
+      "y": 630,
+      "bedingung": "!glanzErledigt"
+    },
+    {
+      "id": "stadt-signGesperrt-75",
+      "kind": "deko",
+      "key": "signGesperrt",
+      "frame": 0,
+      "x": 288,
+      "y": 410,
+      "bedingung": "!glanzErledigt"
+    },
+    {
+      "id": "stadt-bake-76",
+      "kind": "deko",
+      "key": "bake",
+      "frame": 0,
+      "x": 392,
+      "y": 223,
+      "bedingung": "!glanzErledigt"
+    },
+    {
+      "id": "stadt-bake-77",
+      "kind": "deko",
+      "key": "bake",
+      "frame": 0,
+      "x": 488,
+      "y": 223,
+      "bedingung": "!glanzErledigt"
+    },
+    {
+      "id": "stadt-bake-78",
+      "kind": "deko",
+      "key": "bake",
+      "frame": 0,
+      "x": 1064,
+      "y": 591,
+      "bedingung": "!glanzErledigt"
+    },
+    {
+      "id": "stadt-bake-79",
+      "kind": "deko",
+      "key": "bake",
+      "frame": 0,
+      "x": 1000,
+      "y": 303,
+      "bedingung": "!glanzErledigt"
+    },
+    {
+      "id": "stadt-bake-80",
+      "kind": "deko",
+      "key": "bake",
+      "frame": 0,
+      "x": 312,
+      "y": 607,
+      "bedingung": "!glanzErledigt"
     }
   ],
-  "zones": [],
+  "zones": [
+    {
+      "id": "bau-nord",
+      "x": 23,
+      "y": 15,
+      "w": 10,
+      "h": 2,
+      "state": "baustelle",
+      "label": "GLANZBAU"
+    },
+    {
+      "id": "bau-west-gasse",
+      "x": 21,
+      "y": 24,
+      "w": 2,
+      "h": 3,
+      "state": "baustelle",
+      "label": "GLANZBAU"
+    },
+    {
+      "id": "bau-west-strasse",
+      "x": 21,
+      "y": 35,
+      "w": 2,
+      "h": 7,
+      "state": "baustelle",
+      "label": "GLANZBAU"
+    },
+    {
+      "id": "bau-ost-strasse",
+      "x": 62,
+      "y": 34,
+      "w": 2,
+      "h": 8,
+      "state": "baustelle",
+      "label": "GLANZBAU"
+    },
+    {
+      "id": "bau-ost-gasse",
+      "x": 62,
+      "y": 19,
+      "w": 2,
+      "h": 3,
+      "state": "baustelle",
+      "label": "GLANZBAU"
+    },
+    {
+      "id": "kult-hof",
+      "x": 68,
+      "y": 18,
+      "w": 14,
+      "h": 6,
+      "state": "quest",
+      "flag": "kultHof",
+      "label": "KULT"
+    }
+  ],
   "collision": {
     "block": [],
     "free": []
+  },
+  "origin": {
+    "x": 26,
+    "y": 17
   }
 }

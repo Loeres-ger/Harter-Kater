@@ -25,6 +25,7 @@ import { MensRoomScene } from './rooms/MensRoomScene';
 import { LadiesRoomScene } from './rooms/LadiesRoomScene';
 import { StallScene } from './rooms/StallScene';
 import { ShopRoomScene } from './rooms/ShopRoomScene';
+import { ClubScene } from './rooms/ClubScene';
 import { PcScene } from './rooms/PcScene';
 import { SavesScene } from './scenes/SavesScene';
 
@@ -62,9 +63,8 @@ async function boot() {
     backgroundColor: '#0d0b0a',
     // FIT: proportional einpassen, Balken wo nötig. Der Container bekommt seine Größe aus dem CSS.
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: false },
-    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
+    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
   });
-
   if (import.meta.env.DEV) {
     Object.assign(window, { game, audio });
     Object.defineProperty(window, 'st', { get: () => state });
@@ -73,7 +73,7 @@ async function boot() {
   const pauseBtn = document.getElementById('pause') as HTMLButtonElement | null;
   const togglePause = () => {
     audio.unlock();
-    if (game.scene.isActive('Achievements')) return; // erst die Liste schließen
+    if (game.scene.isActive('Achievements') || game.scene.isActive('Saves')) return; // erst die Liste schließen
     if (game.scene.isActive('Pause')) (game.scene.getScene('Pause') as PauseScene).close();
     else PauseScene.open(game);
   };

@@ -26,8 +26,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'bruderEntspann', name: 'Bruder, entspann dich', desc: 'Kevin ist panisch geflüchtet.', icon: 'ach_roll', hidden: true, hint: 'Die Herrentoilette hat Geheimnisse.' },
   { id: 'deutscherTraum', name: 'Der deutsche Traum', desc: 'Manchmal öffnet der richtige Dialekt mehr Türen als der richtige Geldbeutel.', icon: 'ach_pretzel' },
   { id: 'zuJung', name: 'Zu jung für den Goldenen Eimer', desc: 'Manche Gäste sind wirklich noch nicht reif für diese Kneipe.', icon: 'ach_18' },
-  { id: 'beweismittel', name: 'Beweismittelbeschaffer', desc: 'Alle drei Akten auf Captain Claudius’ Rechner gelesen.', icon: 'ach_file' },
-  { id: 'pressefreiheit', name: 'Pressefreiheit mit Rückstoß', desc: 'Die Akten veröffentlicht. Claudius hat geschrien. Es hat nichts genützt.', icon: 'ach_mic' },
+  { id: 'beweismittel', name: 'Beweismittelbeschaffer', desc: 'Claudius’ Mails mit der BLÖD-Zeitung gelesen.', icon: 'ach_file' },
+  { id: 'pressefreiheit', name: 'Pressefreiheit mit Nebenwirkungen', desc: 'Claudius’ Gegen-Hacker geschlagen und die Fake-Statistiken an seriöse Redaktionen geschickt.', icon: 'ach_mic' },
   { id: 'neugierig', name: 'Ortskundig', desc: 'Alle kleinen Geheimnisse der Stadt gefunden.', icon: 'ach_file', hidden: true, hint: 'Schau genauer hin. Und öfter.' },
   { id: 'glasWasser', name: 'Ein Glas Wasser', desc: 'Leni ein Glas Wasser hingestellt.', icon: 'ach_glass', hidden: true, hint: 'Auf der Damentoilette braucht wer Hilfe.' },
 ];

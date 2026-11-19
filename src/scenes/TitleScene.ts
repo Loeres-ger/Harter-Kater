@@ -8,9 +8,11 @@ import { makeLeonardTextures } from '../world/leonard';
 import { makeAchievementIcons } from '../progress/icons';
 import { makeRoomTextures } from '../rooms/gfx';
 import { makeLadenTextures } from '../rooms/ladenGfx';
+import { makeClubTextures } from '../rooms/clubGfx';
 import { makeAnneTextures } from '../events/anne';
 import { makeClaudiusTextures } from '../events/claudius';
 import { makeStreetTextures } from '../world/street';
+import { makeCityTextures } from '../world/city';
 import { getMap, isTestRun } from '../maps';
 import { CHAPTERS, lastChapter, snapshotData } from '../progress/save';
 import { VICTIM, loadState, resetState, state } from '../state';
@@ -19,10 +21,10 @@ import { resetAlley } from './AlleyScene';
 import { BAR_START_SPAWN, resetBar } from './BarScene';
 import { isTouchDevice } from '../touch';
 import { Btn } from './ShopScene';
-import { bigTitle, drawRain, hGradient, kalleAtTable, vGradient } from './screenFx';
+import { bigTitle, scanlines, tavernBackdrop } from './screenFx';
 
 /** Impressum-/Datenschutz-Links nur auf dem Titelbildschirm zeigen. */
-function showLegalLinks(on: boolean) {
+export function showLegalLinks(on: boolean) {
   document.getElementById('legal')?.classList.toggle('hidden', !on);
 }
 
@@ -66,8 +68,10 @@ export class TitleScene extends Phaser.Scene {
       ['Achievement-Symbole', () => { if (!this.textures.exists('ach_lock')) makeAchievementIcons(this); }],
       ['Dachboden und Toiletten', () => makeRoomTextures(this)],
       ['Feinkostladen', () => makeLadenTextures(this)],
+      ['Stripclub', () => makeClubTextures(this)],
       ['Anne', () => makeAnneTextures(this)],
       ['Straßenansicht', () => makeStreetTextures(this)],
+      ['Stadterweiterung', () => makeCityTextures(this)],
       ['Captain Claudius', () => makeClaudiusTextures(this)],
     ];
     for (const [name, make] of groups) {
@@ -88,38 +92,8 @@ export class TitleScene extends Phaser.Scene {
     this.input.keyboard!.once('keydown', () => audio.unlock());
     this.cameras.main.setBackgroundColor('#0d0b0a').fadeIn(400);
 
-    // ---------------------------------------------------------------- Kulisse: die Kneipe bei Nacht
-    this.add.image(0, 0, 'tresenBg').setOrigin(0).setTint(0x8a7a9a);
-    this.add.rectangle(0, 200, W, 70, 0x120a08).setOrigin(0);
-    // Regen am Fenster, draußen glühen zwei Katzenaugen
-    const rain = this.add.graphics().setDepth(1);
-    const eyes = [this.add.rectangle(64, 104, 2, 1, 0x9aff60), this.add.rectangle(70, 104, 2, 1, 0x9aff60)];
-    eyes.forEach((e) => e.setDepth(1));
-    this.time.addEvent({ delay: 2600, loop: true, callback: () => { eyes.forEach((e) => e.setVisible(false)); this.time.delayedCall(140, () => eyes.forEach((e) => e.setVisible(true))); } });
-    const onUpdate = (t: number) => drawRain(rain, t, 28, 32, 96, 80);
-    this.events.on(Phaser.Scenes.Events.UPDATE, onUpdate);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.UPDATE, onUpdate));
-
-    // Hängelampe über Kalles Tisch mit Lichtkegel und tanzendem Staub
-    const KX = 392, TY = 204;
-    const lamp = this.add.graphics().setDepth(20);
-    lamp.fillStyle(0x1a1410).fillRect(KX - 1, 0, 2, 22);
-    lamp.fillStyle(0x2a3a2a).fillTriangle(KX - 16, 32, KX + 16, 32, KX, 20);
-    lamp.fillStyle(0xfff0b0).fillRect(KX - 4, 31, 8, 3);
-    const cone = this.add.image(KX, 120, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.2, 3.4).setTint(0xffc870).setAlpha(0.35).setDepth(15);
-    this.tweens.add({ targets: cone, alpha: 0.27, duration: 120, yoyo: true, repeat: -1, repeatDelay: 2600 });
-    this.add.particles(0, 0, 'light', {
-      x: { min: KX - 60, max: KX + 60 }, y: { min: 40, max: 190 }, lifespan: 4000, speedX: { min: -3, max: 3 }, speedY: { min: -2, max: 2 },
-      scale: { start: 0.015, end: 0.03 }, alpha: { start: 0.5, end: 0 }, tint: 0xffe0a0, frequency: 120, blendMode: 'ADD',
-    }).setDepth(16);
-
-    // Kalle pennt am Tisch
-    kalleAtTable(this, KX, TY, { depth: 10 });
-
-    // dunkler Verlauf links (Platz für Schrift), dunkle Ränder oben und unten
-    hGradient(this, 0, 300, 0, H, 0x0a0608, 0.94, 0, 30);
-    vGradient(this, 0, W, 0, 30, 0x000000, 0.7, 0, 30);
-    vGradient(this, 0, W, 210, H, 0x000000, 0, 0.85, 30);
+    // Kulisse: die Kneipe bei Nacht (gleich im Pausenmenü)
+    tavernBackdrop(this);
 
     // ---------------------------------------------------------------- Schrift und Menü
     const LX = 26;
@@ -144,9 +118,7 @@ export class TitleScene extends Phaser.Scene {
       },
     });
 
-    // feine Scanlines über allem: Röhrenfernseher-Look
-    const scan = this.add.graphics().setDepth(60);
-    for (let y = 0; y < H; y += 2) scan.fillStyle(0x000000, 0.12).fillRect(0, y, W, 1);
+    scanlines(this);
 
     this.started = false;
     this.buildMenu(true);
