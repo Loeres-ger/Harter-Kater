@@ -148,7 +148,7 @@ export class BarScene extends TopDown {
   }
 
   protected setupWorld() {
-    audio.music('bar');
+    audio.music('kneipe');
     this.enteredAt = this.time.now;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.anneEvent?.destroy(); hud.alert = ''; });
     const [vx, vy] = VICTIM_TILE;

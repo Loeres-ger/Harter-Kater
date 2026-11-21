@@ -1,0 +1,2 @@
+// Von tools/music/geraeusche.py erzeugt: Soundeffekte, die als Datei in public/sfx/ liegen.
+export const GERAEUSCHE: readonly string[] = ['angry', 'bell', 'chime', 'chomp', 'clang', 'click', 'coin', 'crack', 'demon', 'error', 'fart', 'gameover', 'glocke', 'glug', 'growl', 'gurgle', 'kaching', 'lighter', 'puke', 'refuse', 'retch', 'roar', 'rumble', 'rummage', 'siren', 'slap', 'splash', 'step', 'sting', 'thud', 'thunder', 'whoosh'];

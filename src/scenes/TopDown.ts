@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { bulky, lookStage, speedy, state } from '../state';
+import { ItemId, bulky, lookStage, rauschStufe, raucht, speedy, state, wirtAktionen } from '../state';
 import { fadeTo, floatText } from '../ui';
 import { hud, toast } from './HudScene';
 import { touch } from '../touch';
 import type { DialogAction } from '../dialog/data';
 import { naechsterStrang, starteStrang } from '../progress/quests';
+import { saveAuto } from '../progress/save';
 import { SPEAKERS } from '../dialog/data';
 import { MapData, MapObject, MapZone, bedingungErfuellt, zoneGesperrt } from '../maps/types';
 import { MAP_DEFS } from '../maps/palettes';
@@ -52,6 +53,8 @@ export abstract class TopDown extends Phaser.Scene {
   protected actsBlocked = false;
   /** langsamer laufen (z. B. beim Tragen) */
   protected slow = false;
+  /** kleine Szene in der Welt: der Wirt steht still, keine Aktionen */
+  protected frozen = false;
   private stepT = 0;
 
   protected abstract mapRows(): string[];
@@ -73,6 +76,12 @@ export abstract class TopDown extends Phaser.Scene {
     this.carried = undefined;
     this.current = null;
     this.slow = false;
+    this.frozen = false;
+    this.kippe = undefined;
+    this.koerper = { sx: 1, sy: 1 };
+    this.camGedreht = false;
+    this.hicksT = 0;
+    this.qualmT = 0;
   }
 
   create(data: { spawn?: [number, number] }) {
@@ -183,6 +192,8 @@ export abstract class TopDown extends Phaser.Scene {
     this.scene.run('Hud');
     this.scene.bringToTop('Hud');
     touch.onAction = () => this.scene.isActive() && this.act();
+    // Zwischenstand der offenen Welt: kurz nach dem Betreten, sobald der Wirt frei herumläuft
+    this.time.delayedCall(700, () => this.sichern());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scene.sleep('Hud');
       touch.onAction = null;
@@ -329,6 +340,39 @@ export abstract class TopDown extends Phaser.Scene {
     rt.endDraw();
   }
 
+  /**
+   * Sprechblase über einer Figur in der Welt (kleine Szenen ohne Gesprächsfenster). Wartet, bis die Zeit um ist
+   * oder der Spieler weitertippt (E, Leertaste, Enter, Klick).
+   */
+  protected blase(x: number, y: number, text: string, color = '#f4ead0'): Promise<void> {
+    return new Promise((done) => {
+      const t = this.add.text(x, y, text, {
+        fontFamily: '"Press Start 2P", monospace', fontSize: '8px', color, backgroundColor: '#120c0be6',
+        padding: { x: 4, y: 3 }, align: 'center', wordWrap: { width: 300 }, lineSpacing: 3,
+      }).setOrigin(0.5, 1).setResolution(2).setScale(0.5).setDepth(6000).setAlpha(0);
+      this.tweens.add({ targets: t, alpha: 1, y: y - 2, duration: 160 });
+      let fertig = false;
+      const ende = () => {
+        if (fertig) return;
+        fertig = true;
+        kb.off('keydown-E', weiter); kb.off('keydown-SPACE', weiter); kb.off('keydown-ENTER', weiter);
+        this.input.off('pointerdown', weiter);
+        this.tweens.add({ targets: t, alpha: 0, duration: 140, onComplete: () => t.destroy() });
+        this.time.delayedCall(150, done);
+      };
+      const kb = this.input.keyboard!;
+      const start = this.time.now;
+      const weiter = () => { if (this.time.now - start > 350) ende(); };
+      kb.on('keydown-E', weiter); kb.on('keydown-SPACE', weiter); kb.on('keydown-ENTER', weiter);
+      this.input.on('pointerdown', weiter);
+      this.time.delayedCall(1800 + text.length * 55, ende);
+    });
+  }
+
+  protected wartet(ms: number) {
+    return new Promise<void>((done) => this.time.delayedCall(ms, done));
+  }
+
   protected toast(s: string) {
     toast(s);
   }
@@ -338,7 +382,7 @@ export abstract class TopDown extends Phaser.Scene {
   }
 
   private act() {
-    if (this.actsBlocked || this.time.now < this.actBlockedUntil) return;
+    if (this.actsBlocked || this.frozen || this.time.now < this.actBlockedUntil) return;
     this.current?.act();
   }
 
@@ -350,6 +394,14 @@ export abstract class TopDown extends Phaser.Scene {
     this.scene.launch('Dialog', { who, resume: this.scene.key, onDone });
     this.scene.bringToTop('Dialog');
     this.scene.pause();
+  }
+
+  /** Zwischenstand speichern (nur offene Welt und nur, wenn der Wirt gerade frei herumläuft) */
+  protected sichern() {
+    if (!state.flags.glanzErledigt || this.leaving || !state.running || state.carrying || state.bodyDeadline !== null || state.gameOver) return;
+    if (!this.scene.isActive()) return;
+    const [ox, oy] = this.origin();
+    saveAuto(this.scene.key, [Math.floor(this.player.x / T) - ox, Math.round((this.player.y - 14) / T) - oy]);
   }
 
   protected go(key: string, data?: object) {
@@ -368,6 +420,12 @@ export abstract class TopDown extends Phaser.Scene {
       if (this.leaving || blocked() || state.carrying || state.bodyDeadline !== null || state.gameOver || !state.running) return;
       const s = naechsterStrang(state.flags, state.time);
       if (!s) return;
+      if (s.manuell) {
+        // eigener Auslöser: nur vormerken und ankündigen, die Szene am Ort startet den Strang
+        state.flags.strangBereit = s.id;
+        if (s.hinweis) this.toast(s.hinweis);
+        return;
+      }
       starteStrang(s, state.flags, state.time);
       const [ox, oy] = this.origin();
       const here: [number, number] = [Math.floor(this.player.x / T) - ox, Math.round((this.player.y - 14) / T) - oy];
@@ -412,8 +470,248 @@ export abstract class TopDown extends Phaser.Scene {
     return false;
   }
 
+  /** Selbst genommene Waren: kleine Animation am Wirt, Qualm, Schwanken (siehe InventarScene, state.benutze) */
+  private wirtFx(delta: number) {
+    while (wirtAktionen.length) this.consumeFx(wirtAktionen.shift()!);
+    const cam = this.cameras.main, p = this.player;
+    const rausch = rauschStufe();
+    if (rausch) { cam.setRotation(Math.sin(this.time.now / 700) * 0.008 * rausch); this.camGedreht = true; }
+    else if (this.camGedreht) { cam.setRotation(0); this.camGedreht = false; }
+    this.hicksT -= delta;
+    if (rausch >= 2 && this.hicksT <= 0) {
+      this.hicksT = 6000 - rausch * 600;
+      floatText(this, p.x + 4, p.y - 26, '*hicks*', '#f0c0d0').setDepth(5004);
+    }
+    if (raucht()) {
+      this.kippe ??= this.add.rectangle(0, 0, 2, 1, 0xff8a30).setDepth(5002);
+      this.kippe.setVisible(true).setPosition(p.x + (p.flipX ? -5 : 5), p.y - 15).setAlpha(0.6 + 0.4 * Math.sin(this.time.now / 120));
+      this.qualmT -= delta;
+      if (this.qualmT <= 0) {
+        this.qualmT = 650;
+        const s = this.add.image(this.kippe.x, this.kippe.y - 2, 'light').setTint(0xd8d8d8).setAlpha(0.35).setScale(0.03).setDepth(5002);
+        this.tweens.add({ targets: s, y: s.y - 14, x: s.x + Phaser.Math.Between(-4, 4), scale: 0.1, alpha: 0, duration: 1400, onComplete: () => s.destroy() });
+      }
+    } else this.kippe?.setVisible(false);
+  }
+
+  private hicksT = 0;
+  private camGedreht = false;
+  private qualmT = 0;
+  private kippe?: Phaser.GameObjects.Rectangle;
+
+  // ---------------------------------------------------------------- Konsum-Animationen
+  // Jede Ware hat ihren eigenen kleinen Ablauf am Wirt: Der Gegenstand folgt der Hand (auch beim Laufen),
+  // der Körper staucht beim Schlucken und Beißen, dazu Partikel und Töne im Takt.
+
+  /** Körperverformung des Wirts (wird in update mit der Grundskalierung verrechnet) */
+  private koerper = { sx: 1, sy: 1 };
+
+  /** Gegenstand relativ zum Wirt führen; rel wird getweent. Liefert die Aufräumfunktion. */
+  private fuehre(o: Phaser.GameObjects.Image, rel: { x: number; y: number }) {
+    const p = this.player;
+    const f = () => {
+      const dir = p.flipX ? -1 : 1;
+      o.setPosition(p.x + rel.x * dir, p.y + rel.y).setFlipX(p.flipX).setDepth(p.depth + (this.facing === 'up' ? -0.5 : 0.5));
+    };
+    f();
+    this.events.on(Phaser.Scenes.Events.POST_UPDATE, f);
+    return () => this.events.off(Phaser.Scenes.Events.POST_UPDATE, f);
+  }
+
+  private ablauf(cfg: Phaser.Types.Tweens.TweenBuilderConfig) {
+    return new Promise<void>((done) => this.tweens.add({ ...cfg, onComplete: () => done() }));
+  }
+
+  private warteKurz(ms: number) {
+    return new Promise<void>((done) => this.time.delayedCall(ms, done));
+  }
+
+  /** Stauchen/Strecken des Körpers (Schlucken, Beißen, Schaudern) */
+  private stauch(sx: number, sy: number, ms: number) {
+    this.tweens.killTweensOf(this.koerper);
+    this.koerper.sx = 1; this.koerper.sy = 1;
+    this.tweens.add({ targets: this.koerper, sx, sy, duration: ms, yoyo: true, ease: 'Sine.easeInOut' });
+  }
+
+  private sag(s: string, color = '#f8e070') {
+    floatText(this, this.player.x, this.player.y - 26, s, color).setDepth(5004);
+  }
+
+  /** kleine Partikel an einem Punkt (Bläschen, Krümel, Pulver) */
+  private partikel(x: number, y: number, n: number, farben: number[], art: 'hoch' | 'fall' | 'wolke') {
+    for (let i = 0; i < n; i++) {
+      const s = this.add.rectangle(x + Phaser.Math.Between(-1, 1), y, 1, 1, Phaser.Utils.Array.GetRandom(farben)).setDepth(5004);
+      if (art === 'hoch') this.tweens.add({ targets: s, y: y - Phaser.Math.Between(4, 9), x: s.x + Phaser.Math.Between(-2, 2), alpha: 0, duration: Phaser.Math.Between(400, 700), onComplete: () => s.destroy() });
+      else if (art === 'fall') this.tweens.add({ targets: s, y: y + Phaser.Math.Between(6, 11), x: s.x + Phaser.Math.Between(-4, 4), alpha: 0, duration: Phaser.Math.Between(350, 550), ease: 'Quad.easeIn', onComplete: () => s.destroy() });
+      else this.tweens.add({ targets: s, y: y + Phaser.Math.Between(-4, 3), x: s.x + Phaser.Math.Between(-5, 5), alpha: 0, scale: 2, duration: Phaser.Math.Between(400, 800), onComplete: () => s.destroy() });
+    }
+  }
+
+  private consumeFx(id: ItemId) {
+    if (id === 'bier' || id === 'schnaps' || id === 'fusel') void this.trinkFx(id);
+    else if (id === 'kippe') void this.rauchFx();
+    else if (id === 'pillen') void this.pillenFx();
+    else if (id === 'zeug') void this.zeugFx();
+    else if (id === 'wurst' || id === 'kaese') void this.essFx(id);
+  }
+
+  /** Trinken: Flasche in die Hand, kurz absenken, zum Mund, drei Schlucke, absetzen, wegwerfen */
+  private async trinkFx(id: 'bier' | 'schnaps' | 'fusel') {
+    const p = this.player;
+    const rel = { x: 5, y: -6 };
+    const fl = this.add.image(0, 0, `icon_${id}`).setScale(0).setDepth(5003);
+    const los = this.fuehre(fl, rel);
+    await this.ablauf({ targets: fl, scale: 0.3, duration: 120, ease: 'Back.easeOut' });
+    await this.ablauf({ targets: rel, y: -4, duration: 90 });
+    this.tweens.add({ targets: fl, angle: { from: 0, to: -110 }, duration: 260, ease: 'Sine.easeOut' });
+    await this.ablauf({ targets: rel, x: 3, y: -13, duration: 260, ease: 'Back.easeOut' });
+    for (let i = 0; i < 3; i++) {
+      audio.sfx('glug');
+      this.stauch(0.96, 1.06, 150);
+      this.tweens.add({ targets: rel, y: -14, duration: 150, yoyo: true });
+      this.partikel(fl.x, fl.y - 2, 2, [0xffffff, 0xf0e0a0], 'hoch');
+      await this.warteKurz(330);
+    }
+    this.tweens.add({ targets: fl, angle: 0, duration: 200 });
+    await this.ablauf({ targets: rel, x: 5, y: -6, duration: 200, ease: 'Sine.easeIn' });
+    los();
+    // leere Flasche über die Schulter
+    const dir = p.flipX ? 1 : -1;
+    this.tweens.add({ targets: fl, x: fl.x + dir * 14, duration: 420, ease: 'Linear' });
+    this.tweens.add({ targets: fl, y: fl.y - 8, duration: 200, ease: 'Quad.easeOut', yoyo: true, onComplete: () => { audio.sfx('clang'); this.tweens.add({ targets: fl, alpha: 0, duration: 300, onComplete: () => fl.destroy() }); } });
+    this.tweens.add({ targets: fl, angle: dir * 300, duration: 420 });
+    if (id === 'bier') {
+      this.sag('Ahh!');
+      this.partikel(p.x + (p.flipX ? -2 : 2), p.y - 13, 4, [0xffffff, 0xf8f0d8], 'hoch');
+    } else if (id === 'schnaps') {
+      this.sag('Brrr!', '#f0c0d0');
+      this.tweens.add({ targets: this.koerper, sx: { from: 0.94, to: 1.06 }, duration: 50, yoyo: true, repeat: 4, onComplete: () => { this.koerper.sx = 1; } });
+    } else {
+      this.sag('HUST!', '#b0e090');
+      p.setTint(0xa8e090);
+      this.cameras.main.shake(260, 0.005);
+      for (let i = 0; i < 3; i++) this.time.delayedCall(i * 200, () => { this.stauch(1.04, 0.92, 90); this.partikel(p.x + (p.flipX ? -4 : 4), p.y - 13, 3, [0xd8d8d0, 0xb0b0a8], 'wolke'); });
+      this.time.delayedCall(900, () => p.clearTint());
+    }
+  }
+
+  /** Rauchen: Kippe an den Mund, Feuerzeug flackert, Spitze glimmt auf, große Wolke ausatmen */
+  private async rauchFx() {
+    const p = this.player;
+    const rel = { x: 5, y: -6 };
+    const k = this.add.image(0, 0, 'icon_kippe').setScale(0).setDepth(5003);
+    const los = this.fuehre(k, rel);
+    await this.ablauf({ targets: k, scale: 0.22, duration: 120 });
+    await this.ablauf({ targets: rel, x: 4, y: -13, duration: 240, ease: 'Back.easeOut' });
+    // Feuerzeug
+    const flamme = this.add.image(0, 0, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(0xffa030).setScale(0.05).setDepth(5004);
+    const fRel = { x: 7, y: -14 };
+    const losF = this.fuehre(flamme, fRel);
+    audio.sfx('lighter');
+    const flacker = this.time.addEvent({ delay: 60, loop: true, callback: () => flamme.setScale(0.04 + Math.random() * 0.03) });
+    await this.warteKurz(520);
+    flacker.remove(); losF(); flamme.destroy();
+    await this.ablauf({ targets: k, scale: 0, duration: 140 });
+    los(); k.destroy();
+    // ziehen ...
+    this.stauch(1.05, 1.04, 380);
+    await this.warteKurz(700);
+    // ... und ausatmen: Wolke in Blickrichtung
+    this.sag('*pfff*');
+    const dir = p.flipX ? -1 : 1;
+    for (let i = 0; i < 7; i++) {
+      this.time.delayedCall(i * 45, () => {
+        const s = this.add.image(p.x + dir * 4, p.y - 13, 'light').setTint(0xd8d8d8).setAlpha(0.45).setScale(0.03).setDepth(5003);
+        this.tweens.add({ targets: s, x: s.x + dir * Phaser.Math.Between(10, 20), y: s.y - Phaser.Math.Between(4, 12), scale: Phaser.Math.FloatBetween(0.12, 0.2), alpha: 0, duration: Phaser.Math.Between(1300, 1900), ease: 'Sine.easeOut', onComplete: () => s.destroy() });
+      });
+    }
+  }
+
+  /** Pillen: hochwerfen, mit dem Mund fangen, schlucken, dann geht es los */
+  private async pillenFx() {
+    const p = this.player;
+    const pille = this.add.ellipse(0, 0, 3, 2, 0x5ab0ff).setDepth(5004).setStrokeStyle(1, 0xffffff, 0.6);
+    const rel = { x: 5, y: -7 };
+    const f = () => pille.setPosition(p.x + rel.x * (p.flipX ? -1 : 1), p.y + rel.y);
+    f();
+    this.events.on(Phaser.Scenes.Events.POST_UPDATE, f);
+    this.stauch(1.03, 0.94, 100);
+    await this.warteKurz(120);
+    // Wurf in hohem Bogen zum Mund
+    this.tweens.add({ targets: rel, x: 1, duration: 520, ease: 'Linear' });
+    this.tweens.add({ targets: pille, angle: 540, duration: 520 });
+    await this.ablauf({ targets: rel, y: -24, duration: 260, ease: 'Quad.easeOut' });
+    this.stauch(0.98, 1.05, 120);
+    await this.ablauf({ targets: rel, y: -13, duration: 260, ease: 'Quad.easeIn' });
+    this.events.off(Phaser.Scenes.Events.POST_UPDATE, f);
+    pille.destroy();
+    audio.sfx('glug');
+    this.stauch(1.06, 0.9, 120);
+    this.sag('*schluck*');
+    await this.warteKurz(300);
+    // Tempo: blaue Striche fliegen vom Wirt weg
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const s = this.add.rectangle(p.x, p.y - 10, 5, 1, 0x7ac8ff).setRotation(a).setDepth(5004);
+      this.tweens.add({ targets: s, x: p.x + Math.cos(a) * 16, y: p.y - 10 + Math.sin(a) * 12, alpha: 0, duration: 350, onComplete: () => s.destroy() });
+    }
+  }
+
+  /** Zeug: Tütchen an die Nase, Schniefen mit Pulverwolke, dann wird es bunt */
+  private async zeugFx() {
+    const p = this.player;
+    const rel = { x: 5, y: -6 };
+    const t = this.add.image(0, 0, 'icon_zeug').setScale(0).setDepth(5003);
+    const los = this.fuehre(t, rel);
+    await this.ablauf({ targets: t, scale: 0.26, duration: 120 });
+    await this.ablauf({ targets: rel, x: 2, y: -12, duration: 240, ease: 'Back.easeOut' });
+    for (let i = 0; i < 2; i++) {
+      this.stauch(1.02, 1.06, 110);
+      this.partikel(t.x, t.y - 1, 6, [0xffffff, 0xf0f0ff, 0xe0d8ff], 'wolke');
+      await this.warteKurz(220);
+    }
+    this.sag('SNIEF!', '#ffffff');
+    await this.ablauf({ targets: t, scale: 0, alpha: 0, duration: 160 });
+    los(); t.destroy();
+    // Rausch: Kamera pulsiert, der Wirt schillert kurz in allen Farben
+    const cam = this.cameras.main;
+    cam.flash(300, 255, 120, 255);
+    this.tweens.add({ targets: cam, zoom: 2.12, duration: 180, yoyo: true, ease: 'Sine.easeInOut', onComplete: () => cam.setZoom(2) });
+    const farben = [0xff80ff, 0x80ffff, 0xffff80, 0x80ff80];
+    let n = 0;
+    const ev = this.time.addEvent({ delay: 90, repeat: 13, callback: () => { p.setTint(farben[n++ % farben.length]); if (n > 13) p.clearTint(); } });
+    void ev;
+    this.time.delayedCall(1400, () => p.clearTint());
+    await this.warteKurz(400);
+    this.sag('Whoa ...', '#ff9aff');
+  }
+
+  /** Essen: drei Bissen, das Stück wird jedes Mal kleiner, Krümel fallen */
+  private async essFx(id: 'wurst' | 'kaese') {
+    const p = this.player;
+    const rel = { x: 5, y: -6 };
+    const e = this.add.image(0, 0, `icon_${id}`).setScale(0).setDepth(5003);
+    const los = this.fuehre(e, rel);
+    await this.ablauf({ targets: e, scale: 0.3, duration: 120, ease: 'Back.easeOut' });
+    const w = e.width;
+    for (let i = 0; i < 3; i++) {
+      await this.ablauf({ targets: rel, x: 3, y: -12, duration: 160, ease: 'Sine.easeOut' });
+      audio.sfx('chomp');
+      this.stauch(1.04, 0.94, 90);
+      // Biss: rechts fehlt jetzt ein Stück
+      e.setCrop(0, 0, w * (1 - (i + 1) / 3.2), e.height);
+      this.partikel(e.x, e.y + 1, 3, id === 'wurst' ? [0xa8402c, 0xe8c0a0] : [0xf0c840, 0xc89820], 'fall');
+      await this.ablauf({ targets: rel, x: 5, y: -6, duration: 160, ease: 'Sine.easeIn' });
+      await this.warteKurz(120);
+    }
+    los(); e.destroy();
+    this.sag(id === 'wurst' ? 'Mmmh, Hausmacher.' : '*mampf*');
+    this.stauch(1.05, 0.97, 200);
+  }
+
   update(_t: number, delta: number) {
     this.drawLights();
+    this.wirtFx(delta);
     if (state.gameOver === 'flucht' || state.gameOver === 'polizei') {
       state.running = false;
       this.go('End');
@@ -422,13 +720,22 @@ export abstract class TopDown extends Phaser.Scene {
 
     const k = this.keys, c = this.cursors;
     let vx = 0, vy = 0;
-    if (k.A.isDown || c.left.isDown) vx -= 1;
-    if (k.D.isDown || c.right.isDown) vx += 1;
-    if (k.W.isDown || c.up.isDown) vy -= 1;
-    if (k.S.isDown || c.down.isDown) vy += 1;
-    // Touch-Joystick
-    vx += touch.vx;
-    vy += touch.vy;
+    if (!this.frozen) {
+      if (k.A.isDown || c.left.isDown) vx -= 1;
+      if (k.D.isDown || c.right.isDown) vx += 1;
+      if (k.W.isDown || c.up.isDown) vy -= 1;
+      if (k.S.isDown || c.down.isDown) vy += 1;
+      // Touch-Joystick
+      vx += touch.vx;
+      vy += touch.vy;
+    }
+    // betrunken: der Wirt torkelt ein bisschen zur Seite
+    const rausch = rauschStufe();
+    if (rausch && (vx || vy)) {
+      const tt = this.time.now / 1000;
+      vx += Math.sin(tt * 1.7) * 0.18 * rausch;
+      vy += Math.cos(tt * 1.3) * 0.12 * rausch;
+    }
     const len = Math.hypot(vx, vy) || 1;
     const speed = (state.carrying || this.slow ? 46 : 74) * (speedy() ? 1.5 : 1) * (delta / 1000);
     const dx = (vx / len) * speed, dy = (vy / len) * speed;
@@ -438,8 +745,9 @@ export abstract class TopDown extends Phaser.Scene {
     if (dy && !this.blocked(p.x, feetY + dy)) p.y += dy;
 
     // rote Pille: breit wie ein Schrank
-    if (bulky()) p.setScale(0.76, 0.54);
-    else p.setScale(0.5);
+    const kv = this.koerper;
+    if (bulky()) p.setScale(0.76 * kv.sx, 0.54 * kv.sy);
+    else p.setScale(0.5 * kv.sx, 0.5 * kv.sy);
     // blaue Pille: Nachbilder hinter dem Wirt
     if (speedy() && (vx || vy)) {
       this.ghostT -= delta;
@@ -476,7 +784,7 @@ export abstract class TopDown extends Phaser.Scene {
       if (d < it.r && d < bestD && it.label()) { best = it; bestD = d; }
     }
     this.current = best;
-    hud.prompt = best && !this.actsBlocked ? `[E] ${best.label()}` : '';
+    hud.prompt = best && !this.actsBlocked && !this.frozen ? `[E] ${best.label()}` : '';
     hud.goal = this.goalText();
   }
 }

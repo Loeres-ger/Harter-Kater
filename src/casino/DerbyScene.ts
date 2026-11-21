@@ -107,6 +107,7 @@ export class DerbyScene extends Machine {
     if (!this.charge(this.bet)) return;
     this.racing = this.busy = true;
     this.refreshButtons();
+    const musik = audio.zwischen(this, 'galopp');
     this.runners.forEach((r) => r.sprite.setX(START_X).setFrame(0));
 
     // Ausgang festlegen: Gewinner nach Quote, Rest zufällig
@@ -138,6 +139,7 @@ export class DerbyScene extends Machine {
       this.events.on('race-tick', () => done() && resolve());
     });
     this.events.off('race-tick');
+    audio.music(musik);
     this.started = false;
     this.runners.forEach((r) => r.sprite.anims.stop());
 

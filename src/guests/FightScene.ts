@@ -58,6 +58,7 @@ export class FightScene extends Phaser.Scene {
   }
 
   create(data: FightData) {
+    audio.zwischen(this, 'pruegel');
     this.cfg = data;
     this.g = guestById(data.guestId);
     this.hp = PLAYER_HP;

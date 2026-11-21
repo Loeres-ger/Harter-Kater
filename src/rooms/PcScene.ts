@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { audio } from '../audio';
+import { Track, audio } from '../audio';
 import { state } from '../state';
 import { unlock } from '../progress/achievements';
 import { PC_FILES, PcFile, gelesen } from '../dialog/pcFiles';
@@ -223,11 +223,13 @@ export class PcScene extends Phaser.Scene {
    * Ziel erreicht: Mails gehen raus. Kein Teil passt mehr: Claudius sperrt den Rechner.
    * Bedienung: Teil ziehen und loslassen, oder Teil antippen und dann ein Feld antippen; Tastatur 1–3, Pfeile, Enter.
    */
+  private musikVorher: Track = 'dach';
+
   private blockBlast() {
     if (this.busy) return;
     this.busy = true;
     this.clear();
-    audio.music('tension');
+    this.musikVorher = audio.zwischen(this, 'pc');
     this.header('HACK: GEGEN-HACKER VON TAVIRIEN');
 
     const grid: number[][] = Array.from({ length: N }, () => Array(N).fill(0));
@@ -467,7 +469,7 @@ export class PcScene extends Phaser.Scene {
         state.flags.pcSperreBis = state.time + SPERRE;
         this.time.delayedCall(2400, () => {
           this.busy = false;
-          audio.music('none');
+          audio.music(this.musikVorher);
           toast('Claudius hat dich ausgesperrt. Später noch mal versuchen.');
           this.showList();
         });
@@ -483,7 +485,7 @@ export class PcScene extends Phaser.Scene {
     this.closing = true;
     if (!state.gameOver) state.running = true;
     this.scene.stop(this.cfg.resume);
-    this.scene.start('Cutscene', { script: 'claudiusEnde', music: 'tension', next: { scene: 'Alley', data: { spawn: [17, 18] } } });
+    this.scene.start('Cutscene', { script: 'claudiusEnde', next: { scene: 'Alley', data: { spawn: [17, 18] } } });
   }
 
   private close() {

@@ -315,14 +315,6 @@
       "y": 588
     },
     {
-      "id": "stadt-tuer-25",
-      "kind": "interaktion",
-      "x": 248,
-      "y": 564,
-      "label": "Shisha 1001",
-      "text": "Geschlossen. Drinnen blubbert es trotzdem. Irgendwer raucht hier immer."
-    },
-    {
       "id": "stadt-tuer-26",
       "kind": "interaktion",
       "x": 760,

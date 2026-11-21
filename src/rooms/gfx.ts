@@ -412,6 +412,8 @@ export function makeRoomTextures(scene: Phaser.Scene) {
   tex2x(scene, 'nbust_kevin', BW, BH, drawKevinBust, { detail: (c) => { strands(c, '#1a1210'); eyeShine(c, ['#1c120a']); sideLight(c); } });
   bust(scene, 'nbust_leni', LOOKS.leni, 'drunk');
   bust(scene, 'nbust_leniSick', { ...LOOKS.leni, skin: '#c8dca0' }, 'drunk'); // kurz vor dem Würgen
+  bust(scene, 'nbust_leniSad', LOOKS.leni, 'sad'); // Xavi ist weg
+  bust(scene, 'nbust_leniHappy', LOOKS.leni, 'happy'); // Xavi ist wieder da
 
   // ---- Kulissen
   tex(scene, 'csDach', 480, 270, (c) => drawDach(c, false));

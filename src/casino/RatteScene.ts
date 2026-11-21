@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { audio } from '../audio';
+import { Track, audio } from '../audio';
 import { txt } from '../ui';
 import { Btn } from '../scenes/ShopScene';
 import { Machine, Theme } from './Machine';
@@ -186,9 +186,11 @@ export class RatteScene extends Machine {
     await this.wait(900);
   }
 
-  /** Während der Freispiele läuft die Spannungsmusik als „Bonus-Thema“. */
+  /** Während der Freispiele läuft der Galopp als „Bonus-Thema“, danach wieder die Musik von vorher. */
+  private musikVorher: Track = 'kneipe';
   private music(on: boolean) {
-    audio.music(on ? 'tension' : 'bar');
+    if (on && audio.aktuell !== 'galopp') this.musikVorher = audio.aktuell;
+    audio.music(on ? 'galopp' : this.musikVorher);
   }
 
   protected onClose() {

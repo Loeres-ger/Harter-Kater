@@ -26,6 +26,15 @@ import { LadiesRoomScene } from './rooms/LadiesRoomScene';
 import { StallScene } from './rooms/StallScene';
 import { ShopRoomScene } from './rooms/ShopRoomScene';
 import { ClubScene } from './rooms/ClubScene';
+import { KellerScene } from './rooms/KellerScene';
+import { GitarrenDuellScene } from './rooms/GitarrenDuellScene';
+import { WandlungUI } from './rooms/WandlungUI';
+import { HoellenbossScene } from './rooms/HoellenbossScene';
+import { ShishaScene } from './rooms/ShishaScene';
+import { ShishaDuellScene } from './rooms/ShishaDuellScene';
+import { QuizScene } from './rooms/QuizScene';
+import { KampfScene } from './rooms/KampfScene';
+import { InventarScene, GAMEPLAY } from './scenes/InventarScene';
 import { PcScene } from './rooms/PcScene';
 import { SavesScene } from './scenes/SavesScene';
 
@@ -63,7 +72,7 @@ async function boot() {
     backgroundColor: '#0d0b0a',
     // FIT: proportional einpassen, Balken wo nötig. Der Container bekommt seine Größe aus dem CSS.
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: false },
-    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
+    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, ShishaScene, KellerScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, ShishaDuellScene, QuizScene, KampfScene, GitarrenDuellScene, WandlungUI, HoellenbossScene, InventarScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
   });
   if (import.meta.env.DEV) {
     Object.assign(window, { game, audio });
@@ -81,10 +90,27 @@ async function boot() {
     togglePause();
     pauseBtn.blur(); // sonst löst die Leertaste den Knopf erneut aus
   });
+  // Inventar: Knopf unter dem Pause-Knopf (nur während man herumläuft) und Taste I
+  const invBtn = document.getElementById('inv') as HTMLButtonElement | null;
+  const toggleInventar = () => {
+    audio.unlock();
+    if (game.scene.isActive('Inventar')) return (game.scene.getScene('Inventar') as InventarScene).close();
+    const here = GAMEPLAY.find((k) => game.scene.isActive(k));
+    if (here) InventarScene.open(game, here);
+  };
+  invBtn?.addEventListener('click', () => {
+    toggleInventar();
+    invBtn.blur();
+  });
+  game.events.on(Phaser.Core.Events.STEP, () => {
+    const show = GAMEPLAY.some((k) => game.scene.isActive(k) || game.scene.isPaused(k)) && !game.scene.isActive('Title');
+    invBtn?.classList.toggle('hidden', !show);
+  });
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'm') audio.toggleMute();
     if (k === 'p') togglePause();
+    if (k === 'i') toggleInventar();
   });
 
   game.events.on(Phaser.Core.Events.STEP, (_t: number, delta: number) => tick(Math.min(delta, 100) / 1000));

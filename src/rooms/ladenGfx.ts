@@ -141,6 +141,20 @@ export function makeLadenTextures(scene: Phaser.Scene) {
     r(c, 4, 2, 8, 5, '#a8c8d8'); r(c, 11, 9, 1, 2, '#f0d050');
     r(c, 7, 0, 2, 2, '#f0d050'); // Türglocke
   });
+  // Inventar-Symbole: Ring Fleischwurst, Ecke Bergkäse
+  make('icon_wurst', (c) => {
+    blob(c, 8, 9, 6.5, 5, '#a8402c'); blob(c, 8, 9, 3, 2, '#00000000');
+    r(c, 3, 6, 3, 2, '#c8604a'); r(c, 10, 5, 3, 1, '#d87a62');
+    r(c, 6, 12, 4, 1, '#7a2a1c'); r(c, 7, 2, 2, 2, '#e8dcc0'); r(c, 7, 3, 1, 2, '#c8b8a0');
+    for (const [x, y] of [[4, 9], [12, 8], [9, 13]]) p(c, x, y, '#f0d0b0');
+  });
+  make('icon_kaese', (c) => {
+    for (let y = 0; y < 9; y++) r(c, 2 + Math.floor(y / 2), 5 + y, 12 - Math.floor(y / 2), 1, '#f0c840');
+    r(c, 2, 4, 12, 2, '#f8dc70'); r(c, 2, 13, 12, 1, '#c89820');
+    for (const [x, y, rr] of [[5, 8, 1.4], [10, 10, 1.2], [8, 6, 0.9], [12, 7, 0.8]]) blob(c, x, y, rr, rr, '#c89820');
+    r(c, 13, 5, 1, 9, '#d8a828');
+  });
+
   // Ladentür und Schild draußen an der Fassade
   make('ladenEntrance', (c) => {
     r(c, 0, 0, T, T, '#6a3a2c');

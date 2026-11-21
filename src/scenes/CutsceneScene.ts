@@ -6,6 +6,12 @@ import { chapterByTitle, saveChapter } from '../progress/save';
 import { H, W, txt } from '../ui';
 import { Btn } from './ShopScene';
 
+/** welche Musik zu welcher Zwischensequenz gehört (sonst „Spannung“, über einer Szene deren eigene) */
+const SKRIPT_MUSIK: Partial<Record<string, Track>> = {
+  prolog: 'prolog', epilog: 'epilog', kapitel2: 'tresen', kapitel3: 'tresen', kapitel4: 'traurig', kapitel5: 'marsch',
+  claudiusEnde: 'marsch', bornaWeg: 'traurig', lilyDach: 'romantik', nickStart: 'dach', nickScheisse: 'spannung', nickFrei: 'erloesung',
+};
+
 export interface CutsceneData {
   script: keyof typeof STORY;
   /** Szene, die danach gestartet wird … */
@@ -30,13 +36,26 @@ const NAMES: Record<Who, [string, string]> = {
   claudius: ['CAPTAIN CLAUDIUS', '#7ab0ff'],
   kevin: ['KURDISCHER KEVIN', '#ff8a50'],
   leni: ['LENI', '#ff90b0'],
+  cemo: ['CEMO', '#7ad0c0'],
+  tuncay: ['TUNCAY', '#e0b070'],
+  xavi: ['XAVI', '#c8a878'],
+  leni2: ['LENI BLUME', '#f0e0f0'],
+  emilian: ['EMILIAN', '#9ad070'],
+  nick: ['NICK', '#e04040'],
 };
 
 /** Porträts der Nebenfiguren: Seite und Bild je nach look (0 = normal, 1 = glücklich bzw. bei Claudius: wütend) */
 const CAST: Partial<Record<Who, { side: 'left' | 'right'; key: (look: number) => string }>> = {
   claudius: { side: 'right', key: (l) => (l ? 'nbust_claudiusAngry' : 'nbust_claudius') },
   kevin: { side: 'right', key: () => 'nbust_kevin' },
-  leni: { side: 'right', key: () => 'nbust_leni' },
+  leni: { side: 'right', key: (l) => (l ? 'nbust_leniHappy' : 'nbust_leni') },
+  tuncay: { side: 'right', key: (l) => (l ? 'nbust_tuncaySad' : 'nbust_tuncay') },
+  xavi: { side: 'right', key: (l) => (l ? 'nbust_xaviHappy' : 'nbust_xavi') },
+  leni2: { side: 'right', key: (l) => (l ? 'nbust_leni2Sad' : 'nbust_leni2') },
+  emilian: { side: 'right', key: () => 'nbust_emilian' },
+  // 0 = Metal-Nick, 1 = wütend, 2 = clean in Weiß
+  nick: { side: 'right', key: (l) => (l === 2 ? 'nbust_nickWeiss' : l === 1 ? 'nbust_nickWut' : 'nbust_nick') },
+  cemo: { side: 'right', key: (l) => (l ? 'nbust_cemoSad' : 'nbust_cemo') },
   borna: { side: 'left', key: (l) => (l ? 'nbust_bornaHappy' : 'nbust_borna') },
   lily: { side: 'right', key: (l) => (l ? 'nbust_lilyHappy' : 'nbust_lily') },
   maya: { side: 'right', key: (l) => (l ? 'nbust_mayaHappy' : 'nbust_maya') },
@@ -100,7 +119,8 @@ export class CutsceneScene extends Phaser.Scene {
       g.destroy();
     }
     state.running = false;
-    audio.music(data.music ?? 'tension');
+    const musik = data.music ?? SKRIPT_MUSIK[data.script] ?? (data.resume ? null : 'spannung');
+    if (musik) audio.music(musik);
 
     this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0);
     this.bg = this.add.container(0, 0);
@@ -283,6 +303,15 @@ export class CutsceneScene extends Phaser.Scene {
     } else if (key === 'wc') {
       this.bg.add(this.add.image(0, 0, 'csWC').setOrigin(0));
       this.bg.add(this.add.image(240, 20, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3, 1.2).setTint(0xd0f0d0).setAlpha(0.35));
+    } else if (key === 'keller') {
+      this.bg.add(this.add.image(0, 0, 'csKeller').setOrigin(0));
+      for (const x of [120, 360]) this.bg.add(this.add.image(x, 120, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.4).setTint(0xff2018).setAlpha(0.4));
+    } else if (key === 'club') {
+      this.bg.add(this.add.image(0, 0, 'csClub').setOrigin(0));
+      for (const x of [150, 330]) this.bg.add(this.add.image(x, 150, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.2).setTint(x < 200 ? 0xff4ac0 : 0x9a5aff).setAlpha(0.35));
+    } else if (key === 'shisha') {
+      this.bg.add(this.add.image(0, 0, 'csShisha').setOrigin(0));
+      for (const x of [150, 330]) this.bg.add(this.add.image(x, 40, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.6).setTint(0xffa040).setAlpha(0.4));
     } else if (key === 'laden') {
       this.bg.add(this.add.image(0, 0, 'csLaden').setOrigin(0));
       this.bg.add(this.add.image(240, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3).setTint(0xffe0a0).setAlpha(0.3));

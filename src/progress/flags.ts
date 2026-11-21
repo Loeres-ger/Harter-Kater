@@ -42,10 +42,26 @@ export interface StoryFlags {
   /** Spielzeit, bis zu der der Rechner nach einem gescheiterten Hochladen gesperrt ist */
   pcSperreBis?: number;
 
+  /** Xavi-Strang: Leni hat um Hilfe gebeten, Cemo hat die Spur verraten (Tuncay), Tuncay hat den Club verraten, Xavi ist gerettet */
+  xavi?: 'vermisst' | 'spur' | 'club' | 'gerettet';
+
+  /** Nick-Strang „Bornas Business“: Pflanze holen, wächst, Plantage steht, Keller offen, Koks für Nick, Endkampf, Nick ist frei */
+  nick?: 'pflanze' | 'gepflanzt' | 'plantage' | 'keller' | 'koks' | 'boss' | 'frei';
+  /** Nick hat das Duell schon erklärt */
+  nickGetroffen?: boolean;
+  /** die Verwandlung wurde einmal ganz gezeigt (danach geht es nach einer Niederlage direkt in den Kampf) */
+  nickWandlung?: boolean;
+  /** Endkampf: Phase, ab der es nach einer Niederlage weitergeht (Checkpoint) */
+  nickBossPhase?: number;
+  /** beste Punktzahl beim Jammen mit Nick */
+  nickJam?: number;
+
   // ---- Offene Welt (siehe progress/quests.ts)
   /** zuletzt eingeleiteter Strang und Pause bis zur nächsten Einleitung (Spielzeit) */
   letzterStrang?: string;
   strangPauseBis?: number;
+  /** vorgemerkter Strang mit eigenem Auslöser (startet erst am Ort, z. B. Leni auf der Damentoilette) */
+  strangBereit?: string;
   /** gefundene Easter Eggs */
   entdeckt?: string[];
 }

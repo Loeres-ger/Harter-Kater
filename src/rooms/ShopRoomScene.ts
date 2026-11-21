@@ -66,7 +66,7 @@ export class ShopRoomScene extends TopDown {
   }
 
   protected setupWorld() {
-    audio.music('bar');
+    audio.music('laden');
     const [dx, dy] = this.find('D');
     this.interacts.push({ x: dx * T + 8, y: dy * T, r: 18, label: () => 'Laden verlassen', act: () => this.go('Alley', { spawn: ALLEY_LADEN_SPAWN }) });
     // warmes Licht über Theke und Regalen
@@ -106,7 +106,7 @@ export class ShopRoomScene extends TopDown {
       // einmalig; das Achievement gibt es erst nach der Szene
       state.flags.mayaTraum = true;
       hud.prompt = '';
-      this.scene.launch('Cutscene', { script: 'deutscherTraum', resume: 'Laden', music: 'bar', onDone: () => unlock('deutscherTraum') });
+      this.scene.launch('Cutscene', { script: 'deutscherTraum', resume: 'Laden', onDone: () => unlock('deutscherTraum') });
       this.scene.bringToTop('Cutscene');
       this.scene.pause();
     }

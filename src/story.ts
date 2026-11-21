@@ -1,9 +1,9 @@
 // Die Storyline: Prolog, vier Kapitel-Zwischenspiele, der Epilog und Kapitel 5 im freien Spiel.
 
-export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'maya' | 'claudius' | 'kevin' | 'leni';
+export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'maya' | 'claudius' | 'kevin' | 'leni' | 'cemo' | 'tuncay' | 'xavi' | 'leni2' | 'emilian' | 'nick';
 
 export type Step =
-  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'laden' | 'wc' }
+  | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'laden' | 'wc' | 'shisha' | 'club' | 'keller' }
   | { t: 'caption'; text: string }
   | { t: 'title'; text: string; sub: string }
   | { t: 'say'; who: Who; text: string; look?: number }
@@ -118,6 +118,103 @@ export const STORY: Record<string, Step[]> = {
     { t: 'say', who: 'kevin', text: 'Bruder. Ich bleib noch ein bisschen hier. Meine blauen Freunde und ich fühlen uns endlich sicher.' },
     { t: 'say', who: 'wirt', text: '(Solange er die Kabine nicht wieder abschließt.)' },
     { t: 'title', text: 'PRESSEFREIHEIT', sub: 'Die Wahrheit hat wieder Hausrecht.' },
+  ],
+
+  // ---------------------------------------------------------------- Xavi-Strang (Storybaum: „Rettung von Xavi“)
+
+  /** Nach Lenis Bitte auf der Damentoilette (LadiesRoomScene): Einblendung und Speicherpunkt */
+  xaviStart: [
+    { t: 'bg', key: 'wc' },
+    { t: 'caption', text: 'Leni putzt sich die Nase. Mit Klopapier.\nDreilagig. Für besondere Anlässe.' },
+    { t: 'title', text: 'XAVI IST WEG', sub: 'Leni braucht Hilfe' },
+  ],
+
+  /** Nach dem gewonnenen Shisha-Duell: Cemo verrät, dass Tuncay Xavi mitgenommen hat. */
+  xaviSpur: [
+    { t: 'bg', key: 'shisha' },
+    { t: 'say', who: 'cemo', look: 1, text: 'Okay. Okay! Du ziehst wie ein Staubsauger.' },
+    { t: 'say', who: 'cemo', text: 'Xavi war hier. Bis vor drei Tagen. Hat in der Ecke gesessen und seinen Ayran angestarrt.' },
+    { t: 'say', who: 'cemo', text: 'Dann kam Tuncay. Hat sich neben ihn gesetzt. Xavi hat auf seine Schuhe geguckt. Wie immer.' },
+    { t: 'say', who: 'wirt', text: 'Wer ist Tuncay?' },
+    { t: 'say', who: 'cemo', text: 'Tuncay kauft und verkauft alles. Handys, Fahrräder, Ausreden.' },
+    { t: 'say', who: 'cemo', text: 'Er hat Xavis Rechnung bezahlt. Drei Wochen Ayran. Bar. Und dann sind sie zusammen raus.' },
+    { t: 'say', who: 'wirt', text: 'Xavi geht freiwillig mit einem Fremden mit?' },
+    { t: 'say', who: 'cemo', text: 'Xavi sagt nicht mal Nein, wenn man ihn fragt, ob er Nein sagen will. Wohin sie sind? Weiß nur Tuncay.' },
+    { t: 'say', who: 'cemo', text: 'Tuncay steht meistens auf dem Parkplatz oben im Norden. Mit offenem Kofferraum.' },
+    { t: 'say', who: 'wirt', text: '(Leni wird das nicht gefallen.)' },
+    { t: 'title', text: 'EINE SPUR', sub: 'Tuncay weiß, wo Xavi ist.' },
+  ],
+
+  /** Nach Tuncays Quiz: Er hat Xavi für zehn Kanister Babyöl an Leni Blume vermittelt. */
+  xaviTuncay: [
+    { t: 'bg', key: 'street' },
+    { t: 'say', who: 'tuncay', look: 1, text: 'Okay, okay. Du kennst die Türkei besser als mein Cousin. Und der wohnt da.' },
+    { t: 'say', who: 'tuncay', text: 'Xavi. Ja. Ich hab ihn ... vermittelt.' },
+    { t: 'say', who: 'wirt', text: 'VERMITTELT?' },
+    { t: 'say', who: 'tuncay', text: 'Die Chefin vom Muskelkater wollte ihn. Leni Blume. Nicht deine Leni vom Klo. Die andere.' },
+    { t: 'say', who: 'tuncay', text: 'Ihr Cabrio steht seit Wochen bei mir in der Werkstatt. Man redet, beim Ölwechsel.' },
+    { t: 'say', who: 'tuncay', text: 'Sie hat gesagt, sie will nur reden. Und mir zehn Kanister Babyöl gegeben. Profi-Qualität.' },
+    { t: 'say', who: 'wirt', text: 'Du hast einen Menschen gegen Babyöl getauscht?!' },
+    { t: 'say', who: 'tuncay', look: 1, text: 'Gegen ZEHN Kanister. Ich bin doch nicht blöd. ... Okay, ein bisschen blöd. Tut mir leid.' },
+    { t: 'say', who: 'wirt', text: '(Muskelkater. Natürlich.)' },
+    { t: 'title', text: 'LENI BLUME', sub: 'Xavi ist im Muskelkater.' },
+  ],
+
+  /** Nach dem Kampf gegen Emilian: Xavi ist frei, Leni und Xavi finden sich wieder. */
+  /** Nick-Strang: Borna will Unternehmer werden (nach seinem Gespräch auf dem Dachboden) */
+  nickStart: [
+    { t: 'bg', key: 'dach' },
+    { t: 'say', who: 'lily', look: 1, text: 'Borna. Du willst WAS?' },
+    { t: 'say', who: 'borna', look: 1, text: 'Unternehmer werden, Lilly. Mit Pflanzen. Bio. Regional. Vom Dach.' },
+    { t: 'say', who: 'lily', look: 1, text: 'Du hast letzte Woche einen Kaktus ertränkt.' },
+    { t: 'say', who: 'borna', look: 1, text: 'Der wollte das so.' },
+    { t: 'say', who: 'wirt', text: '(Ich grab also für einen Kiffer einen Busch aus. Vierzig Jahre Gastronomie, und das ist der Höhepunkt.)' },
+    { t: 'title', text: 'BORNAS BUSINESS', sub: 'Die Pflanze steckt im Busch hinter der Bar.' },
+  ],
+
+  /** Nick verliert das Duell und will Koks */
+  nickScheisse: [
+    { t: 'bg', key: 'keller' },
+    { t: 'fx', kind: 'shake' },
+    { t: 'say', who: 'nick', look: 1, text: 'SCHEISSE! SCHEISSE! SCHEISSE!' },
+    { t: 'say', who: 'nick', look: 1, text: 'Ein WIRT. Ein Wirt mit Rücken hat mich an der Gitarre fertiggemacht. In meinem eigenen Keller.' },
+    { t: 'say', who: 'wirt', text: 'Rücken hab ich nur morgens.' },
+    { t: 'say', who: 'nick', text: 'Na gut. Reden wir. Aber nicht so. Ich brauch erst was. Für die Nerven.' },
+    { t: 'say', who: 'nick', text: 'Koks. Fünf Ladungen. Der Dealer hinten in der Gasse hat welches. Beeil dich, Opa.' },
+    { t: 'say', who: 'wirt', text: '(Ich bin jetzt Lieferdienst für einen Satanisten. Das steht so nicht in der Gaststättenverordnung.)' },
+    { t: 'title', text: 'DER KELLER', sub: 'Nick will fünf Ladungen Koks.' },
+  ],
+
+  /** Nach dem Endkampf: Nick ist wieder Mensch, clean, in Weiß. Er hört auf und gibt den Markt an Borna ab. */
+  nickFrei: [
+    { t: 'bg', key: 'black' },
+    { t: 'caption', text: 'Stille. Rauch. Irgendwo tropft es.\nIn der Mitte des Pentagramms liegt jemand. Ganz in Weiß.' },
+    { t: 'bg', key: 'keller' },
+    { t: 'say', who: 'nick', look: 2, text: '*hust* ... Wo bin ich? Warum ... warum trage ich WEISS?' },
+    { t: 'say', who: 'wirt', text: 'Du warst ein Dämon. Ich hab dich mit einem Verstärker verprügelt.' },
+    { t: 'say', who: 'nick', look: 2, text: 'Ich fühl mich so ... sauber. Kein Satan. Keine Drogen. Nur ich. Und ein leichter Duft von Lavendel.' },
+    { t: 'say', who: 'nick', look: 2, text: 'Das Zeug kam vom Teufel, weißt du. Darum war es so billig. Teuflisch billig. Damit ist jetzt Schluss.' },
+    { t: 'say', who: 'nick', look: 2, text: 'Ich hör auf. Mit allem. Den Markt der Stadt kriegt Borna, der Junge vom Dach. Soll er es auf die normale Art versuchen.' },
+    { t: 'say', who: 'wirt', text: '(Auf die normale Art. Mit Drogen. Na ja. Immerhin ohne Satan.)' },
+    { t: 'say', who: 'nick', look: 2, text: 'Und du, Herr Wirt: Komm ab und zu runter. Zum Jammen. Ganz ohne Duell. Die Leute bleiben auch.' },
+    { t: 'fx', kind: 'hearts' },
+    { t: 'title', text: 'NICK IST CLEAN', sub: 'Der Keller bleibt offen. Borna übernimmt den Markt.' },
+  ],
+
+  xaviFrei: [
+    { t: 'bg', key: 'club' },
+    { t: 'say', who: 'emilian', text: 'Ich ... wollte doch nur tanzen. Und ab und zu jemanden die Bühne zeigen.' },
+    { t: 'say', who: 'leni2', look: 1, text: 'Schon gut, Emilian. Schon gut. Leg dich hin. Ich hol das Babyöl.' },
+    { t: 'say', who: 'leni2', look: 1, text: 'Nimm ihn mit. Er hat sich vorhin bei meinem Stuhl entschuldigt. Das halte ich nicht mehr aus.' },
+    { t: 'caption', text: 'Aus dem Separee tappt ein Mann mit braunem Bart.\nEr guckt auf seine Schuhe.' },
+    { t: 'say', who: 'xavi', text: 'H-hallo. Danke. Entschuldigung. Ist ... ist Leni da? Meine Leni?' },
+    { t: 'fx', kind: 'bell' },
+    { t: 'say', who: 'leni', look: 1, text: 'XAVIII!' },
+    { t: 'say', who: 'xavi', look: 1, text: 'Leni! Ich wollte nur kurz Kippen holen. Und dann war da Babyöl. Und dann ... Separee.' },
+    { t: 'say', who: 'leni', look: 1, text: 'Halt die Klappe und küss mich.' },
+    { t: 'fx', kind: 'hearts' },
+    { t: 'say', who: 'wirt', text: '(Ich geh dann mal. Das dauert hier länger.)' },
+    { t: 'title', text: 'XAVI IST FREI', sub: 'Leni und Xavi knutschen jetzt im Park. Für immer.' },
   ],
 
   prolog: [

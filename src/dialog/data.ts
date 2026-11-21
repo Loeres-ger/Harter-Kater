@@ -3,17 +3,20 @@ import { felixTree } from './felix';
 import { mayaTree } from './maya';
 import { anneTree, felixAnneTree } from './anne';
 import { claudiusTree, kevinClubTree, kevinGasseTree } from './claudius';
+import { cemoTree, leni2Tree, leniWartetTree, leniXaviTree, tuncayTree } from './xavi';
+import { bornaNickTree, nickTree, nickWeissTree } from './nick';
 import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
 // Ein Knoten hat Zeilen der Figur (mit „W:“ davor spricht der Wirt) und Antworten zur Auswahl.
 
-export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'club';
+export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'club' | 'shisha' | 'keller';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
-  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum' | 'anneJagd';
+  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum' | 'anneJagd' | 'shishaDuell' | 'xaviSuche' | 'tuncayQuiz' | 'emilianKampf'
+  | 'nickStart' | 'nickPflanze' | 'nickKeller' | 'gitarrenDuell' | 'nickKoks' | 'nickJam';
 
 export interface Choice {
   text: string;
@@ -183,6 +186,7 @@ function dealer(): Record<string, DialogNode> {
     start: {
       lines: [pick(['Psst. Hier drüben. Keine Fragen, keine Namen.', 'Na, Wirt. Wieder Bedarf für deinen schicken Freund? Hehe.'])],
       choices: [
+        ...(state.flags.nick === 'koks' ? [{ text: 'Ich brauch Koks. Für Nick.', next: 'nick' }] : []),
         { text: 'Was hast du?', action: 'shop' },
         { text: 'Ist das Zeug sicher?', next: 'sicher' },
         { text: 'Was ist mit Felix, dem Bullen?', next: 'bulle' },
@@ -190,6 +194,10 @@ function dealer(): Record<string, DialogNode> {
       ],
     },
     sicher: { lines: ['Sicher? Bruder. Nichts hier ist sicher. Aber es wirkt.'], choices: [{ text: 'Was hast du?', action: 'shop' }, BYE] },
+    nick: {
+      lines: ['Für NICK? Der Typ aus dem Keller? Der verkauft doch selber. Billiger als ich. Viel billiger. Keine Ahnung, wo der einkauft.', 'Egal. Zwanzig pro Ladung. Und grüß seinen Satan.'],
+      choices: [{ text: 'Her damit.', action: 'shop' }, BYE],
+    },
     bulle: { lines: ['Der läuft die Gasse rauf und runter. Wenn seine Lampe uns erwischt, kenn ich dich nicht.'], choices: [{ text: 'Was hast du?', action: 'shop' }, BYE] },
   };
 }
@@ -271,6 +279,7 @@ export const SPEAKERS: Record<string, Speaker> = {
   leonard: { name: 'KRÄFTIGER LEONARD', color: '#ff9a50', portrait: 'nbust_leonard', bg: 'street', drop: 30, tree: leonard },
   borna: { name: 'BEKIFFTER BORNA', color: '#a8d070', portrait: 'nbust_borna', bg: 'dach', tree: bornaTree },
   lily: { name: 'LILLY', color: '#c8a0e0', portrait: 'nbust_lily', bg: 'street', tree: lilyTree },
+  bornaBiz: { name: 'BORNA', color: '#a8d070', portrait: 'nbust_bornaHappy', bg: 'dach', tree: bornaNickTree },
   lilyDach: { name: 'LILLY', color: '#c8a0e0', portrait: 'nbust_lilyHappy', bg: 'dach', tree: lilyDachTree },
   kevin: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'wc', tree: kevinTree },
   leni: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leni', bg: 'wc', tree: leniTree },
@@ -282,6 +291,13 @@ export const SPEAKERS: Record<string, Speaker> = {
   claudius: { name: 'CAPTAIN CLAUDIUS', color: '#7ab0ff', portrait: 'nbust_claudius', bg: 'street', tree: claudiusTree },
   kevinGasse: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'street', tree: kevinGasseTree },
   kevinClub: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'club', tree: kevinClubTree },
+  cemo: { name: 'CEMO', color: '#7ad0c0', portrait: 'nbust_cemo', bg: 'shisha', tree: cemoTree },
+  leniXavi: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leniSad', bg: 'wc', tree: leniXaviTree },
+  leniWartet: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leniSad', bg: 'wc', tree: leniWartetTree },
+  tuncay: { name: 'TUNCAY', color: '#e0b070', portrait: 'nbust_tuncay', bg: 'street', tree: tuncayTree },
+  nick: { name: 'NICK', color: '#e04040', portrait: 'nbust_nick', bg: 'keller', tree: nickTree },
+  nickWeiss: { name: 'NICK', color: '#f4f0e0', portrait: 'nbust_nickWeiss', bg: 'keller', tree: nickWeissTree },
+  leni2: { name: 'LENI BLUME', color: '#f0e0f0', portrait: 'nbust_leni2', bg: 'club', tree: leni2Tree },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };
 

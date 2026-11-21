@@ -9,12 +9,15 @@ import { makeAchievementIcons } from '../progress/icons';
 import { makeRoomTextures } from '../rooms/gfx';
 import { makeLadenTextures } from '../rooms/ladenGfx';
 import { makeClubTextures } from '../rooms/clubGfx';
+import { makeShishaTextures } from '../rooms/shishaGfx';
+import { makeXaviTextures } from '../rooms/xaviGfx';
+import { makeNickTextures } from '../rooms/nickGfx';
 import { makeAnneTextures } from '../events/anne';
 import { makeClaudiusTextures } from '../events/claudius';
 import { makeStreetTextures } from '../world/street';
 import { makeCityTextures } from '../world/city';
 import { getMap, isTestRun } from '../maps';
-import { CHAPTERS, lastChapter, snapshotData } from '../progress/save';
+import { CHAPTERS, autoStand, clearAuto, lastChapter, snapshotData } from '../progress/save';
 import { VICTIM, loadState, resetState, state } from '../state';
 import { H, W, fadeTo, txt } from '../ui';
 import { resetAlley } from './AlleyScene';
@@ -29,6 +32,7 @@ export function showLegalLinks(on: boolean) {
 }
 
 export function newGame(scene: Phaser.Scene) {
+  clearAuto();
   showLegalLinks(false);
   resetState();
   resetBar();
@@ -42,12 +46,26 @@ export function loadChapter(scene: Phaser.Scene, id: string) {
   const def = CHAPTERS.find((c) => c.id === id);
   const data = snapshotData(id);
   if (!def || !data) return false;
+  clearAuto();
   showLegalLinks(false);
   resetBar();
   resetAlley();
   loadState(data);
   state.running = true;
   fadeTo(scene, def.scene, { spawn: def.spawn });
+  return true;
+}
+
+/** Fortsetzen: den Zwischenstand der offenen Welt laden, falls er neuer ist als der letzte Kapitelstand. */
+export function loadAuto(scene: Phaser.Scene) {
+  const a = autoStand();
+  if (!a) return false;
+  showLegalLinks(false);
+  resetBar();
+  resetAlley();
+  loadState(a.data);
+  state.running = true;
+  fadeTo(scene, a.scene, { spawn: a.spawn });
   return true;
 }
 
@@ -69,6 +87,9 @@ export class TitleScene extends Phaser.Scene {
       ['Dachboden und Toiletten', () => makeRoomTextures(this)],
       ['Feinkostladen', () => makeLadenTextures(this)],
       ['Stripclub', () => makeClubTextures(this)],
+      ['Shisha-Bar', () => makeShishaTextures(this)],
+      ['Xavi-Strang', () => makeXaviTextures(this)],
+      ['Bornas Business', () => makeNickTextures(this)],
       ['Anne', () => makeAnneTextures(this)],
       ['Straßenansicht', () => makeStreetTextures(this)],
       ['Stadterweiterung', () => makeCityTextures(this)],
@@ -86,7 +107,7 @@ export class TitleScene extends Phaser.Scene {
     // Testlauf aus dem Map-Editor (nur Dev-Server): direkt auf die bearbeitete Karte
     if (isTestRun()) return this.startTestRun();
     showLegalLinks(true);
-    audio.music('title');
+    audio.music('titel');
     // Audio darf erst nach einer Nutzeraktion starten
     this.input.once('pointerdown', () => audio.unlock());
     this.input.keyboard!.once('keydown', () => audio.unlock());
@@ -201,7 +222,7 @@ export class TitleScene extends Phaser.Scene {
       pulse = startBtn;
       this.primary = () => begin(() => newGame(this));
     } else {
-      const cont = () => begin(() => loadChapter(this, last.id));
+      const cont = () => begin(() => loadAuto(this) || loadChapter(this, last.id));
       const contBtn = new Btn(this, LX + 75, 198, 150, 18, 'FORTSETZEN', 0xa8342a, cont);
       // Neues Spiel überschreibt später die Kapitelstände: erst nach Rückfrage
       let armed = false;

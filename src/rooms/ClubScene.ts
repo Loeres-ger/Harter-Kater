@@ -5,6 +5,7 @@ import { Interact, T, TileInfo, TopDown } from '../scenes/TopDown';
 import { floatText } from '../ui';
 import { DANCER_LOOKS } from './clubGfx';
 import { ALLEY_CLUB_SPAWN } from './spawns';
+import type { DialogAction } from '../dialog/data';
 
 // „Muskelkater“: Stripclub mit Ladies Night. Männliche Tänzer in Kostümen tanzen an den Stangen, laufen über den
 // Laufsteg und tanzen zwischendurch vor einzelnen Gästen. Gäste sitzen, jubeln, werfen Scheine, holen sich Getränke
@@ -50,6 +51,8 @@ const BAR_SPOTS: Pt[] = [[23, 4], [25, 4], [27, 4]];
 const VIP_GAP: Pt = [4, 13];
 const BOUNCER: Pt = [5, 12];
 const KEVIN_SEAT: Pt = [10, 10];
+/** Leni Blume, Chefin des Clubs, steht neben ihrem Türsteher am VIP-Bereich */
+const LENI2: Pt = [6, 12];
 const BALL = { x: 13 * T + 8, y: 4 * T };
 
 /** Wer wo sitzt bzw. steht (Kachel des Sitzplatzes) */
@@ -200,6 +203,7 @@ export class ClubScene extends TopDown {
     // für den Wirt gesperrt: Durchgang zum VIP-Bereich (der Türsteher steht daneben)
     this.solid[VIP_GAP[1]][VIP_GAP[0]] = true;
     this.solid[BOUNCER[1]][BOUNCER[0]] = true;
+    this.solid[LENI2[1]][LENI2[0]] = true;
   }
 
   /** Samtkordel zum rechten bzw. unteren Nachbarpfosten, leicht durchhängend */
@@ -338,7 +342,7 @@ export class ClubScene extends TopDown {
     ];
 
     const ch = (x: number, y: number) => this.rows[y]?.[x] ?? '#';
-    const notBouncer = (x: number, y: number) => !same(BOUNCER, x, y);
+    const notBouncer = (x: number, y: number) => !same(BOUNCER, x, y) && !same(LENI2, x, y);
     const guestWalk = (x: number, y: number) => ch(x, y) === '.' && !same(VIP_GAP, x, y) && notBouncer(x, y);
     const vipWalk = (x: number, y: number) => '.v'.includes(ch(x, y)) && notBouncer(x, y);
     const dancerWalk = (x: number, y: number) => '.vSeP'.includes(ch(x, y)) && notBouncer(x, y) && !(y === 2 && x > 21);
@@ -355,11 +359,13 @@ export class ClubScene extends TopDown {
 
     // Kevin sitzt nach der Veröffentlichung am Laufsteg
     if (state.flags.claudius === 'veroeffentlicht') this.addKevin();
+    this.addLeni2();
 
     // Tänzer: zwei tanzen schon, die anderen warten hinter dem Vorhang
     const tints = [0xff4ac0, 0xc060ff, 0x40c8ff];
     Object.keys(DANCER_LOOKS).forEach((id, i) => {
       const d = this.spawn(`cd_${id}`, BACKSTAGE, dancerWalk, 36);
+      if (id === 'soldat') d.sp.setScale(0.64); // Emilian: einen Kopf größer als alle anderen
       this.occ.delete(K(...BACKSTAGE));
       d.light = this.addLight(0, 0, 0.9, 0.7).setTint(tints[i % 3]).setVisible(false);
       this.dancers.push(d);
@@ -394,6 +400,31 @@ export class ClubScene extends TopDown {
     this.time.addEvent({ delay: 7300, loop: true, callback: () => { dj.setFrame(12); this.time.delayedCall(900, () => dj.setFrame(0)); } });
 
     this.time.addEvent({ delay: 800, loop: true, callback: () => this.crowd() });
+  }
+
+  /** Leni Blume: Chefin des Clubs. Im Xavi-Strang führt das Gespräch zum Kampf gegen Emilian (KampfScene). */
+  private addLeni2() {
+    const [x, y] = LENI2;
+    const px = x * T + 8, py = y * T + 14;
+    const l = this.add.sprite(px, py, 'leni2', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(py);
+    this.add.image(px, py - 1, 'shadow').setDepth(1);
+    this.time.addEvent({ delay: 4600, loop: true, callback: () => { l.setFrame(6).setFlipX(Math.random() < 0.5); this.time.delayedCall(1400, () => l.setFrame(0)); } });
+    this.interacts.push({ x: px, y: py - 4, r: 18, label: () => 'Mit Leni Blume reden', act: () => this.talk('leni2', (a) => this.leni2Done(a)) });
+  }
+
+  private leni2Done(a?: DialogAction) {
+    if (a !== 'emilianKampf') return;
+    this.scene.launch('Kampf', { resume: this.scene.key, onDone: (win: boolean) => this.kampfDone(win) });
+    this.scene.bringToTop('Kampf');
+    this.scene.pause();
+  }
+
+  private kampfDone(win: boolean) {
+    if (!win) return this.toast('Emilian grinst: „Nochmal, Chef? Die Bühne läuft nicht weg.“');
+    state.flags.xavi = 'gerettet';
+    this.scene.launch('Cutscene', { script: 'xaviFrei', resume: this.scene.key, music: 'club' });
+    this.scene.bringToTop('Cutscene');
+    this.scene.pause();
   }
 
   private addKevin() {

@@ -51,6 +51,8 @@ export interface Look {
   sash?: string;
   /** Aufdruck auf dem Shirt */
   print?: string;
+  /** Muskelpaket: breite Schultern, dicke Arme, Brust, Sixpack, Ölglanz (Emilian) */
+  bulk?: boolean;
 }
 
 function drawPerson(c: Ctx, ox: number, f: number, L: Look) {
@@ -149,6 +151,33 @@ function drawPerson(c: Ctx, ox: number, f: number, L: Look) {
     if (L.cuffs) { P(3, 13 + s, '#f4f4f0'); P(12, 13 - s, '#f4f4f0'); }
   }
 
+  // Muskelpaket: der ganze Rahmen wird genutzt, der Kopf bleibt klein
+  if (L.bulk) {
+    const sk = L.skin, sd = L.skinD, glanz = '#fff2dc';
+    if (dir !== 2) {
+      if (!sit) { R(4, 15, 3, 4, L.bottom); R(9, 15, 3, 4, L.bottom); R(4, 19, 3, 1, L.shoes); R(9, 19, 3, 1, L.shoes); }
+      R(1, 9, 14, 2, sk); R(2, 11, 12, 4, sk); R(12, 9, 2, 6, sd); R(5, 8, 6, 1, sk); // Schultern, Brustkorb, Stiernacken
+      if (dir === 0) {
+        R(3, 12, 4, 1, sd); R(9, 12, 4, 1, sd);                 // Brustmuskeln
+        R(7, 13, 2, 2, sd); P(5, 14, sd); P(10, 14, sd);         // Sixpack
+        P(4, 10, glanz); P(11, 10, glanz); P(5, 13, glanz); P(10, 13, glanz); // Ölglanz
+      } else {
+        R(7, 10, 1, 5, sd); R(3, 11, 3, 1, sd); R(10, 11, 3, 1, sd); // Rücken und Schulterblätter
+      }
+      R(2, 15, 12, 1, L.bottom);
+      if (L.belt) { R(2, 15, 12, 1, L.belt); if (dir === 0) P(7, 15, '#e8c040'); }
+      if (arms === 'up') { R(0, 2, 3, 8, sk); R(13, 2, 3, 8, sk); P(1, 4, glanz); P(14, 4, glanz); }
+      else if (arms === 'flex') { R(0, 9, 3, 3, sk); R(13, 9, 3, 3, sk); R(0, 4, 3, 5, sk); R(13, 4, 3, 5, sk); P(1, 6, glanz); P(14, 6, glanz); P(2, 8, sd); P(13, 8, sd); }
+      else { R(0, 10 + s, 2, 5, sk); R(14, 10 - s, 2, 5, sk); P(0, 11 + s, glanz); P(15, 11 - s, glanz); }
+      if (L.neck && dir === 0) { R(6, 9, 4, 1, L.neck); R(7, 10, 2, 2, L.neck); } // Hundemarke
+    } else {
+      R(3, 8, 10, 7, sk); R(3, 8, 2, 7, sd); R(10, 10, 3, 4, sk); P(11, 10, glanz);
+      if (arms === 'up') { R(7, 1, 3, 8, sk); P(8, 3, glanz); }
+      else { R(6 + s, 10, 3, 5, sk); P(7 + s, 11, glanz); }
+      R(3, 15, 10, 1, L.belt ?? L.bottom);
+    }
+  }
+
   // Kopf
   R(4, 2, 8, 7, L.skin);
   const H = L.hair, st = L.hairStyle ?? 'short';
@@ -222,6 +251,8 @@ export const DANCER_LOOKS: Record<string, Look> = {
   matrose: { skin: '#f0c8a0', skinD: '#d0a47c', hair: '#e8c860', bottom: '#f4f4f4', neck: '#2a4aa0', shoes: '#f4f4f4', hat: 'sailor', hatCol: '#2a4aa0' },
   bau: { skin: '#c88c5c', skinD: '#a86c40', hair: '#2a1a10', beard: '#2a1a10', bottom: '#3a5a8a', vest: '#ff7a1a', vestStripe: '#e8f0e0', belt: '#6a4a2a', shoes: '#5a3a1a', hat: 'hard', hatCol: '#f0c820', hatCol2: '#d0a810' },
   cowboy: { skin: '#e0aa80', skinD: '#c08a60', hair: '#6a4024', bottom: '#2a3a6a', vest: '#7a4a24', belt: '#3a2010', neck: '#c02a2a', shoes: '#5a3418', hat: 'cowboy', hatCol: '#8a5a30', hatCol2: '#6a4220' },
+  /** Emilian: riesiger Soldat, Tarnhose, Hundemarke, Mütze (Xavi-Strang: Leibwächter der Chefin) */
+  soldat: { skin: '#d8a880', skinD: '#b07a50', hair: '#3a2a1a', bottom: '#4a5a32', stripe: '#3a4a26', belt: '#2a2a1a', neck: '#c0c0c8', shoes: '#1a1a14', hat: 'cap', hatCol: '#4a5a32', bulk: true },
 };
 
 export const STAFF_LOOKS: Record<string, Look> = {
@@ -285,7 +316,7 @@ function drawKevinSit(c: Ctx, ox: number, wave: boolean) {
 
 // ---------------------------------------------------------------- Kulisse im Gespräch
 
-function drawClubBackdrop(c: Ctx) {
+function drawClubBackdrop(c: Ctx, stange = true) {
   const rnd = rng(311);
   r(c, 0, 0, 480, 270, '#140814');
   // Bühnenvorhang mit Falten und Goldfransen
@@ -314,8 +345,10 @@ function drawClubBackdrop(c: Ctx) {
   r(c, 0, 222, 480, 10, '#2a1430');
   for (let x = 3; x < 480; x += 6) r(c, x, 226, 2, 2, x % 12 < 6 ? '#ff4ac0' : '#ffb0e0');
   // Stange
-  r(c, 238, 30, 4, 194, '#c8c8d8'); r(c, 238, 30, 1, 194, '#ffffff'); r(c, 241, 30, 1, 194, '#8a8aa0');
-  blob(c, 240, 222, 9, 3, '#a0a0b8');
+  if (stange) {
+    r(c, 238, 30, 4, 194, '#c8c8d8'); r(c, 238, 30, 1, 194, '#ffffff'); r(c, 241, 30, 1, 194, '#8a8aa0');
+    blob(c, 240, 222, 9, 3, '#a0a0b8');
+  }
   // Publikum: Hinterköpfe im Gegenlicht
   r(c, 0, 232, 480, 38, '#1a0c1c');
   for (let x = 10; x < 480; x += 34) {
@@ -485,5 +518,6 @@ export function makeClubTextures(scene: Phaser.Scene) {
   k.add(0, 0, 0, 0, 44, 48);
   k.add(1, 0, 44, 0, 44, 48);
 
-  tex(scene, 'csClub', 480, 270, drawClubBackdrop);
+  tex(scene, 'csClub', 480, 270, (c) => drawClubBackdrop(c));
+  tex(scene, 'csClubFight', 480, 270, (c) => drawClubBackdrop(c, false)); // Endkampf: ohne Stange in der Mitte
 }

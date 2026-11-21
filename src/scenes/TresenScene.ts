@@ -43,7 +43,7 @@ export class TresenScene extends Phaser.Scene {
     this.cameras.main.fadeIn(260);
     if (state.dead) return this.leave();
 
-    audio.music('bar');
+    audio.music('tresen');
     this.add.image(0, 0, 'tresenBg').setOrigin(0);
     this.rain = this.add.graphics();
 

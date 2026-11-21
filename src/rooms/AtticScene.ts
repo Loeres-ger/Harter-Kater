@@ -2,10 +2,10 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import { state } from '../state';
 import { T, TileInfo, TopDown } from '../scenes/TopDown';
-import { fadeTo } from '../ui';
 import type { DialogAction } from '../dialog/data';
-import { BAR_LADDER_SPAWN } from './spawns';
-import { entdecke, zaehle } from '../progress/quests';
+import { BAR_LADDER_SPAWN, KELLER_SPAWN } from './spawns';
+import { STRAENGE, entdecke, starteStrang, weltZiel, zaehle } from '../progress/quests';
+import { fadeTo, floatText } from '../ui';
 import { PC_FILES, gelesen } from '../dialog/pcFiles';
 
 // Der Dachboden über der Kneipe: Dachschrägen, Fenster, alter Krempel und Bornas Matratze.
@@ -13,6 +13,11 @@ import { PC_FILES, gelesen } from '../dialog/pcFiles';
 //  m/n Matratze  H Luke mit Leiter nach unten
 /** Kachel, auf der in Kapitel 5 Claudius' Rechner steht */
 const PC_TILE: [number, number] = [9, 2];
+/** Nick-Strang: Bornas erste Pflanze neben der Matratze, die Plantage (die Kachel unter dem Rechner bleibt frei) */
+const TOPF_TILE: [number, number] = [3, 4];
+const PLANTAGE: [number, number][] = [[11, 2], [12, 2], [8, 3], [10, 3], [11, 3], [12, 3]];
+/** ab hier ist die Treppe hinter den Kisten offen */
+const KELLER_OFFEN = ['keller', 'koks', 'boss', 'frei'];
 
 const MAP = [
   '##############',
@@ -30,7 +35,13 @@ export class AtticScene extends TopDown {
     super('Dach');
   }
 
-  protected mapRows() { return MAP; }
+  protected mapRows() {
+    const n = state.flags.nick;
+    // K: Treppe in den Keller, daneben die weggeschobene Kiste; B: Kiste, die gleich weggeschoben wird (eigenes Bild)
+    if (n && KELLER_OFFEN.includes(n)) return MAP.map((row, y) => (y === 3 ? '#K.b.........#' : row));
+    if (n === 'plantage') return MAP.map((row, y) => (y === 3 ? '#B...........#' : row));
+    return MAP;
+  }
   protected isWall(ch: string) { return '#RW'.includes(ch); }
   protected darkness() { return 0.5; }
   protected floorKey() { return 'atticFloor'; }
@@ -47,12 +58,15 @@ export class AtticScene extends TopDown {
       case 'm': return { key: 'mattressL', solid: false };
       case 'n': return { key: 'mattressR', solid: false };
       case 'H': return { key: 'atticHatch', solid: false };
+      case 'K': return { key: 'kellerTreppe', solid: false };
+      case 'B': return { key: '', solid: true };
       default: return { key: '', solid: false };
     }
   }
 
   protected goalText() {
     const f = state.flags;
+    if ((f.nick && f.nick !== 'frei') || f.strangBereit === 'nick') return weltZiel(f);
     if (f.claudius === 'getroffen') {
       const n = gelesen(f.pcGelesen).length;
       return n >= PC_FILES.length ? 'Alles gelesen. Jetzt abschicken.' : `Claudius’ Rechner: ${n} von ${PC_FILES.length} Dateien gelesen.`;
@@ -72,7 +86,7 @@ export class AtticScene extends TopDown {
   }
 
   protected setupWorld() {
-    audio.music('none');
+    audio.music('dach');
     audio.setRain(true); // Regen auf dem Dach
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audio.setRain(false));
 
@@ -91,6 +105,110 @@ export class AtticScene extends TopDown {
     if (state.flags.borna === 'gebrochen') this.emptyMattress();
     else this.addBorna();
     if (state.flags.claudius) this.addPc();
+    this.addNick();
+    // die Pflanze wächst, während der Wirt weg ist
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { if (state.flags.nick === 'gepflanzt') state.flags.nick = 'plantage'; });
+  }
+
+  // ---------------------------------------------------------------- Nick-Strang
+
+  private kiste?: Phaser.GameObjects.Image;
+
+  private addNick() {
+    const n = state.flags.nick;
+    if (n === 'gepflanzt') this.addTopf();
+    if (n && n !== 'pflanze' && n !== 'gepflanzt') this.addPlantage();
+    if (n === 'plantage') this.kiste = this.add.image(1 * T, 3 * T, 'nickKiste').setOrigin(0).setScale(0.5).setDepth(4 * T);
+    if (n && KELLER_OFFEN.includes(n)) this.addTreppe();
+  }
+
+  private addTopf() {
+    const [tx, ty] = TOPF_TILE;
+    const x = tx * T + 8, y = ty * T + 15;
+    const topf = this.add.image(x, y, 'nickTopf').setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+    this.tweens.add({ targets: topf, angle: { from: -3, to: 3 }, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.solid[ty][tx] = true;
+    this.interacts.push({ x, y: y - 4, r: 14, label: () => 'Bornas Pflanze', act: () => this.toast('Sie wächst. Wenn man ganz still ist, hört man sie schmatzen.') });
+    return topf;
+  }
+
+  /** Bornas Plantage unter einer lila Pflanzenlampe */
+  private addPlantage() {
+    PLANTAGE.forEach(([tx, ty], i) => {
+      const x = tx * T + 8, y = ty * T + 15;
+      const pl = this.add.image(x, y, i % 2 ? 'nickPflanze2' : 'nickPflanze').setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+      this.tweens.add({ targets: pl, angle: { from: -2.5, to: 2.5 }, duration: 1500 + i * 170, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: i * 120 });
+      this.solid[ty][tx] = true;
+    });
+    for (const [lx, ly] of [[11.5, 2], [10.5, 3]]) {
+      this.add.image(lx * T + 8, ly * T - 6, 'nickLampe').setScale(0.5).setDepth(ly * T + 20);
+      const glow = this.addLight(lx * T + 8, ly * T + 6, 0.75, 0.55).setTint(0xd050ff);
+      this.tweens.add({ targets: glow, alpha: 0.4, duration: 2200, yoyo: true, repeat: -1 });
+    }
+    this.interacts.push({
+      x: 11 * T, y: 4 * T + 2, r: 18, label: () => 'Plantage',
+      act: () => this.toast(state.flags.nick === 'frei' ? 'Ein Schild hängt jetzt dran: „Vom Dach. Ohne Teufel.“' : 'Sechs Pflanzen, eine Lampe, null Genehmigungen.'),
+    });
+  }
+
+  private addTreppe() {
+    const x = 1 * T + 8, y = 3 * T + 8;
+    const glow = this.addLight(x, y + 2, 0.45, 0.5).setTint(0xff2a1a);
+    this.tweens.killTweensOf(glow);
+    this.tweens.add({ targets: glow, alpha: 0.25, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.interacts.push({ x, y, r: 14, label: () => 'Runter in den Keller', act: () => this.go('Keller', { spawn: KELLER_SPAWN }) });
+  }
+
+  /** Borna schiebt die Kisten weg: dahinter führt eine Treppe nach unten. Auf einem Dachboden. */
+  private async kellerAuf() {
+    const f = state.flags;
+    f.nick = 'keller';
+    this.frozen = true;
+    const cam = this.cameras.main;
+    const [mx, my] = this.find('m');
+    const bx = mx * T + 8, by = my * T - 8;
+    cam.stopFollow();
+    cam.pan(3 * T, 3 * T + 8, 900, 'Sine.easeInOut');
+    await this.wartet(950);
+    await this.blase(bx, by, 'Moment, Chef. Der Eingang ist ... *ächz* ... hinter den Weihnachtssachen.', '#a8d070');
+    const k = this.kiste;
+    if (k) {
+      audio.sfx('rummage');
+      cam.shake(1500, 0.0025);
+      const staub = this.time.addEvent({
+        delay: 90, repeat: 14,
+        callback: () => {
+          const s = this.add.image(k.x + Phaser.Math.Between(0, 14), k.y + 14, 'light').setTint(0xc8b090).setAlpha(0.4).setScale(0.05).setDepth(5003);
+          this.tweens.add({ targets: s, y: s.y - Phaser.Math.Between(6, 14), x: s.x + Phaser.Math.Between(-6, 6), scale: 0.16, alpha: 0, duration: 900, onComplete: () => s.destroy() });
+          if (Math.random() < 0.3) audio.sfx('rummage');
+        },
+      });
+      await new Promise<void>((done) => this.tweens.add({ targets: k, x: 3 * T, duration: 1500, ease: 'Quad.easeInOut', onComplete: () => done() }));
+      staub.remove();
+      audio.sfx('thud');
+      this.solid[3][1] = false;
+      this.solid[3][3] = true;
+    }
+    // die Treppe taucht auf, von unten glimmt es rot, Gitarren in der Ferne
+    const tr = this.add.image(1 * T, 3 * T, 'kellerTreppe').setOrigin(0).setScale(0.5).setDepth(0.5).setAlpha(0);
+    this.tweens.add({ targets: tr, alpha: 1, duration: 600 });
+    audio.sfx('rumble');
+    cam.shake(600, 0.004);
+    this.addTreppe();
+    await this.wartet(800);
+    const px = this.player.x, py = this.player.y - 26;
+    await this.blase(px, py, 'Moment. Das hier ist der DACHBODEN. Unter uns ist meine Kneipe.', '#f8e070');
+    await this.blase(bx, by, 'Jo.', '#a8d070');
+    await this.blase(px, py, 'Wie kann vom Dachboden eine Treppe in einen KELLER führen?', '#f8e070');
+    await this.blase(bx, by, 'Chef. Ich hab aufgehört, Fragen zu stellen, als die Pflanze über Nacht so groß war wie ich.', '#a8d070');
+    floatText(this, 1 * T + 8, 3 * T, '♪ ... ♪', '#ff6050').setDepth(6000);
+    await this.blase(px, py, '(Die Physik hat hier oben offenbar Hausverbot.)', '#f8e070');
+    cam.pan(this.player.x, this.player.y - 14, 600, 'Sine.easeInOut');
+    await this.wartet(620);
+    cam.startFollow(this.player, true, 0.12, 0.12);
+    this.frozen = false;
+    this.toast('Nick ist im Keller. Unter dem Dachboden. Natürlich.');
+    this.sichern();
   }
 
   /** Kapitel 5: Captain Claudius' versteckter Rechner auf einer Kiste. */
@@ -154,7 +272,7 @@ export class AtticScene extends TopDown {
     this.interacts.push({
       x, y: y - 4, r: 18,
       label: () => (borna.active ? 'Mit Borna reden' : null),
-      act: () => this.talk('borna', (a) => this.bornaDone(a)),
+      act: () => this.talk(state.flags.strangBereit === 'nick' || state.flags.nick ? 'bornaBiz' : 'borna', (a) => this.bornaDone(a)),
     });
 
     if (state.flags.borna === 'hoffnung') {
@@ -174,11 +292,36 @@ export class AtticScene extends TopDown {
   }
 
   private bornaDone(a?: DialogAction) {
+    const f = state.flags;
+    if (a === 'nickStart' && !f.nick) {
+      const s = STRAENGE.find((x) => x.id === 'nick')!;
+      starteStrang(s, f, state.time);
+      f.strangBereit = undefined;
+      this.leaving = true;
+      fadeTo(this, 'Cutscene', { script: s.script, next: { scene: 'Dach', data: { spawn: [6, 5] } } });
+      return;
+    }
+    if (a === 'nickPflanze' && f.nick === 'pflanze' && state.inv.pflanze > 0) {
+      state.inv.pflanze = 0;
+      f.nick = 'gepflanzt';
+      const topf = this.addTopf();
+      topf.setScale(0.1).setAlpha(0);
+      this.tweens.add({ targets: topf, scale: 0.5, alpha: 1, duration: 500, ease: 'Back.easeOut' });
+      audio.sfx('chime');
+      floatText(this, topf.x, topf.y - 20, '♥', '#a8d070').setDepth(6000);
+      this.toast('Borna topft sie ein und flüstert ihr was zu. Lass die beiden mal allein.');
+      this.sichern();
+      return;
+    }
+    if (a === 'nickKeller' && f.nick === 'plantage') {
+      void this.kellerAuf();
+      return;
+    }
     if (a !== 'bornaGebrochen' || state.flags.borna) return;
     // Verlauf A ist endgültig: Lilly taucht nicht mehr auf
     state.flags.borna = 'gebrochen';
     this.leaving = true;
-    fadeTo(this, 'Cutscene', { script: 'bornaWeg', music: 'none', next: { scene: 'Bar', data: { spawn: BAR_LADDER_SPAWN } } });
+    fadeTo(this, 'Cutscene', { script: 'bornaWeg', next: { scene: 'Bar', data: { spawn: BAR_LADDER_SPAWN } } });
   }
 
   /** Verlauf A danach: leere Matratze, ein Zettel. */

@@ -18,7 +18,7 @@ export class EndScene extends Phaser.Scene {
     state.running = false;
     const win = state.gameOver === 'win';
     audio.setRain(false);
-    audio.music(win ? 'monster' : 'none');
+    audio.music(win ? 'epilog' : 'verloren');
     if (!win) audio.sfx(state.gameOver === 'polizei' ? 'siren' : 'gameover');
     this.cameras.main.setBackgroundColor(win ? '#140e06' : '#0a0a14').fadeIn(500);
 

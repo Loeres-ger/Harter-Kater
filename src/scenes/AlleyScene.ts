@@ -7,7 +7,7 @@ import { unlock } from '../progress/achievements';
 import { freiesSpiel, lilyWartet } from '../progress/flags';
 import { entdecke, weltZiel, zaehle } from '../progress/quests';
 import { countBarEntry } from '../events/anne';
-import { BAR_LADDER_SPAWN, CLUB_SPAWN, LADEN_SPAWN } from '../rooms/spawns';
+import { BAR_LADDER_SPAWN, CLUB_SPAWN, LADEN_SPAWN, SHISHA_SPAWN } from '../rooms/spawns';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
@@ -40,6 +40,13 @@ const CLAUDIUS_TILE: [number, number] = [21, 17];
 const KEVIN_TILE: [number, number] = [23, 17];
 /** Eingang des Stripclubs „Muskelkater“ (Kachel in Koordinaten der ursprünglichen Karte) */
 const CLUB_DOOR: [number, number] = [-21, 17];
+/** Eingang der Shisha-Bar „Shisha 1001“ */
+const SHISHA_DOOR: [number, number] = [-11, 17];
+/** Xavi-Strang: Tuncays Stand auf dem Parkplatz und der Platz von Leni und Xavi im Park (Grünstreifen) */
+const TUNCAY_TILE: [number, number] = [-16, -6];
+const PARK_TILE: [number, number] = [-12, -4];
+/** Nick-Strang: der Busch an der Rückwand der Bar, in dem Bornas Pflanze steckt */
+const BUSCH_TILE: [number, number] = [15, 4];
 export const ALLEY_FRONT_SPAWN: [number, number] = [17, 18];
 
 export class AlleyScene extends TopDown {
@@ -118,7 +125,7 @@ export class AlleyScene extends TopDown {
   }
 
   protected setupWorld() {
-    audio.music('alley');
+    this.gegend = null;
     audio.setRain(true);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audio.setRain(false));
     // Türen in die Kneipe: Haupteingang vorne, Hintertür zur Gasse
@@ -234,6 +241,9 @@ export class AlleyScene extends TopDown {
     // Offene Welt: Figuren der laufenden Stränge, Finale, nächste Story-Fortsetzung
     if (state.flags.claudius) this.addClaudius();
     this.addClub();
+    this.addShisha();
+    this.addXavi();
+    this.addBusch();
     this.scheduleStory(() => !!this.corpse);
 
     // Lampen an der Wand
@@ -360,6 +370,111 @@ export class AlleyScene extends TopDown {
     });
   }
 
+  /** Shisha 1001: jederzeit offen (nur nicht mit Leiche) */
+  private addShisha() {
+    const [x, y] = this.at(SHISHA_DOOR);
+    this.interacts.push({
+      x: x * T + 8, y: (y + 1) * T + 4, r: 16,
+      label: () => (state.carrying ? null : this.corpse ? 'Erst die Leiche loswerden!' : 'Shisha 1001 betreten'),
+      act: () => (this.corpse ? this.toast('Mit einer Leiche in die Shisha-Bar? Cemo raucht viel, aber so viel nicht.') : this.go('Shisha', { spawn: SHISHA_SPAWN })),
+    });
+  }
+
+  /** Xavi-Strang: Tuncay handelt auf dem Parkplatz; nach der Rettung knutschen Leni und Xavi im Park */
+  private addXavi() {
+    const f = state.flags;
+    if (f.glanzErledigt) {
+      const [tx, ty] = this.at(TUNCAY_TILE);
+      const x = tx * T + 8, y = ty * T + 14;
+      this.add.image(x - 26, y + 1, 'tuncayKram').setOrigin(0.5, 1).setScale(0.5).setDepth(y - 3);
+      const t = this.add.sprite(x, y, 'tuncay', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+      this.npcs.push(t, this.add.image(x, y - 1, 'shadow').setDepth(1));
+      this.solid[ty][tx] = true;
+      this.time.addEvent({ delay: 3800, loop: true, callback: () => { if (!t.active) return; t.setFrame(13); this.time.delayedCall(700, () => t.active && t.setFrame(0)); } });
+      this.interacts.push({ x, y: y - 4, r: 18, label: () => (!this.corpse && !state.carrying ? 'Mit Tuncay reden' : null), act: () => this.talk('tuncay', (a) => this.tuncayDone(a)) });
+    }
+    if (f.xavi === 'gerettet') {
+      const [px, py] = this.at(PARK_TILE);
+      const x = px * T + 8, y = py * T + 14;
+      const leni = this.add.sprite(x - 5, y, 'leni', 6).setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+      const xavi = this.add.sprite(x + 5, y, 'xavi', 6).setOrigin(0.5, 1).setScale(0.5).setFlipX(true).setDepth(y);
+      this.npcs.push(leni, xavi, this.add.image(x, y - 1, 'shadow').setDepth(1).setScale(1.6, 1));
+      this.solid[py][px] = true;
+      this.tweens.add({ targets: [leni, xavi], scaleY: 0.48, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.time.addEvent({
+        delay: 1400, loop: true,
+        callback: () => {
+          const h = this.add.image(x + Phaser.Math.Between(-4, 4), y - 22, 'clubHeart').setScale(0.5).setDepth(5004);
+          this.tweens.add({ targets: h, y: h.y - 14, alpha: 0, duration: 1100, onComplete: () => h.destroy() });
+        },
+      });
+      this.interacts.push({
+        x, y: y - 4, r: 20, label: () => 'Leni und Xavi',
+        act: () => this.toast(Phaser.Utils.Array.GetRandom([
+          'Sie knutschen. Seit Stunden. Xavi wird dabei rot und hört trotzdem nicht auf.',
+          'Xavi löst sich kurz: „Danke, Horst. Entschuldigung. Danke.“ Dann knutschen sie weiter.',
+          'Leni hebt den Daumen, ohne hinzusehen. Profi.',
+        ])),
+      });
+    }
+  }
+
+  private tuncayDone(a?: DialogAction) {
+    if (a !== 'tuncayQuiz') return;
+    hud.prompt = '';
+    this.scene.launch('Quiz', { resume: this.scene.key, onDone: (win: boolean) => this.quizDone(win) });
+    this.scene.bringToTop('Quiz');
+    this.scene.pause();
+  }
+
+  private quizDone(win: boolean) {
+    if (!win) return this.toast('Tuncay: „Komm wieder, wenn du weißt, wo Ankara liegt.“');
+    state.flags.xavi = 'club';
+    this.scene.launch('Cutscene', { script: 'xaviTuncay', resume: this.scene.key });
+    this.scene.bringToTop('Cutscene');
+    this.scene.pause();
+  }
+
+  /** Der Busch hinter der Bar. Im Nick-Strang gräbt der Wirt Bornas Pflanze aus (ein paar Mal wühlen). */
+  private addBusch() {
+    const [tx, ty] = this.at(BUSCH_TILE);
+    const x = tx * T + 8, y = ty * T + 14;
+    const f = state.flags;
+    const bush = this.add.image(x, y, 'bush').setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+    if (this.solid[ty]) this.solid[ty][tx] = true;
+    const loch = () => this.add.image(x - 9, y - 1, 'erdloch').setScale(0.5).setDepth(1.5);
+    if ((f.nick && f.nick !== 'pflanze') || state.inv.pflanze > 0) loch();
+    let stiche = 0;
+    this.interacts.push({
+      x, y: y - 3, r: 20,
+      label: () => (f.nick === 'pflanze' && state.inv.pflanze === 0 && !state.carrying ? 'Im Busch graben' : null),
+      act: () => {
+        if (f.nick !== 'pflanze' || state.inv.pflanze > 0) return;
+        stiche++;
+        audio.sfx('rummage');
+        this.tweens.add({ targets: bush, angle: { from: -6, to: 6 }, duration: 70, yoyo: true, repeat: 2, onComplete: () => bush.setAngle(0) });
+        for (let i = 0; i < 7; i++) {
+          const k = this.add.image(x + Phaser.Math.Between(-4, 4), y - 3, 'krume').setScale(0.5).setDepth(y + 1);
+          const dx = Phaser.Math.Between(-22, 22);
+          this.tweens.add({ targets: k, x: k.x + dx, duration: 520, ease: 'Linear' });
+          this.tweens.add({ targets: k, y: k.y - Phaser.Math.Between(8, 18), duration: 260, ease: 'Quad.easeOut', yoyo: true, onComplete: () => this.tweens.add({ targets: k, alpha: 0, duration: 400, delay: 300, onComplete: () => k.destroy() }) });
+        }
+        if (stiche < 4) {
+          this.float(['*buddel*', '*wühl* ... Wurzeln.', 'Da ist was ... Weiches?'][stiche - 1], '#c8a070');
+          return;
+        }
+        state.inv.pflanze = 1;
+        loch();
+        const pl = this.add.image(x, y - 6, 'icon_pflanze').setScale(0.6).setDepth(6000);
+        this.tweens.add({ targets: pl, y: pl.y - 22, duration: 380, ease: 'Quad.easeOut', yoyo: true, hold: 260, onComplete: () => this.tweens.add({ targets: pl, x: this.player.x, y: this.player.y - 16, scale: 0.2, alpha: 0, duration: 300, onComplete: () => pl.destroy() }) });
+        audio.sfx('chime');
+        this.float('Bornas Pflanze!', '#8ae070');
+        this.toast('Eine kleine Pflanze. Sie riecht nach Borna. Ab damit auf den Dachboden.');
+        this.sichern();
+      },
+    });
+  }
+
   private addLeonard(doorX: number, doorY: number) {
     let best: [number, number] | null = null;
     const dist = ([x, y]: [number, number]) => Math.abs(x - doorX) + Math.abs(y - doorY) * 2;
@@ -432,7 +547,7 @@ export class AlleyScene extends TopDown {
       state.flags.borna = 'hoffnung';
       unlock('untermieter');
       this.leaving = true;
-      fadeTo(this, 'Cutscene', { script: 'lilyDach', music: 'bar', next: { scene: 'Bar', data: { spawn: BAR_LADDER_SPAWN } } });
+      fadeTo(this, 'Cutscene', { script: 'lilyDach', next: { scene: 'Bar', data: { spawn: BAR_LADDER_SPAWN } } });
     }
   }
 
@@ -810,8 +925,22 @@ export class AlleyScene extends TopDown {
     if (state.carrying && this.copSees(this.player.x, this.player.y)) this.bust('Was tragen Sie da auf der Schulter?!');
   }
 
+  /** Gasse hinter dem Haus oder Straße davor (mit etwas Spielraum an der Grenze); hat jemand anderes die Musik
+   *  übernommen (Monster, Quiz, Zwischensequenz), bleibt sie. */
+  private gegend: 'gasse' | 'strasse' | null = null;
+  private musikGegend() {
+    if (this.gegend !== null && audio.aktuell !== this.gegend) return;
+    const reihe = this.player.y / T - this.origin()[1];
+    const g = reihe < 9 ? 'gasse' : reihe > 11 ? 'strasse' : (this.gegend ?? 'strasse');
+    if (g !== this.gegend) {
+      this.gegend = g;
+      audio.music(g);
+    }
+  }
+
   update(t: number, d: number) {
     super.update(t, d);
+    this.musikGegend();
     this.updateCop(d / 1000);
     if (this.corpse && this.corpseCarried) this.corpse.setPosition(this.player.x, this.player.y - 22).setDepth(this.player.y + 1);
     hud.alert = state.bodyDeadline !== null && !state.gameOver ? `LEICHE WEG: ${Math.max(0, Math.ceil(state.bodyDeadline - state.time))}s` : '';

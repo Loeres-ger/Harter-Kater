@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { ITEMS, ItemDef, ItemId, state } from '../state';
+import { ALL_ITEMS, ItemDef, ItemId, state } from '../state';
 import { H, W, txt } from '../ui';
 
 export type ShopId = 'wirt' | 'automat' | 'dealer' | 'laden';
@@ -16,7 +16,7 @@ const SHOPS: Record<ShopId, { title: string; line: string; accent: number; accen
   automat: { title: 'ZIGARETTENAUTOMAT', line: '*summt leise vor sich hin*', accent: 0xc02a2a, accentCss: '#ff7a6a' },
   dealer: { title: 'DER DEALER', line: 'Psst. Keine Fragen, keine Quittung.', accent: 0x6ac04a, accentCss: '#9ae09a' },
   // Mayas Feinkost verkauft dieselbe Bierware wie die Kneipentheke
-  laden: { title: 'MAYAS FEINKOST', line: 'Deutsches Bier. Barzahlung. Kein Anschreiben.', accent: 0x2a8a4a, accentCss: '#8ae0a0', items: ['bier'] },
+  laden: { title: 'MAYAS FEINKOST', line: 'Bier, Wurst, Käse. Barzahlung. Kein Anschreiben.', accent: 0x2a8a4a, accentCss: '#8ae0a0', items: ['bier', 'wurst', 'kaese'] },
 };
 
 const CARD_W = 104, CARD_H = 142;
@@ -40,7 +40,7 @@ export class ShopScene extends Phaser.Scene {
     this.wasRunning = state.running;
     state.running = false;
     const shop = SHOPS[data.shop];
-    const items = shop.items ? ITEMS.filter((i) => shop.items!.includes(i.id)) : ITEMS.filter((i) => i.shop === data.shop);
+    const items = shop.items ? ALL_ITEMS.filter((i) => shop.items!.includes(i.id)) : ALL_ITEMS.filter((i) => i.shop === data.shop && (!i.zeigen || i.zeigen()));
 
     // Abdunkeln, Klick daneben schließt
     const dim = this.add.rectangle(0, 0, W, H, 0x000000, 0).setOrigin(0).setInteractive();
@@ -83,7 +83,7 @@ export class ShopScene extends Phaser.Scene {
     const price = txt(this, CARD_W / 2 - 18, -CARD_H / 2 + 12, `${def.price}€`, '#2a1a0a').setOrigin(0.5).setAngle(6);
     // Wirkung als kleine Balken
     const stats = this.add.graphics();
-    const rows: [string, number, number][] = [['SUCHT', def.sucht, 0xc07ae0]];
+    const rows: [string, number, number][] = def.quest ? [] : def.sucht ? [['SUCHT', def.sucht, 0xc07ae0]] : [['LECKER', 20, 0xe0a040]];
     rows.forEach(([, v, col], r) => {
       const sy = -CARD_H / 2 + 75 + r * 10;
       stats.fillStyle(0x140e0a).fillRect(2, sy, 44, 6);
@@ -103,6 +103,12 @@ export class ShopScene extends Phaser.Scene {
     if (this.closing) return;
     const card = this.cards.find((c) => c.def === def)!;
     const cost = def.price * n;
+    if (def.max !== undefined && state.inv[def.id] + n > def.max) {
+      this.tweens.add({ targets: card.box, x: card.box.x + 4, duration: 50, yoyo: true, repeat: 3 });
+      this.flyText(card.box, `MEHR ALS ${def.max} BRAUCHT NICK NICHT`, '#ff6a5a');
+      audio.sfx('error');
+      return;
+    }
     if (state.money < cost) {
       this.tweens.add({ targets: card.box, x: card.box.x + 4, duration: 50, yoyo: true, repeat: 3 });
       this.flyText(card.box, 'ZU WENIG GELD', '#ff6a5a');
@@ -128,9 +134,10 @@ export class ShopScene extends Phaser.Scene {
     for (const c of this.cards) {
       c.owned.setText(`Vorrat: ${state.inv[c.def.id]}`);
       const ok = state.sucht >= c.def.minSucht;
-      c.req.setText(c.def.minSucht ? `ab Sucht ${c.def.minSucht}` : 'für jeden').setColor(ok ? '#7ab86a' : '#c86a5a');
-      c.buy1.setEnabled(state.money >= c.def.price);
-      c.buy5.setEnabled(state.money >= c.def.price * 5);
+      c.req.setText(c.def.quest ? 'nur für Nick' : c.def.minSucht ? `ab Sucht ${c.def.minSucht}` : 'für jeden').setColor(c.def.quest ? '#e07a7a' : ok ? '#7ab86a' : '#c86a5a');
+      const frei = c.def.max === undefined ? 99 : c.def.max - state.inv[c.def.id];
+      c.buy1.setEnabled(state.money >= c.def.price && frei >= 1);
+      c.buy5.setEnabled(state.money >= c.def.price * 5 && frei >= 5);
     }
   }
 

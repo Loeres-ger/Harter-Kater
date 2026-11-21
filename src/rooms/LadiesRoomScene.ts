@@ -6,6 +6,7 @@ import { unlock } from '../progress/achievements';
 import { LENI_AUSSCHLAFEN } from '../progress/flags';
 import type { DialogAction } from '../dialog/data';
 import { BAR_DAMEN_SPAWN } from './spawns';
+import { STRAENGE, starteStrang } from '../progress/quests';
 
 // Damentoilette: zwei Waschbecken mit Spiegeln, zwei Kabinen. Leni hängt betrunken über dem Waschbecken.
 // Nach dem Gespräch muss sie sich übergeben und schläft eine Weile in der Kabine. Danach steht sie wieder am Becken.
@@ -63,7 +64,22 @@ export class LadiesRoomScene extends TopDown {
     return state.time < t + LENI_AUSSCHLAFEN ? 'kabine' : 'wach';
   }
 
+  /**
+   * Xavi-Strang: Erst die betrunkene Leni (ganz normales Nebenereignis). Ist die Stadt offen und hat das Spiel den
+   * Strang vorgemerkt (strangBereit, siehe progress/quests.ts), stürzt Leni beim nächsten Besuch heulend aus der Kabine.
+   * Nach der Zusage steht sie wartend am Becken.
+   */
+  private xaviPhase(): 'heult' | 'wartet' | null {
+    const f = state.flags;
+    if (f.xavi === 'gerettet') return null;
+    if (f.xavi) return 'wartet';
+    return f.strangBereit === 'xavi' && f.leniGekotzt !== undefined ? 'heult' : null;
+  }
+
   protected goalText() {
+    const xp = this.xaviPhase();
+    if (xp === 'heult') return 'Aus einer Kabine: lautes Schluchzen.';
+    if (xp === 'wartet') return 'Leni wartet auf Neuigkeiten von Xavi.';
     const ph = this.phase();
     if (ph === 'betrunken') return 'Damentoilette. Jemand hängt über dem Waschbecken.';
     if (ph === 'kabine') return 'Leni schläft ihren Rausch in der Kabine aus.';
@@ -79,31 +95,114 @@ export class LadiesRoomScene extends TopDown {
   }
 
   protected setupWorld() {
-    audio.music('bar');
+    audio.music('wc');
     const [dx, dy] = this.find('D');
     this.interacts.push({ x: dx * T + 8, y: dy * T, r: 18, label: () => 'Zurück in die Kneipe', act: () => this.go('Bar', { spawn: BAR_DAMEN_SPAWN }) });
     this.addLight(6 * T, 3 * T, 1.1, 0.5).setTint(0xf0d8e8);
     const [kx, ky] = this.find('k');
     this.interacts.push({ x: kx * T + 8, y: (ky + 1) * T + 6, r: 12, label: () => 'Waschbecken', act: () => this.toast('Auf dem Spiegel steht in Lippenstift: „XAVI = LÜGNER“.') });
 
-    // Kabine mit Leni darin (Tür geschlossen, solange sie schläft)
+    // Kabine mit Leni darin (Tür geschlossen, solange sie schläft bzw. heult)
     const [sx, sy] = LENI_STALL;
-    this.stallDoor = this.add.image(sx * T, sy * T, 'stallDoorLocked').setOrigin(0).setScale(0.5).setDepth(sy * T + 1).setVisible(this.phase() === 'kabine');
+    const xp = this.xaviPhase();
+    this.stallDoor = this.add.image(sx * T, sy * T, 'stallDoorLocked').setOrigin(0).setScale(0.5).setDepth(sy * T + 1)
+      .setVisible(xp === 'heult' || (!xp && this.phase() === 'kabine'));
     this.interacts.push({
       x: sx * T + 8, y: (sy + 1) * T + 4, r: 14,
-      label: () => (this.phase() === 'kabine' ? 'Leni (Kabine)' : 'Kabine'),
-      act: () => this.toast(this.phase() === 'kabine'
+      label: () => (this.leni || this.xaviPhase() ? 'Kabine' : this.phase() === 'kabine' ? 'Leni (Kabine)' : 'Kabine'),
+      act: () => this.toast(!this.leni && !this.xaviPhase() && this.phase() === 'kabine'
         ? Phaser.Utils.Array.GetRandom(['Von drinnen: Schnarchen. Und ein leises „Xavi ...“.', 'Leni schläft. Das Glas Wasser steht noch auf dem Becken.', 'Ein Geräusch wie ein Walross mit Schluckauf.'])
         : 'Frei. Und erstaunlich sauber. Für diese Kneipe.'),
     });
 
-    if (this.phase() !== 'kabine') this.placeLeni();
+    if (xp === 'heult') {
+      this.toast('Aus der Kabine: lautes Schluchzen. Dann ein Name: „Xaviii ...“');
+      this.time.delayedCall(1300, () => this.leniStuermtRaus());
+    } else if (xp === 'wartet') this.placeSadLeni();
+    else if (state.flags.xavi === 'gerettet') return; // Leni ist mit Xavi unterwegs
+    else if (this.phase() !== 'kabine') this.placeLeni();
+  }
+
+  /** Leni stürzt heulend aus der Kabine, rennt zum Wirt und fängt sofort an zu reden. */
+  private leniStuermtRaus() {
+    if (this.leni || this.leaving) return;
+    const [sx, sy] = LENI_STALL;
+    this.stallDoor?.setVisible(false);
+    audio.sfx('clang');
+    this.cameras.main.shake(160, 0.004);
+    const leni = this.add.sprite(sx * T + 8, (sy + 1) * T + 10, 'leni', 0).setOrigin(0.5, 1).setScale(0.5).setDepth((sy + 1) * T + 10);
+    this.leni = leni;
+    this.sob(leni);
+    const p = this.player;
+    const tx = Phaser.Math.Clamp(p.x + (p.x > leni.x ? -13 : 13), 2 * T, 10 * T);
+    const ty = Phaser.Math.Clamp(p.y, 3 * T + 12, 5 * T + 12);
+    this.actsBlocked = true;
+    leni.play(Math.abs(tx - leni.x) > Math.abs(ty - leni.y) ? 'leni_side' : 'leni_down').setFlipX(tx < leni.x);
+    this.tweens.add({
+      targets: leni, x: tx, y: ty, duration: 700, ease: 'Quad.easeOut',
+      onUpdate: () => leni.setDepth(leni.y),
+      onComplete: () => {
+        leni.anims.stop();
+        leni.setFrame(p.x > leni.x ? 6 : 0).setFlipX(p.x < leni.x);
+        this.actsBlocked = false;
+        this.addSadTalk(leni);
+        this.talk('leniXavi', (a) => this.xaviDone(a));
+      },
+    });
+  }
+
+  /** Leni steht nach der Zusage am Waschbecken und wartet */
+  private placeSadLeni() {
+    const [lx, ly] = LENI_TILE;
+    const leni = this.add.sprite(lx * T + 8, ly * T + 13, 'leni', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(ly * T + 13);
+    this.leni = leni;
+    this.add.image(leni.x, leni.y - 1, 'shadow').setDepth(1);
+    this.sob(leni, true);
+    this.addSadTalk(leni);
+  }
+
+  private addSadTalk(leni: Phaser.GameObjects.Sprite) {
+    this.interacts.push({
+      x: leni.x, y: leni.y - 4, r: 22,
+      label: () => (leni.active ? (state.flags.xavi ? 'Mit Leni reden' : 'Leni trösten') : null),
+      act: () => (state.flags.xavi ? this.talk('leniWartet') : this.talk('leniXavi', (a) => this.xaviDone(a))),
+    });
+  }
+
+  /** Schluchzen: Tränen und ab und zu ein „*schnief*“ */
+  private sob(leni: Phaser.GameObjects.Sprite, leise = false) {
+    this.tweens.add({ targets: leni, scaleY: 0.48, duration: 260, yoyo: true, repeat: -1, repeatDelay: leise ? 1800 : 500 });
+    this.time.addEvent({
+      delay: leise ? 2600 : 900, loop: true,
+      callback: () => {
+        if (!leni.active) return;
+        for (const dx of [-2, 2]) {
+          const t = this.add.rectangle(leni.x + dx, leni.y - 15, 1, 1.5, 0x8ac8ff).setDepth(6000);
+          this.tweens.add({ targets: t, y: t.y + 7, alpha: 0, duration: 600, onComplete: () => t.destroy() });
+        }
+        if (Math.random() < (leise ? 0.3 : 0.5)) {
+          const h = this.add.text(leni.x + 6, leni.y - 24, '*schnief*', { fontFamily: 'monospace', fontSize: '6px', color: '#a8d0ff' }).setDepth(6000);
+          this.tweens.add({ targets: h, y: h.y - 8, alpha: 0, duration: 1000, onComplete: () => h.destroy() });
+        }
+      },
+    });
+  }
+
+  /** Zusage: Die Suche beginnt (Strang „xavi“), Kapitel-Einblendung als Speicherpunkt */
+  private xaviDone(a?: DialogAction) {
+    if (a !== 'xaviSuche' || state.flags.xavi) return;
+    const s = STRAENGE.find((x) => x.id === 'xavi');
+    if (s) starteStrang(s, state.flags, state.time);
+    state.flags.strangBereit = undefined;
+    this.scene.launch('Cutscene', { script: 'xaviStart', resume: this.scene.key });
+    this.scene.bringToTop('Cutscene');
+    this.scene.pause();
   }
 
   update(t: number, d: number) {
     super.update(t, d);
     // ausgeschlafen, während der Wirt im Raum ist
-    if (!this.leni && this.phase() === 'wach') {
+    if (!this.leni && !this.xaviPhase() && state.flags.xavi !== 'gerettet' && this.phase() === 'wach') {
       this.stallDoor?.setVisible(false);
       this.placeLeni();
       this.toast('Die Kabinentür geht auf. Leni wankt zurück zum Waschbecken.');

@@ -64,7 +64,7 @@ export class MensRoomScene extends TopDown {
   }
 
   protected setupWorld() {
-    audio.music('bar');
+    audio.music('wc');
     const [dx, dy] = this.find('D');
     this.interacts.push({ x: dx * T + 8, y: dy * T, r: 18, label: () => 'Zurück in die Kneipe', act: () => this.go('Bar', { spawn: BAR_HERREN_SPAWN }) });
 

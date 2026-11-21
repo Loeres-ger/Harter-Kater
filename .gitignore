@@ -5,3 +5,7 @@ dist/
 .DS_Store
 dist-editor
 src/maps/backups/
+
+# exportierte Musik (groß, nicht ins Repo)
+export/
+__pycache__/
