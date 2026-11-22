@@ -77,6 +77,9 @@ export class GitarrenDuellScene extends Phaser.Scene {
   private abschnitt = '';
   private fehlerReihe = 0;
   private flammen: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+  /** Tippflächen (Handy): je Spur ein Viertel der unteren Bildhälfte */
+  private pads: Phaser.GameObjects.Rectangle[] = [];
+  private laedt = false;
   private publikum: Phaser.GameObjects.Rectangle[] = [];
   private stimmung = 0.5;
   private stimmungBar!: Phaser.GameObjects.Rectangle;
@@ -106,8 +109,13 @@ export class GitarrenDuellScene extends Phaser.Scene {
     this.primary = null;
     this.flammen = [];
     this.publikum = [];
+    this.pads = [];
+    this.laedt = false;
     this.scene.bringToTop();
+    // der Keller dahinter ist ganz verdeckt: nicht mitzeichnen (spart auf dem Handy viel)
+    this.scene.setVisible(false, data.resume);
     audio.music('none');
+    void audio.ladeDatei('duell');
 
     // Bühne: Kellerkulisse, abgedunkelt; das Griffbrett liegt in der Mitte
     this.add.rectangle(0, 0, W, H, 0x000000, 1).setOrigin(0);
@@ -177,7 +185,7 @@ export class GitarrenDuellScene extends Phaser.Scene {
     box.add(this.add.rectangle(0, 0, 330, 150, 0x120a0c, 0.96).setStrokeStyle(2, this.jam ? 0xd8b850 : 0xc02020));
     box.add(txt(this, 0, -58, this.jam ? 'JAM-SESSION MIT NICK' : 'GITARRENDUELL', this.jam ? '#f0d070' : '#ff5040', 16).setOrigin(0.5));
     const regeln = [
-      touch ? '1. Tipp unten auf die Spur, wenn die Note über dem Ring ist.' : '1. D F J K drücken, wenn die Note über dem Ring ist.',
+      touch ? '1. Tipp unten ins Viertel der Farbe, wenn die Note über dem Ring ist.' : '1. D F J K drücken, wenn die Note über dem Ring ist.',
       '2. Lange Noten gedrückt halten.',
       this.jam ? '3. Kein Verlieren. Einfach spielen. Nick freut sich.' : '3. Wenn Nick vorspielt: zuhören. Danach bist du dran.',
       this.jam ? '' : '4. Am Ende mehr Punkte als Nick? Gewonnen.',
@@ -190,7 +198,17 @@ export class GitarrenDuellScene extends Phaser.Scene {
     this.endBox = box;
   }
 
+  /** erst starten, wenn der Song geladen ist (meist längst geschehen) */
   private los() {
+    if (this.laedt) return;
+    this.laedt = true;
+    void audio.ladeDatei('duell').then(() => {
+      this.laedt = false;
+      if (this.scene.isActive()) this.starte();
+    });
+  }
+
+  private starte() {
     this.endBox?.destroy();
     this.endBox = undefined;
     this.primary = null;
@@ -424,6 +442,7 @@ export class GitarrenDuellScene extends Phaser.Scene {
       const x = laneX(l, 1);
       const an = this.gedrueckt[l] || this.time.now - this.druckT[l] < 90;
       g.fillStyle(LANE_COL[l], an ? 0.55 : 0.12).fillEllipse(x, HITY, 34, 16);
+      this.pads[l]?.setFillStyle(LANE_COL[l], an ? 0.16 : 0);
       g.lineStyle(2, LANE_COL[l], an ? 1 : 0.75).strokeEllipse(x, HITY, 34, 16);
     }
   }
@@ -476,12 +495,14 @@ export class GitarrenDuellScene extends Phaser.Scene {
       if (this.jam && this.laeuft) return this.ende();
       this.pause(!this.pausiert);
     });
-    // Tippen: untere Bildhälfte über dem Griffbrett, je Spur ein Streifen
+    // Tippen: untere Bildhälfte. Auf dem Handy ist jede Spur ein Viertel der ganzen Breite (groß genug für Daumen),
+    // mit der Maus nur der Streifen unter dem Griffbrett.
+    const touch = isTouchDevice(this);
     if (this.input.manager.pointersTotal < 4) this.input.addPointer(3);
-    const spur = (x: number) => Math.max(0, Math.min(3, Math.floor((x - (CX - LANE_W * 2)) / LANE_W)));
+    const spur = (x: number) => Math.max(0, Math.min(3, Math.floor(touch ? x / (W / 4) : (x - (CX - LANE_W * 2)) / LANE_W)));
     const aktiv = new Map<number, number>();
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (this.endBox || this.pauseBox || p.y < HITY - 90 || Math.abs(p.x - CX) > LANE_W * 2 + 30) return;
+      if (this.endBox || this.pauseBox || p.y < HITY - 90 || (!touch && Math.abs(p.x - CX) > LANE_W * 2 + 30)) return;
       const l = spur(p.x);
       aktiv.set(p.id, l);
       this.druck(l);
@@ -492,10 +513,16 @@ export class GitarrenDuellScene extends Phaser.Scene {
       aktiv.delete(p.id);
       this.los_(l);
     });
-    // Tasten-/Tippflächen beschriften
-    const touch = isTouchDevice(this);
+    // Tasten beschriften; auf dem Handy breite Tippflächen am unteren Rand (hinter den Figuren)
     for (let l = 0; l < 4; l++) {
-      txt(this, laneX(l, 1), HITY + 12, touch ? '▲' : KEY_LABEL[l], LANE_CSS[l]).setOrigin(0.5, 0).setDepth(10).setAlpha(0.8);
+      if (!touch) {
+        txt(this, laneX(l, 1), HITY + 12, KEY_LABEL[l], LANE_CSS[l]).setOrigin(0.5, 0).setDepth(10).setAlpha(0.8);
+        continue;
+      }
+      // das ganze Viertel ist die Tippfläche und leuchtet beim Drücken auf; unten markiert ein Farbstreifen die Spur
+      const x0 = (W / 4) * l, y0 = HITY - 90;
+      this.pads.push(this.add.rectangle(x0, y0, W / 4, H - y0, LANE_COL[l], 0).setOrigin(0).setDepth(1));
+      this.add.rectangle(x0 + 2, H - 7, W / 4 - 4, 6, LANE_COL[l], 0.75).setOrigin(0).setDepth(2);
     }
   }
 
@@ -568,6 +595,7 @@ export class GitarrenDuellScene extends Phaser.Scene {
     state.running = this.wasRunning;
     audio.music('none');
     const { resume, onDone } = this.cfg;
+    this.scene.setVisible(true, resume);
     this.scene.resume(resume);
     this.scene.stop();
     // die Keller-Szene setzt ihre Musik beim Fortsetzen nicht neu: hier wieder anwerfen

@@ -22,6 +22,8 @@ const STUECK = {
   shisha: { dateien: ['shisha_p1', 'shisha_p2'], phase: 1 },
   shishaDuell: { dateien: ['shisha_p1', 'shisha_p2'], phase: 2 },
   hoelle: { dateien: ['hoelle_p1', 'hoelle_p2', 'hoelle_p3'] },
+  // Nicks Keller: mit audio.synthRendern() aus dem Synth vorgerendert (läuft so auch auf dem Handy ohne Aussetzer)
+  keller: { dateien: ['keller'] }, kellerClean: { dateien: ['kellerClean'] },
 } satisfies Record<string, { dateien: string[]; phase?: number }>;
 type Stueck = keyof typeof STUECK;
 type SynthTrack = 'keller' | 'kellerClean' | 'duell';
@@ -76,6 +78,10 @@ class AudioEngine implements SongSpieler {
   private stueckBus!: GainNode;
   private laufend: { track: Stueck; aus: GainNode; quellen: AudioBufferSourceNode[]; phasen: GainNode[] } | null = null;
   private puffer = new Map<string, Promise<AudioBuffer | null>>();
+  /** fertig dekodierte Dateien (für den sofortigen Start des Gitarrenduells) */
+  private fertig = new Map<string, AudioBuffer>();
+  /** der Song des Gitarrenduells, als Datei gespielt */
+  private song: { src: AudioBufferSourceNode; aus: GainNode } | null = null;
   private endung: 'ogg' | 'mp4' = 'ogg';
   private sfxBus!: GainNode;
   private noiseBuf!: AudioBuffer;
@@ -101,24 +107,8 @@ class AudioEngine implements SongSpieler {
       const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return;
       this.ctx = new Ctor();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.7;
-      this.master.connect(this.ctx.destination);
-      this.musicBus = this.ctx.createGain();
-      this.musicBus.gain.value = 0.32;
-      this.musicBus.connect(this.master);
-      this.stueckBus = this.ctx.createGain();
-      this.stueckBus.gain.value = 0.5;
-      this.stueckBus.connect(this.master);
+      this.aufbauen(this.ctx);
       this.endung = document.createElement('audio').canPlayType('audio/ogg; codecs="opus"') ? 'ogg' : 'mp4';
-      this.sfxBus = this.ctx.createGain();
-      this.sfxBus.gain.value = 0.85;
-      this.sfxBus.connect(this.master);
-      this.amps(this.ctx);
-      // 2 Sekunden weißes Rauschen als Grundlage für Regen, Hi-Hats, Donner …
-      this.noiseBuf = this.ctx.createBuffer(1, this.ctx.sampleRate * 2, this.ctx.sampleRate);
-      const d = this.noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
     if (!this.recordedLoaded) this.loadRecorded();
     if (!this.gerendertGeladen) this.ladeGeraeusche();
@@ -126,6 +116,49 @@ class AudioEngine implements SongSpieler {
     if (istStueck(this.track) && !this.laufend) void this.spieleStueck(this.track);
     else if (this.track !== 'none' && !istStueck(this.track) && this.timer === null) this.startSequencer();
     this.setRain(this.wantRain);
+  }
+
+  /** Master, Busse, Verstärker und Rauschen anlegen (auch für das Offline-Rendern der Keller-Songs) */
+  private aufbauen(c: AudioContext, musik = 0.32, master = this.muted ? 0 : 0.7) {
+    this.master = c.createGain();
+    this.master.gain.value = master;
+    this.master.connect(c.destination);
+    this.musicBus = c.createGain();
+    this.musicBus.gain.value = musik;
+    this.musicBus.connect(this.master);
+    this.stueckBus = c.createGain();
+    this.stueckBus.gain.value = 0.5;
+    this.stueckBus.connect(this.master);
+    this.sfxBus = c.createGain();
+    this.sfxBus.gain.value = 0.85;
+    this.sfxBus.connect(this.master);
+    this.amps(c);
+    // 2 Sekunden weißes Rauschen als Grundlage für Regen, Hi-Hats, Donner …
+    this.noiseBuf = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+    const d = this.noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+
+  /** Werkstatt: einen Synth-Song offline in einen Puffer rendern. Daraus entstehen public/music/keller, kellerClean
+   *  und duell (Pegel so, dass sie über den Stück-Bus genauso laut sind wie live). Schleifen bekommen ihren
+   *  Nachhall auf den Anfang gelegt, damit sie nahtlos laufen; das Duell behält ihn am Ende. */
+  async synthRendern(track: SynthTrack): Promise<AudioBuffer> {
+    const def = TRACKS[track], step = 60 / def.bpm / 4, steps = def.bars * 16, sr = 44100;
+    const len = Math.round(steps * step * sr), tail = 4 * sr;
+    const off = new OfflineAudioContext(2, len + tail, sr);
+    const e = new AudioEngine();
+    e.ctx = off as unknown as AudioContext;
+    e.aufbauen(e.ctx, (track === 'duell' ? 0.42 : 0.32) / 0.5, 1);
+    for (let s = 0; s < steps; s++) def.play(e, s, s * step + (def.swing && s % 2 === 1 ? step * def.swing : 0), step);
+    const buf = await off.startRendering();
+    if (def.once) return buf;
+    const out = new AudioBuffer({ numberOfChannels: 2, length: len, sampleRate: sr });
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch), o = d.slice(0, len);
+      for (let i = 0; i < tail; i++) o[i] += d[len + i];
+      out.copyToChannel(o, ch);
+    }
+    return out;
   }
 
   /** Lädt alle im Sound-Studio aufgenommenen Sounds (fehlende Dateien werden ignoriert). */
@@ -329,9 +362,22 @@ class AudioEngine implements SongSpieler {
     this.step = 0;
     this.stueckAus(0.3);
     const now = this.ctx.currentTime;
+    this.stopSequencer();
+    // vorgerendert als Datei: keine Rechenlast, keine Aussetzer (auf dem Handy wichtig)
+    const buf = this.fertig.get(track);
+    if (buf) {
+      const n = MUSIK_LAENGE[track], extra = n ? buf.duration - n / 44100 : 0;
+      const src = this.ctx.createBufferSource();
+      const aus = this.ctx.createGain();
+      src.buffer = buf;
+      src.connect(aus).connect(this.stueckBus);
+      const start = now + 0.3;
+      src.start(start, extra > 0.005 ? Math.min(extra, 1024 / 44100) : 0);
+      this.song = { src, aus };
+      return start;
+    }
     this.musicBus.gain.cancelScheduledValues(now);
     this.musicBus.gain.setValueAtTime(0.42, now);
-    this.stopSequencer();
     this.nextTime = now + 0.3;
     const start = this.nextTime;
     this.timer = window.setInterval(() => this.schedule(), 25);
@@ -609,14 +655,24 @@ class AudioEngine implements SongSpieler {
       this.puffer.set(datei, p); // zuletzt benutzt nach hinten
       return p;
     }
-    p = this.datei(`./music/${datei}`);
-    this.puffer.set(datei, p);
+    const neu = this.datei(`./music/${datei}`);
+    p = neu;
+    this.puffer.set(datei, neu);
+    void neu.then((b) => { if (b && this.puffer.get(datei) === neu) this.fertig.set(datei, b); });
     const behalten = new Set(this.laufend ? STUECK[this.laufend.track].dateien : []);
     for (const k of this.puffer.keys()) {
       if (this.puffer.size <= PUFFER_MAX) break;
-      if (k !== datei && !behalten.has(k)) this.puffer.delete(k);
+      if (k !== datei && !behalten.has(k)) {
+        this.puffer.delete(k);
+        this.fertig.delete(k);
+      }
     }
     return p;
+  }
+
+  /** wartet, bis eine Musikdatei geladen ist (z. B. der Song vor dem Gitarrenduell) */
+  async ladeDatei(datei: string) {
+    if (this.ctx) await this.lade(datei);
   }
 
   /** Musik für später schon laden (z. B. die nächste Szene) */
@@ -672,6 +728,12 @@ class AudioEngine implements SongSpieler {
   }
 
   private stueckAus(sek: number) {
+    if (this.song && this.ctx) {
+      const s = this.song;
+      this.song = null;
+      s.aus.gain.setTargetAtTime(0.0001, this.ctx.currentTime, sek / 4);
+      s.src.stop(this.ctx.currentTime + sek + 0.05);
+    }
     const l = this.laufend, c = this.ctx;
     this.laufend = null;
     if (!l || !c) return;

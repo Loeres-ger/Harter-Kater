@@ -73,6 +73,8 @@ export class ShishaDuellScene extends Phaser.Scene {
     this.primary = null;
     this.losses = 0;
     this.scene.bringToTop();
+    // die Shisha-Bar dahinter ist verdeckt: nicht mitzeichnen (spart auf dem Handy viel)
+    this.scene.setVisible(false, data.resume);
 
     this.add.rectangle(0, 0, W, H, 0x0c0806, 0.94).setOrigin(0);
     this.add.image(0, 0, 'csShisha').setOrigin(0).setAlpha(0.22);
@@ -116,22 +118,23 @@ export class ShishaDuellScene extends Phaser.Scene {
       for (const k of keys) kb.on(`keydown-${k}`, () => this.steer(d as Pt));
     kb.on('keydown-ESC', () => (this.over ? this.close(false) : this.finish(false)));
     for (const k of ['ENTER', 'SPACE']) kb.on(`keydown-${k}`, () => this.primary?.());
-    // Wischen auf dem Tisch
+    // Wischen: lenkt schon während der Bewegung (nicht erst beim Loslassen), mehrere Kurven in einem Zug
     let start: { x: number; y: number } | null = null;
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { start = { x: p.x, y: p.y }; });
-    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (!start) return;
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (!start || !p.isDown) return;
       const dx = p.x - start.x, dy = p.y - start.y;
-      start = null;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < 14) return;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 12) return;
       this.steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? RIGHT : LEFT) : dy > 0 ? DOWN : UP);
+      start = { x: p.x, y: p.y };
     });
-    // Pfeiltasten zum Antippen
+    this.input.on('pointerup', () => { start = null; });
+    // Pfeile zum Antippen, groß und daumengerecht: hoch/runter links, links/rechts rechts neben dem Tisch
     if (!isTouchDevice(this)) return;
-    const cx = W - 34, cy = H - 70, S = 22;
-    for (const [d, ox, oy, label] of [[UP, 0, -1, '▲'], [DOWN, 0, 1, '▼'], [LEFT, -1, 0, '◀'], [RIGHT, 1, 0, '▶']] as const) {
-      const b = this.add.rectangle(cx + ox * (S + 2), cy + oy * (S + 2), S, S, 0x3a2a1e, 0.9).setStrokeStyle(1, 0xa07a2a).setInteractive().setDepth(20);
-      txt(this, b.x, b.y, label, '#d8b050').setOrigin(0.5).setDepth(21);
+    const S = 32;
+    for (const [d, x, y, label] of [[UP, 36, 168, '▲'], [DOWN, 36, 226, '▼'], [LEFT, 426, 200, '◀'], [RIGHT, 461, 200, '▶']] as const) {
+      const b = this.add.rectangle(x, y, S, S + 14, 0x3a2a1e, 0.9).setStrokeStyle(2, 0xa07a2a).setInteractive().setDepth(20);
+      txt(this, b.x, b.y, label, '#d8b050', 16).setOrigin(0.5).setDepth(21);
       b.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => { ev.stopPropagation(); this.steer(d as Pt); });
     }
   }
@@ -401,6 +404,7 @@ export class ShishaDuellScene extends Phaser.Scene {
   private close(win: boolean) {
     state.running = this.wasRunning;
     const { resume, onDone } = this.cfg;
+    this.scene.setVisible(true, resume);
     this.scene.resume(resume);
     this.scene.stop();
     onDone?.(win);

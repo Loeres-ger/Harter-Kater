@@ -135,6 +135,7 @@ export class KellerScene extends TopDown {
     const f = state.flags;
     const zerstoert = f.nick === 'boss' && !!f.nickWandlung;
     audio.music(zerstoert ? 'none' : f.nick === 'frei' ? 'kellerClean' : 'keller');
+    void audio.ladeDatei('duell');
     this.einrichtung();
     this.licht();
     this.nebel();

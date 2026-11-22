@@ -13,6 +13,7 @@ import { bigTitle, scanlines, tavernBackdrop } from './screenFx';
 /**
  * Pausemenü im Look des Titelbildschirms (Kneipe bei Nacht, Kalle pennt, Schriftzug links):
  * Weiterspielen, Kapitel wählen, Erfolge, Ton, Neustart, Impressum, Datenschutz.
+ * Oben rechts neben dem Pause-Knopf erscheint dazu der Vollbild-Knopf (HTML, siehe main.ts).
  */
 export class PauseScene extends Phaser.Scene {
   private paused: string[] = [];
@@ -92,7 +93,7 @@ export class PauseScene extends Phaser.Scene {
     this.restartBtn = new Btn(this, CX, 227, BW, 14, 'NEUSTART', 0x5a3a2a, doRestart);
     const menu = this.add.container(0, 0).setDepth(41);
     menu.add([resume.box, chapters.box, ach.box, this.soundBtn.box, this.restartBtn.box]);
-    menu.add(txt(this, LX, H - 14, isTouchDevice(this) ? 'Tippen: auswählen' : 'ESC/P: weiter', '#5a4a3a', 8));
+    menu.add(txt(this, LX, H - 14, isTouchDevice(this) ? 'Tippen: auswählen' : 'ESC/P: weiter   F: Vollbild', '#5a4a3a', 8));
     this.refreshSound();
     menuNav(this, menu, [
       { btn: resume, w: BW, h: 18, act: doClose },

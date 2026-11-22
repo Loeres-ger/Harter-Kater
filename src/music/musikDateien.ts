@@ -1,6 +1,7 @@
 // Von tools/music/build.py erzeugt: Länge jeder Musikschleife in Samples bei 44,1 kHz.
 export const MUSIK_LAENGE: Record<string, number> = {
   club: 4305355,
+  duell: 7717500,
   erloesung: 2565818,
   galopp: 1512000,
   gasse: 4342153,
@@ -8,6 +9,8 @@ export const MUSIK_LAENGE: Record<string, number> = {
   hoelle_p2: 2257920,
   hoelle_p3: 2257920,
   kampf: 2419200,
+  keller: 3439800,
+  kellerClean: 1512000,
   kneipe: 6048000,
   marsch: 2919724,
   monster: 1693440,

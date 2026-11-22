@@ -71,7 +71,8 @@ async function boot() {
     roundPixels: true,
     backgroundColor: '#0d0b0a',
     // FIT: proportional einpassen, Balken wo nötig. Der Container bekommt seine Größe aus dem CSS.
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: false },
+    // Vollbild nimmt den ganzen Spielcontainer, damit Pause-, Inventar- und Vollbild-Knopf sichtbar bleiben
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: false, fullscreenTarget: 'game' },
     scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, ShishaScene, KellerScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, ShishaDuellScene, QuizScene, KampfScene, GitarrenDuellScene, WandlungUI, HoellenbossScene, InventarScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
   });
   if (import.meta.env.DEV) {
@@ -105,12 +106,26 @@ async function boot() {
   game.events.on(Phaser.Core.Events.STEP, () => {
     const show = GAMEPLAY.some((k) => game.scene.isActive(k) || game.scene.isPaused(k)) && !game.scene.isActive('Title');
     invBtn?.classList.toggle('hidden', !show);
+    fullBtn?.classList.toggle('hidden', !(game.scene.isActive('Pause') && game.scale.fullscreen.available));
+    fullBtn?.classList.toggle('an', game.scale.isFullscreen);
+  });
+  // Vollbild: Knopf links neben dem Pause-Knopf (nur im Pausenmenü) und Taste F
+  const fullBtn = document.getElementById('full') as HTMLButtonElement | null;
+  const toggleVollbild = () => {
+    if (!game.scale.fullscreen.available) return;
+    if (game.scale.isFullscreen) game.scale.stopFullscreen();
+    else game.scale.startFullscreen();
+  };
+  fullBtn?.addEventListener('click', () => {
+    toggleVollbild();
+    fullBtn.blur();
   });
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'm') audio.toggleMute();
     if (k === 'p') togglePause();
     if (k === 'i') toggleInventar();
+    if (k === 'f') toggleVollbild();
   });
 
   game.events.on(Phaser.Core.Events.STEP, (_t: number, delta: number) => tick(Math.min(delta, 100) / 1000));

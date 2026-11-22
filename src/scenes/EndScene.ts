@@ -2,10 +2,10 @@ import Phaser from 'phaser';
 import { audio } from '../audio';
 import { VICTIM, state } from '../state';
 import { H, W, fadeTo, txt } from '../ui';
-import { lastChapter } from '../progress/save';
+import { autoStand, lastChapter } from '../progress/save';
 import { Btn } from './ShopScene';
 import { drawRain, hGradient, kalleAtTable, vGradient } from './screenFx';
-import { loadChapter, newGame } from './TitleScene';
+import { loadAuto, loadChapter, newGame } from './TitleScene';
 import { resetAlley } from './AlleyScene';
 import { BAR_TRESEN_SPAWN } from './BarScene';
 
@@ -182,29 +182,29 @@ export class EndScene extends Phaser.Scene {
       this.tweens.add({ targets: bubble, scale: 1, duration: 260, ease: 'Back.easeOut' });
     });
 
-    // ---------------------------------------------------------------- Nochmal
+    // ---------------------------------------------------------------- Nochmal: ab dem letzten Speicherpunkt
+    // (Zwischenstand der offenen Welt oder letztes Kapitel); nur ohne jeden Stand ganz von vorn
     let gone = false;
+    const last = lastChapter();
+    const stand = !!autoStand() || !!last;
     const again = () => {
       if (gone) return;
       gone = true;
-      newGame(this);
+      if (!(loadAuto(this) || (last && loadChapter(this, last.id)))) newGame(this);
     };
     const btn = new Btn(this, TX + 70, 200, 140, 22, 'NOCHMAL', 0xa8342a, again);
     btn.box.setDepth(45).setAlpha(0);
     this.tweens.add({ targets: btn.box, alpha: 1, duration: 400, delay: 800 });
     this.tweens.add({ targets: btn.box, scale: 1.05, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: 1300 });
-    // Mit Kapitelstand: direkt dort weitermachen statt ganz von vorn
-    const last = lastChapter();
-    if (last) {
-      const load = new Btn(this, TX + 70, 228, 140, 16, 'LETZTER STAND', 0x3a3040, () => {
+    txt(this, TX + 70, 214, stand ? 'ab dem letzten Speicherpunkt' : 'oder Leertaste', '#6a6a88', 8).setOrigin(0.5, 0).setDepth(45);
+    if (stand) {
+      const neu = new Btn(this, TX + 70, 240, 140, 16, 'NEUES SPIEL', 0x3a3040, () => {
         if (gone) return;
         gone = true;
-        loadChapter(this, last.id);
+        newGame(this);
       });
-      load.box.setDepth(45).setAlpha(0);
-      this.tweens.add({ targets: load.box, alpha: 1, duration: 400, delay: 800 });
-    } else {
-      txt(this, TX + 70, 222, 'oder Leertaste', '#6a6a88', 8).setOrigin(0.5, 0).setDepth(45);
+      neu.box.setDepth(45).setAlpha(0);
+      this.tweens.add({ targets: neu.box, alpha: 1, duration: 400, delay: 800 });
     }
     this.time.delayedCall(800, () => {
       this.input.keyboard!.once('keydown-SPACE', again);

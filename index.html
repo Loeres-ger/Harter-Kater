@@ -48,6 +48,31 @@
         opacity: 0.75;
       }
       #pause:hover { opacity: 1; }
+      /* Vollbild: links neben dem Pause-Knopf, nur solange das Pausenmenü offen ist */
+      #full {
+        position: absolute;
+        top: 6px;
+        right: 46px;
+        z-index: 6;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: 1px solid #5a4430;
+        border-radius: 6px;
+        background: rgba(18, 12, 11, 0.7);
+        cursor: pointer;
+        opacity: 0.75;
+        display: grid;
+        place-items: center;
+      }
+      #full:hover { opacity: 1; }
+      #full.hidden { display: none; }
+      #full svg { width: 20px; height: 20px; }
+      #full .zu { display: none; }
+      #full.an .auf { display: none; }
+      #full.an .zu { display: inline; }
+      /* im Vollbild füllt der Spielcontainer den ganzen Bildschirm */
+      #game:fullscreen { inset: 0; background: #0d0b0a; }
       #inv {
         position: absolute;
         top: 46px;
@@ -121,7 +146,7 @@
     </style>
   </head>
   <body>
-    <div id="game"><button id="pause" type="button" aria-label="Pause">II</button><button id="inv" class="hidden" type="button" aria-label="Inventar (Taste I)" title="Inventar (Taste I)"><svg viewBox="0 0 20 20" fill="none" stroke="#f4ead0" stroke-width="1.6"><path d="M6 7V5a4 4 0 0 1 8 0v2"/><rect x="3" y="7" width="14" height="11" rx="2"/><path d="M3 11h14"/><rect x="8.5" y="10" width="3" height="3" fill="#f0c030" stroke="none"/></svg><span>I</span></button></div>
+    <div id="game"><button id="pause" type="button" aria-label="Pause">II</button><button id="full" class="hidden" type="button" aria-label="Vollbild (Taste F)" title="Vollbild (Taste F)"><svg viewBox="0 0 20 20" fill="none" stroke="#f4ead0" stroke-width="1.8" stroke-linecap="round"><path class="auf" d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/><path class="zu" d="M7 3v4H3M17 7h-4V3M13 17v-4h4M3 13h4v4"/></svg></button><button id="inv" class="hidden" type="button" aria-label="Inventar (Taste I)" title="Inventar (Taste I)"><svg viewBox="0 0 20 20" fill="none" stroke="#f4ead0" stroke-width="1.6"><path d="M6 7V5a4 4 0 0 1 8 0v2"/><rect x="3" y="7" width="14" height="11" rx="2"/><path d="M3 11h14"/><rect x="8.5" y="10" width="3" height="3" fill="#f0c030" stroke="none"/></svg><span>I</span></button></div>
     <nav id="legal"><a href="./impressum.html">Impressum</a> · <a href="./datenschutz.html">Datenschutz</a> · <a href="./credits.html">Credits</a></nav>
     <div id="rotate"><div><span>📱</span>Bitte das Handy<br />quer halten</div></div>
     <div id="error" role="alert"></div>
