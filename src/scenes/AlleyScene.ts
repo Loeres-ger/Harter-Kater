@@ -7,12 +7,14 @@ import { unlock } from '../progress/achievements';
 import { freiesSpiel, lilyWartet } from '../progress/flags';
 import { entdecke, weltZiel, zaehle } from '../progress/quests';
 import { countBarEntry } from '../events/anne';
-import { BAR_LADDER_SPAWN, CLUB_SPAWN, LADEN_SPAWN, SHISHA_SPAWN } from '../rooms/spawns';
+import { BAR_LADDER_SPAWN, BASAR_SPAWN, CLUB_SPAWN, LADEN_SPAWN, SHISHA_SPAWN } from '../rooms/spawns';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
 import { getMap } from '../maps';
 import { ALLEY_TILES, MAP_DEFS, alleyFloor, tileKey } from '../maps/palettes';
+import { Passanten, STRASSEN_NPCS, Welt } from '../world/passanten';
+import { Kachel, weg } from '../world/wege';
 
 // Draußen: Straße und Gasse. Die Karte steht in maps/alley.json (bearbeitbar mit dem Map-Editor, editor.html),
 // die Bedeutung der Zeichen in maps/palettes.ts.
@@ -33,6 +35,11 @@ const SLAPPED = ['Handtaschen-Hieb! Aua.', '„Finger weg, Opa!“ *KLATSCH*', '
 const VIEW_LEN = 96, VIEW_HALF = 0.42, VIEW_CLOSE = 24;
 /** Streife: Reihe und Strecke (in Kacheln) in der Gasse hinter dem Haus */
 const COP_ROW = 3, COP_FROM = 8, COP_TO = 30;
+/** Plätze der beiden neuen Damen der Nacht (Koordinaten der ursprünglichen Karte) */
+const DESIREE_TILE: [number, number] = [-17, 19];
+const ROXY_TILE: [number, number] = [53, -2];
+/** Bereich der ursprünglichen Gasse (Koordinaten der ursprünglichen Karte); Petra und Kai gehen außerhalb Streife */
+const ALTSTADT = { x0: -4, x1: 36, y0: -1 };
 /** Lillys Platz an der Wand der Hintergasse (Kachel) */
 const LILY_TILE: [number, number] = [29, 2];
 /** Kapitel 5: wo Captain Claudius und Kevin vor der Kneipe stehen, und wo der Wirt danach steht (Kacheln) */
@@ -42,6 +49,8 @@ const KEVIN_TILE: [number, number] = [23, 17];
 const CLUB_DOOR: [number, number] = [-21, 17];
 /** Eingang der Shisha-Bar „Shisha 1001“ */
 const SHISHA_DOOR: [number, number] = [-11, 17];
+/** Eingang des indischen Ladens „Masala Basar“ */
+const BASAR_DOOR: [number, number] = [-8, 6];
 /** Xavi-Strang: Tuncays Stand auf dem Parkplatz und der Platz von Leni und Xavi im Park (Grünstreifen) */
 const TUNCAY_TILE: [number, number] = [-16, -6];
 const PARK_TILE: [number, number] = [-12, -4];
@@ -75,6 +84,13 @@ export class AlleyScene extends TopDown {
   private copBlockT = 0;
   /** Damen der Nacht (bewegliche Hindernisse für Felix) */
   private dames: Phaser.GameObjects.Sprite[] = [];
+  /** Leute auf der Straße und die zusätzlichen Streifen (world/passanten.ts) */
+  private passanten?: Passanten;
+  /** Felix im Einsatz (ein Zeuge hat angerufen): Weg zum Ort, Suchzeit dort, Rückweg zur Streife */
+  private felixPfad: { x: number; y: number }[] | null = null;
+  private felixI = 0;
+  private felixSucht = 0;
+  private felixZurueck = false;
 
   constructor() {
     super('Alley');
@@ -93,6 +109,10 @@ export class AlleyScene extends TopDown {
     this.copDetours = 0;
     this.copBlockT = 0;
     this.dames = [];
+    this.passanten = undefined;
+    this.felixPfad = null;
+    this.felixSucht = 0;
+    this.felixZurueck = false;
   }
 
   protected mapData() { return getMap('alley'); }
@@ -221,6 +241,11 @@ export class AlleyScene extends TopDown {
     let n = 0;
     for (let y = 0; y < this.rows.length; y++)
       for (let x = 0; x < this.rows[y].length; x++) if (this.rows[y][x] === 'Y') this.addDame(x, y, n++ % 2);
+    // Desirée vor dem Muskelkater, Roxy an der Ecke beim Waschsalon (Koordinaten der ursprünglichen Karte)
+    if (STRASSEN_NPCS) for (const [pos, v] of [[DESIREE_TILE, 2], [ROXY_TILE, 3]] as const) {
+      const [x, y] = this.at(pos);
+      if (this.solid[y]?.[x] === false) this.addDame(x, y, v);
+    }
 
     // Die Katze (im freien Spiel haust sie im Keller, ihr Platz bleibt leer)
     if (!freiesSpiel(state.flags)) {
@@ -242,9 +267,13 @@ export class AlleyScene extends TopDown {
     if (state.flags.claudius) this.addClaudius();
     this.addClub();
     this.addShisha();
+    this.addBasar();
     this.addXavi();
     this.addBusch();
     this.scheduleStory(() => !!this.corpse);
+
+    // Leute auf der Straße; die zusätzlichen Streifen gibt es erst im freien Spiel
+    if (STRASSEN_NPCS) this.passanten = new Passanten(this.welt(), [Math.floor(this.player.x / T), Math.floor((this.player.y - 3) / T)], !!state.flags.glanzErledigt);
 
     // Lampen an der Wand
     // Wandlampen und Laternen kommen aus der Straßenansicht (maps/streetView.ts); bei der Mutation flackern sie
@@ -377,6 +406,20 @@ export class AlleyScene extends TopDown {
       x: x * T + 8, y: (y + 1) * T + 4, r: 16,
       label: () => (state.carrying ? null : this.corpse ? 'Erst die Leiche loswerden!' : 'Shisha 1001 betreten'),
       act: () => (this.corpse ? this.toast('Mit einer Leiche in die Shisha-Bar? Cemo raucht viel, aber so viel nicht.') : this.go('Shisha', { spawn: SHISHA_SPAWN })),
+    });
+  }
+
+  /** Masala Basar: offen, sobald die Baustellen weg sind (nur nicht mit Leiche) */
+  private addBasar() {
+    const [x, y] = this.at(BASAR_DOOR);
+    this.interacts.push({
+      x: x * T + 8, y: (y + 1) * T + 4, r: 16,
+      label: () => (state.carrying ? null : !state.flags.glanzErledigt ? 'Masala Basar' : this.corpse ? 'Erst die Leiche loswerden!' : 'Masala Basar betreten'),
+      act: () => {
+        if (!state.flags.glanzErledigt) return this.toast('Geschlossen. Durch die Scheibe riecht es nach Kardamom, Räucherstäbchen und Hoffnung.');
+        if (this.corpse) return this.toast('Mit einer Leiche in den Masala Basar? Adshayan hat heute schon genug aufzuwischen.');
+        this.go('Basar', { spawn: BASAR_SPAWN });
+      },
     });
   }
 
@@ -746,6 +789,10 @@ export class AlleyScene extends TopDown {
    * oder ganz nah rundum, und nur, wenn keine Wand dazwischen ist. Gleiche Geometrie wie der gezeichnete Kegel.
    */
   private copSees(x: number, y: number) {
+    return this.felixSees(x, y) || !!this.passanten?.polizeiSieht(x, y);
+  }
+
+  private felixSees(x: number, y: number) {
     if (!this.cop || this.copGone) return false;
     const [ex, ey] = this.copEye();
     const dx = x - ex, dy = y - 4 - ey, dist = Math.hypot(dx, dy);
@@ -759,6 +806,7 @@ export class AlleyScene extends TopDown {
   private copBlockedByPeople(x: number, y: number) {
     const near = (o: { x: number; y: number }) => Math.abs(o.x - x) < 9 && Math.abs(o.y - y) < 7;
     if (near(this.player)) return true;
+    if (this.passanten?.positionen().some(near)) return true;
     return this.dames.some((d) => d.active && d.visible && near(d));
   }
 
@@ -771,8 +819,9 @@ export class AlleyScene extends TopDown {
     return this.copSees(this.player.x, this.player.y) || this.copSees(...this.dealerPos);
   }
 
-  private bust(why: string) {
+  private bust(why: string, wer = 'Felix', figur?: Phaser.GameObjects.Sprite, halt = '„HALT! POLIZEI!“') {
     if (this.busted) return;
+    const c = figur ?? this.cop;
     this.busted = true;
     this.leaving = true; // einfrieren
     state.caughtBy = 'bulle';
@@ -781,11 +830,11 @@ export class AlleyScene extends TopDown {
       state.gameOver = 'polizei';
       fadeTo(this, 'End');
     });
-    this.toast(`Felix: „HALT! POLIZEI!“ ${why}`);
+    this.toast(`${wer}: ${halt} ${why}`);
     audio.sfx('siren');
     this.cameras.main.flash(300, 80, 120, 255);
-    this.cop.anims.stop();
-    const bang = this.add.text(this.cop.x, this.cop.y - 30, '!', { fontFamily: '"Press Start 2P", monospace', fontSize: '16px', color: '#ff3030' }).setOrigin(0.5).setDepth(6000).setStroke('#000', 4);
+    c.anims.stop();
+    const bang = this.add.text(c.x, c.y - 30, '!', { fontFamily: '"Press Start 2P", monospace', fontSize: '16px', color: '#ff3030' }).setOrigin(0.5).setDepth(6000).setStroke('#000', 4);
     this.tweens.add({ targets: bang, y: bang.y - 6, duration: 200, yoyo: true, repeat: 3 });
   }
 
@@ -857,7 +906,9 @@ export class AlleyScene extends TopDown {
     if (this.busted) return;
     const home = this.copHome, speed = 26;
     let walking = false;
-    if (this.copWait > 0) {
+    if (this.felixPfad || this.felixSucht > 0) {
+      walking = this.felixEinsatzSchritt(dt);
+    } else if (this.copWait > 0) {
       this.copWait -= dt;
     } else if (Math.abs(c.y - this.copLane) > 0.5) {
       // Spurwechsel: Umweg um ein Hindernis oder zurück auf die Streifenspur
@@ -921,8 +972,110 @@ export class AlleyScene extends TopDown {
     this.cone.clear().fillStyle(0xfff0a0, 0.12).fillPoints(fan, true);
     this.cone.fillStyle(0xfff0a0, 0.08).fillPoints(ring, true);
     // Leichen gesehen?
-    if (this.corpse && this.copSees(this.corpse.x, this.corpseCarried ? this.player.y : this.corpse.y + 4)) this.bust('Ist das ... eine Leiche?!');
-    if (state.carrying && this.copSees(this.player.x, this.player.y)) this.bust('Was tragen Sie da auf der Schulter?!');
+    if (this.corpse && this.felixSees(this.corpse.x, this.corpseCarried ? this.player.y : this.corpse.y + 4)) this.bust('Ist das ... eine Leiche?!');
+    if (state.carrying && this.felixSees(this.player.x, this.player.y)) this.bust('Was tragen Sie da auf der Schulter?!');
+  }
+
+  /** Felix eilt zum gemeldeten Ort (Wegsuche), leuchtet dort herum und kehrt auf seine Streife zurück. */
+  private felixEinsatz(x: number, y: number) {
+    const c = this.cop;
+    const von: Kachel = [Math.floor(c.x / T), Math.floor((c.y - 3) / T)];
+    const tx = Math.floor(x / T), ty = Math.floor((y - 3) / T);
+    for (const [dx, dy] of [[0, 0], [0, 1], [1, 0], [-1, 0], [0, -1]]) {
+      const pfad = weg(this.solid, von, [tx + dx, ty + dy]);
+      if (!pfad) continue;
+      this.felixPfad = pfad.map(([px, py]) => ({ x: px * T + 8, y: py * T + 14 }));
+      this.felixI = 0;
+      this.felixSucht = 0;
+      this.felixZurueck = false;
+      this.copWait = 0;
+      floatText(this, c.x, c.y - 26, '!', '#ff3030');
+      return true;
+    }
+    return false;
+  }
+
+  private felixEinsatzSchritt(dt: number) {
+    const c = this.cop, tempo = 44;
+    if (this.felixPfad) {
+      const z = this.felixPfad[this.felixI];
+      if (!z) {
+        this.felixPfad = null;
+        if (this.felixZurueck) {
+          this.felixZurueck = false;
+          this.copLane = this.copHome;
+          c.y = this.copHome;
+        } else this.felixSucht = 4;
+        return false;
+      }
+      const dx = z.x - c.x, dy = z.y - c.y, d = Math.hypot(dx, dy), s = Math.min(d, tempo * dt);
+      c.x += (dx / (d || 1)) * s;
+      c.y += (dy / (d || 1)) * s;
+      if (Math.abs(dx) > 0.5) this.copDir = dx > 0 ? 1 : -1;
+      if (d <= tempo * dt + 0.01) this.felixI++;
+      return true;
+    }
+    // am Ort: nach links und rechts leuchten, dann zurück zur Streife
+    const vorher = this.felixSucht;
+    this.felixSucht -= dt;
+    if (Math.floor(vorher / 0.9) !== Math.floor(this.felixSucht / 0.9)) this.copDir *= -1;
+    if (this.felixSucht <= 0) {
+      this.felixSucht = 0;
+      const row = Math.floor((this.copHome - 3) / T);
+      const tx = Math.floor(Phaser.Math.Clamp(c.x, this.copFrom, this.copTo) / T);
+      const pfad = weg(this.solid, [Math.floor(c.x / T), Math.floor((c.y - 3) / T)], [tx, row]);
+      if (pfad) {
+        this.felixPfad = pfad.map(([px, py]) => ({ x: px * T + 8, y: py * T + 14 }));
+        this.felixI = 0;
+        this.felixZurueck = true;
+      } else {
+        c.setPosition(this.copFrom, this.copHome);
+        this.copLane = this.copHome;
+      }
+    }
+    return false;
+  }
+
+  /** Ein Zeuge ruft an: die nächste Streife (Felix, Petra oder Kai) geht hin */
+  private polizeiRufen(x: number, y: number, wer: string) {
+    if (this.busted) return;
+    const kandidaten: { name: string; d: number; los: () => boolean }[] = [];
+    if (this.cop && !this.copGone) kandidaten.push({ name: 'Felix', d: Math.hypot(this.cop.x - x, this.cop.y - y), los: () => this.felixEinsatz(x, y) });
+    for (const s of this.passanten?.streifen() ?? []) kandidaten.push({ name: s.name, d: Math.hypot(s.x - x, s.y - y), los: () => this.passanten!.einsatz(s.figur, x, y) });
+    kandidaten.sort((a, b) => a.d - b.d);
+    const k = kandidaten.find((c) => c.los());
+    if (k) this.toast(`${wer} ruft die Polizei! ${k.name} ist unterwegs.`);
+  }
+
+  /** Was die Passanten von der Gasse brauchen */
+  private welt(): Welt {
+    return {
+      scene: this,
+      solid: this.solid,
+      rows: this.rows,
+      player: this.player,
+      interacts: this.interacts,
+      toast: (s) => this.toast(s),
+      strahl: (x, y, a, len) => this.castRay(x, y, a, len),
+      leiche: () => {
+        if (this.corpse) return this.corpseCarried ? { x: this.player.x, y: this.player.y } : { x: this.corpse.x, y: this.corpse.y + 4 };
+        return state.carrying ? { x: this.player.x, y: this.player.y } : null;
+      },
+      melden: (x, y, wer) => this.polizeiRufen(x, y, wer),
+      bust: (why, wer, figur) => this.bust(why, wer, figur, wer === 'Kai' ? '„H-halt! Polizei! Wirklich jetzt!“' : '„Stehen bleiben! Polizei!“'),
+      aktiv: () => !this.busted && !this.leaving && state.running,
+      hindernisse: () => [...this.dames.filter((d) => d.active && d.visible), ...(this.cop && !this.copGone ? [this.cop] : [])],
+      streifenGebiet: (x, y) => {
+        const [ox, oy] = this.origin();
+        const gx = x - ox, gy = y - oy;
+        return !(gx >= ALTSTADT.x0 && gx <= ALTSTADT.x1 && gy >= ALTSTADT.y0);
+      },
+      polizeiOrte: () => [
+        ...(this.cop && !this.copGone ? [{ name: 'Felix', x: this.cop.x, y: this.cop.y }] : []),
+        ...(this.passanten?.streifen() ?? []),
+      ],
+      tonnePluendern: (x, y) => { trashSearched.set(`${x},${y}`, state.time); },
+    };
   }
 
   /** Gasse hinter dem Haus oder Straße davor (mit etwas Spielraum an der Grenze); hat jemand anderes die Musik
@@ -942,6 +1095,7 @@ export class AlleyScene extends TopDown {
     super.update(t, d);
     this.musikGegend();
     this.updateCop(d / 1000);
+    this.passanten?.update(d / 1000);
     if (this.corpse && this.corpseCarried) this.corpse.setPosition(this.player.x, this.player.y - 22).setDepth(this.player.y + 1);
     hud.alert = state.bodyDeadline !== null && !state.gameOver ? `LEICHE WEG: ${Math.max(0, Math.ceil(state.bodyDeadline - state.time))}s` : '';
   }
@@ -969,6 +1123,7 @@ export class AlleyScene extends TopDown {
   private scatterNPCs() {
     this.copGone = true;
     this.cone.clear();
+    this.passanten?.allesFlieht(this.cat.x, this.cat.y);
     for (const o of this.npcs) {
       if (!o.active) continue;
       const dir = o.x < this.cat.x ? -1 : 1;

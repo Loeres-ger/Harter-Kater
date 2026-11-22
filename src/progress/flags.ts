@@ -42,6 +42,10 @@ export interface StoryFlags {
   /** Spielzeit, bis zu der der Rechner nach einem gescheiterten Hochladen gesperrt ist */
   pcSperreBis?: number;
 
+  /** Masala Basar: Adshayans Curry ist aufgewischt (Laden offen) und wie oft das Putzen schon schiefging */
+  basarSauber?: boolean;
+  basarVersuche?: number;
+
   /** Xavi-Strang: Leni hat um Hilfe gebeten, Cemo hat die Spur verraten (Tuncay), Tuncay hat den Club verraten, Xavi ist gerettet */
   xavi?: 'vermisst' | 'spur' | 'club' | 'gerettet';
 

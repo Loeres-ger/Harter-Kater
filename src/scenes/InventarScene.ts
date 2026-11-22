@@ -9,9 +9,9 @@ import { Btn } from './ShopScene';
 // spielt danach die Draufsicht-Szene am Wirt ab (state.benutze, TopDown).
 
 /** Szenen, in denen der Wirt herumläuft: nur dort lässt sich das Inventar öffnen */
-export const GAMEPLAY = ['Bar', 'Alley', 'Dach', 'HerrenWC', 'DamenWC', 'Laden', 'Club', 'Shisha', 'Keller'];
+export const GAMEPLAY = ['Bar', 'Alley', 'Dach', 'HerrenWC', 'DamenWC', 'Laden', 'Club', 'Shisha', 'Basar', 'Keller'];
 
-const COLS = 4, SLOT = 56, GAP = 6;
+const COLS = 5, SLOT = 56, GAP = 4;
 
 interface Slot { bg: Phaser.GameObjects.Rectangle; icon: Phaser.GameObjects.Image; count: Phaser.GameObjects.Text }
 
@@ -57,7 +57,11 @@ export class InventarScene extends Phaser.Scene {
     dim.on('pointerdown', () => this.close());
     this.tweens.add({ targets: dim, fillAlpha: 0.55, duration: 150 });
 
-    const PW = 440, PH = this.items.length > 8 ? 294 : 232;
+    // normale Waren in zwei Reihen, besondere Sachen (Quest) in einer eigenen Reihe darunter
+    const normal = this.items.filter((it) => !it.quest).length;
+    const reihen = Math.ceil(normal / COLS);
+    // mit besonderen Sachen passt das Fenster gerade noch auf den Bildschirm (270 px)
+    const PW = 470, PH = this.items.length > normal ? 262 : 232;
     const panel = this.add.container(W / 2, H / 2 + 4);
     this.panel = panel;
     const bg = this.add.rectangle(0, 0, PW, PH, 0x1a1210).setStrokeStyle(2, 0xc9a24a).setInteractive();
@@ -68,11 +72,12 @@ export class InventarScene extends Phaser.Scene {
     const close = new Btn(this, PW / 2 - 16, -PH / 2 + 14, 22, 18, 'X', 0x5a2a20, () => this.close());
     panel.add([bg, inner, header, title, this.moneyT, close.box]);
 
-    // Fächer: vier mal zwei
+    // Fächer: fünf mal zwei, darunter (mit Überschrift) die besonderen Sachen
     const gx = -PW / 2 + 14 + SLOT / 2, gy = -PH / 2 + 40 + SLOT / 2;
-    if (this.items.length > 8) panel.add(txt(this, -PW / 2 + 14, gy + 2 * (SLOT + GAP) - SLOT / 2 - 9, 'BESONDERE SACHEN', '#c97a4a'));
+    if (this.items.length > normal) panel.add(txt(this, -PW / 2 + 14, gy + (reihen - 1) * (SLOT + GAP) + SLOT / 2 + 3, 'BESONDERE SACHEN', '#c97a4a'));
     this.items.forEach((def, i) => {
-      const x = gx + (i % COLS) * (SLOT + GAP), y = gy + Math.floor(i / COLS) * (SLOT + GAP) + (i >= 8 ? 8 : 0);
+      const j = i < normal ? i : i - normal, reihe = i < normal ? Math.floor(j / COLS) : reihen + Math.floor(j / COLS);
+      const x = gx + (j % COLS) * (SLOT + GAP), y = gy + reihe * (SLOT + GAP) + (i >= normal ? 14 - GAP : 0);
       const sbg = this.add.rectangle(x, y, SLOT, SLOT, 0x2a1e16).setStrokeStyle(1, 0x5a4430).setInteractive({ useHandCursor: true });
       const icon = this.add.image(x, y - 6, `icon_${def.id}`).setScale(1.2);
       const name = txt(this, x, y + 14, def.name, '#b8a888').setOrigin(0.5, 0);
@@ -83,12 +88,13 @@ export class InventarScene extends Phaser.Scene {
     });
 
     // Beschreibung rechts
-    const dx = 50;
+    const dx = 92;
     this.nameT = txt(this, dx, -PH / 2 + 40, '', '#f4ead0', 16);
     this.textT = txt(this, dx, -PH / 2 + 62, '', '#b8a888').setWordWrapWidth(PW / 2 - dx - 12).setLineSpacing(2);
-    this.wirkT = txt(this, dx, 38, '', '#9ae09a');
+    // lange Wirkungen (Pillen, Zeug) brechen um und wachsen nach oben, damit sie nicht über den Rand laufen
+    this.wirkT = txt(this, dx, 46, '', '#9ae09a').setWordWrapWidth(PW / 2 - dx - 12).setOrigin(0, 1);
     this.haveT = txt(this, dx, 52, '', '#a89878').setWordWrapWidth(PW / 2 - dx - 12);
-    this.useBtn = new Btn(this, dx + 76, 80, 150, 22, '', 0x3a6a2a, () => this.use());
+    this.useBtn = new Btn(this, dx + 64, 80, 128, 22, '', 0x3a6a2a, () => this.use());
     panel.add([this.nameT, this.textT, this.wirkT, this.haveT, this.useBtn.box]);
     panel.add(txt(this, 0, PH / 2 - 14, 'Pfeile: wählen · E/Enter: benutzen · I/ESC: schließen', '#6a5a4a').setOrigin(0.5));
 

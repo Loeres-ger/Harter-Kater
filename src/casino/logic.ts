@@ -39,39 +39,54 @@ export interface LineWin {
   win: number;
 }
 
-// ---------------------------------------------------------------- ALLES SAHNE (3×3, 5 Linien)
+// ---------------------------------------------------------------- ALLES SAHNE (eine Walze, drei Leitern)
+// Pro Dreh erscheint ein Symbol. Kleeblatt, Münze und Marienkäfer heben ihre (unsichtbare) Leiter um eine Stufe,
+// das Sahnehäubchen (Joker) hebt alle drei, der Teufel löscht alle Leitern samt Cashpot. Der Cashpot ist die
+// Summe der erreichten Stufen und lässt sich jederzeit kassieren. Wer oben steht, bekommt bei jedem weiteren
+// Treffer den Höchstwert sofort ausgezahlt.
+//
+// Zäh wie am echten Automaten: 56 % der Drehs sind leer, Treffer gut ein Drittel, Teufel 12 %. Die unteren
+// Stufen sind klein, groß wird es nur oben. 15 € nach zwei Drehs (Einsatz 1 €) kommt in 0,2 % der Fälle vor.
+// Abgestimmt per Markow-Kette (Kassieren ab Cashpot T, Einsatz 1): früh kassieren (T ≤ 15) ≈ 60–64 %,
+// nie kassieren ≈ 74 %, mutig bis etwa 80 ≈ 84 % (bestes Ergebnis).
 
-export const SAHNE_LINES = [
-  [1, 1, 1],
-  [0, 0, 0],
-  [2, 2, 2],
-  [0, 1, 2],
-  [2, 1, 0],
+export type SahneSym = 'as_leer' | 'as_klee' | 'as_muenze' | 'as_kaefer' | 'as_joker' | 'as_teufel';
+export const SAHNE_GEWICHT: Record<SahneSym, number> = { as_leer: 110, as_klee: 36, as_muenze: 18, as_kaefer: 7, as_joker: 2, as_teufel: 23 };
+/** die drei Leitern: Symbol und Stufenwerte als Vielfaches des Einsatzes */
+export const SAHNE_LEITERN: { sym: SahneSym; name: string; stufen: number[] }[] = [
+  { sym: 'as_klee', name: 'KLEE', stufen: [1, 2, 5, 12, 30] },
+  { sym: 'as_muenze', name: 'MÜNZE', stufen: [2, 6, 15, 40, 100] },
+  { sym: 'as_kaefer', name: 'KÄFER', stufen: [5, 15, 50, 120, 300] },
 ];
-const SAHNE_WEIGHTS = { fs_kirsche: 5, fs_zitrone: 4, fs_pflaume: 4, fs_melone: 3, fs_glocke: 2, fs_sieben: 1, fs_sahne: 1 };
-/** Auszahlung für drei Gleiche auf einer Linie, als Vielfaches des Einsatzes */
-export const SAHNE_PAY: Record<string, number> = { fs_kirsche: 2, fs_zitrone: 5, fs_pflaume: 4, fs_melone: 10, fs_glocke: 20, fs_sieben: 60, fs_sahne: 150 };
-export const SAHNE_SYMBOLS = Object.keys(SAHNE_WEIGHTS);
+export const SAHNE_STUFEN = 5;
 
-/** Feste Walzen; Startwert per Simulation gewählt: Auszahlungsquote ≈ 93 % */
-export function makeSahneStrips() {
-  const rand = seeded(1);
-  return [0, 1, 2].map(() => strip(SAHNE_WEIGHTS, rand));
+export function dreheSahne(rand: Rand): SahneSym {
+  const syms = Object.keys(SAHNE_GEWICHT) as SahneSym[];
+  let x = rand() * syms.reduce((a, k) => a + SAHNE_GEWICHT[k], 0);
+  for (const k of syms) {
+    x -= SAHNE_GEWICHT[k];
+    if (x < 0) return k;
+  }
+  return 'as_leer';
 }
 
-export function spinSahne(strips: string[][], rand: Rand) {
-  return spinStrips(strips, 3, rand);
+/** Cashpot der Leiterstände (Stufe 0 = nichts erreicht) */
+export function sahneCashpot(stand: number[], bet: number) {
+  return stand.reduce((a, k, i) => a + (k ? SAHNE_LEITERN[i].stufen[k - 1] : 0), 0) * bet;
 }
 
-export function evalSahne(g: Grid, bet: number) {
-  const wins: LineWin[] = [];
-  SAHNE_LINES.forEach((rows, line) => {
-    const s = g[0][rows[0]];
-    if (g[1][rows[1]] === s && g[2][rows[2]] === s) {
-      wins.push({ line, cells: rows.map((r, c) => [c, r] as [number, number]), win: SAHNE_PAY[s] * bet });
-    }
+/** Ein Symbol auswerten: neuer Leiterstand, Sofortgewinn (wer schon oben steht) und ob der Teufel kam */
+export function werteSahne(stand: number[], sym: SahneSym, bet: number) {
+  if (sym === 'as_teufel') return { stand: stand.map(() => 0), sofort: 0, teufel: true, gestiegen: [] as number[] };
+  const neu = [...stand];
+  let sofort = 0;
+  const gestiegen: number[] = [];
+  SAHNE_LEITERN.forEach((l, i) => {
+    if (sym !== l.sym && sym !== 'as_joker') return;
+    if (neu[i] < SAHNE_STUFEN) { neu[i]++; gestiegen.push(i); }
+    else if (sym === l.sym) sofort += l.stufen[SAHNE_STUFEN - 1] * bet;
   });
-  return { wins, total: wins.reduce((a, w) => a + w.win, 0) };
+  return { stand: neu, sofort, teufel: false, gestiegen };
 }
 
 /** Risikoleiter: Chance, dass das Verdoppeln klappt */

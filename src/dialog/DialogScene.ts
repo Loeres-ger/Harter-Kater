@@ -305,6 +305,11 @@ export class DialogScene extends Phaser.Scene {
     } else if (kind === 'laden') {
       this.add.image(0, 0, 'csLaden').setOrigin(0);
       this.add.image(240, 60, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3).setTint(0xffe0a0).setAlpha(0.3);
+    } else if (kind === 'basar') {
+      // Masala Basar: Safranwand, Gewürzregale, Lichterkette
+      this.add.image(0, 0, 'csBasar').setOrigin(0);
+      const l = this.add.image(240, 40, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(3).setTint(0xffc070).setAlpha(0.32);
+      this.tweens.add({ targets: l, alpha: 0.24, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     } else if (kind === 'shisha') {
       // Shisha 1001: Mosaik, Laternen, ein bisschen Rauch
       this.add.image(0, 0, 'csShisha').setOrigin(0);

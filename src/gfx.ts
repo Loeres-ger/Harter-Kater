@@ -313,7 +313,7 @@ export interface Pal {
 }
 
 /** 16x20-Figur. dir: 0 = vorne, 1 = hinten, 2 = seitlich (rechts). step: 0..2 */
-function drawHuman(c: Ctx, ox: number, dir: number, step: number, pal: Pal) {
+export function drawHuman(c: Ctx, ox: number, dir: number, step: number, pal: Pal) {
   const leg = (x: number, y: number, w: number, h: number) => {
     r(c, x, y, w, h, pal.pants);
     if (pal.fishnet) for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if ((xx + yy) % 2 === 0) p(c, xx, yy, '#2a1418');

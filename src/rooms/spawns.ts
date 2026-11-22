@@ -24,6 +24,10 @@ export const ALLEY_CLUB_SPAWN: [number, number] = [-21, 18];
 export const SHISHA_SPAWN: [number, number] = [7, 8];
 export const ALLEY_SHISHA_SPAWN: [number, number] = [-11, 18];
 
+/** Masala Basar: drinnen vor der Tür, draußen vor dem Eingang (Koordinaten der ursprünglichen Gassenkarte) */
+export const BASAR_SPAWN: [number, number] = [6, 6];
+export const ALLEY_BASAR_SPAWN: [number, number] = [-8, 7];
+
 /** Nick-Strang: Start im Keller (unten an der Treppe) und oben neben der Treppe auf dem Dachboden */
 export const KELLER_SPAWN: [number, number] = [11, 14];
 export const DACH_TREPPE_SPAWN: [number, number] = [2, 3];

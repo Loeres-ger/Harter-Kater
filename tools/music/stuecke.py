@@ -619,6 +619,84 @@ def shisha():
     return p
 
 
+# ======================================================================== Masala Basar (Laden und Putzen)
+
+# D-Lydisch (wie Raga Yaman auf D): hell und freundlich, die übermäßige Quarte G# gibt die Farbe
+BA_A = ["D5:1 E5:0.5 F#5:0.5 G#5:1 A5:1", "B5:1.5 A5:0.5 G#5:1 F#5:1",
+        "E5:0.5 F#5:0.5 G#5:0.5 F#5:0.5 E5:1 D5:1", "A4:3 -:1",
+        "D5:1 F#5:1 A5:1 C#6:1", "B5:1 A5:0.5 B5:0.5 A5:1 G#5:1",
+        "F#5:0.5 G#5:0.5 A5:0.5 G#5:0.5 F#5:1 E5:1", "D5:3 -:1"]
+BA_B = ["A4:1 B4:0.5 C#5:0.5 D5:2", "C#5:0.5 B4:0.5 A4:1 G#4:1 A4:1",
+        "F#4:1 G#4:1 A4:1 B4:1", "A4:4",
+        "D5:1 C#5:0.5 B4:0.5 A4:1 B4:1", "G#4:1 A4:0.5 G#4:0.5 F#4:1 E4:1",
+        "F#4:0.5 G#4:0.5 A4:0.5 B4:0.5 C#5:1 B4:1", "D5:4"]
+
+
+@stueck(32, "Masala Basar", target=-21.0, hall=3.2, wet=0.62)
+def basar():
+    """Adshayans Laden: Bordun auf D und A, die Harfe zupft wie eine Tanpura, Tumba und Conga im Tabla-Muster,
+    die Flöte wie eine Bansuri, die Oboe wie eine Shehnai."""
+    p = Piece(100, beats=4, bars=32, seed=32)
+    p.key = {2, 9}
+    p.hold("cb", "cb", 1, 32, "D2", 0.16)
+    p.hold("vla", "vla", 1, 32, "A3 D4", 0.09)
+    for k in range(32):
+        b = 1 + k
+        # Tanpura: Pa – Sa – Sa – Sa (tief), leicht verschliffen
+        for j, n in enumerate(("A3", "D4", "D4", "D3")):
+            p.note("lyre", "lyre", n, b, j, 1.5, 0.22 if j == 0 else 0.16, delay=0.01 * j)
+        if 4 <= k < 28:
+            p.grid("hand", "tumba", b, 1, "X.....x...X..x..", 0.42)
+            p.grid("hand", "conga", b, 1, "..x.x.xx.xx.x.xx" if k % 4 == 3 else "..x.x..x..x.x.x.", 0.3)
+            p.grid("hand", "log_hi", b, 1, "...x.......x....", 0.12)
+            p.note("pizz", "cb_pizz", "D2", b, 0, 1.5, 0.36)
+            p.note("pizz", "cb_pizz", "A2", b, 2.5, 1, 0.28)
+        elif k < 4:
+            p.grid("hand", "tumba", b, 1, "X...............", 0.3 + 0.03 * k)
+    mel(p, "flute", "flute_nv", 5, BA_A, 0.44)
+    mel(p, "reed", "oboe", 13, BA_B, 0.4)
+    mel(p, "flute", "flute_nv", 21, BA_A, 0.42)
+    mel(p, "reed", "oboe", 21, BA_A, 0.3, tr=-12)
+    # kleine Verzierungen: Harfen-Glissandi in den Atempausen der Melodie
+    for b in (8, 16, 24, 32):
+        gliss(p, "lyre", "lyre", b, 3, "D4 E4 F#4 G#4 A4 B4 C#5 D5", 0.2, step=0.06)
+    p.note("bells", "glock", "A6", 1, 0, 2, 0.12)
+    p.note("bells", "glock", "D6", 17, 0, 2, 0.12)
+    return p
+
+
+@stueck(46, "Curry-Alarm (Putzen)", target=-20.0, hall=2.2, wet=0.5)
+def putzen():
+    """Putzen gegen die Zeit: das Basar-Thema doppelt so eilig, Xylophon in Sechzehnteln, Tumba und Conga rasen,
+    Pizzicato hüpft, ein Holzblock tickt wie eine Uhr."""
+    p = Piece(150, beats=4, bars=16, seed=46)
+    p.key = {2, 9}
+    arp = {"D": "D5 F#5 A5 F#5", "G#": "D5 G#5 B5 G#5", "A": "C#5 E5 A5 E5", "E": "B4 E5 G#5 E5"}
+    akk = ["D", "D", "G#", "A", "D", "E", "A", "D"]
+    for k in range(16):
+        b = 1 + k
+        a = akk[k % 8]
+        for j, n in enumerate(arp[a].split() * 4):
+            p.note("bells", "xylo", n, b, j * 0.25, 0.25, 0.2 if j % 4 == 0 else 0.13)
+        p.grid("hand", "tumba", b, 1, "X..x..X.X..x.x..", 0.44)
+        p.grid("hand", "conga", b, 1, ".xx.xx.x.xx.x.xx", 0.28)
+        for beat in range(4):
+            p.note("tick", "log_hi", 57, b, beat, 0.5, 0.2 if beat % 2 == 0 else 0.14)
+        root = {"D": "D2", "G#": "E2", "A": "A1", "E": "E2"}[a]
+        p.note("pizz", "cb_pizz", root, b, 0, 1, 0.44)
+        p.note("pizz", "cb_pizz", m(root, 7), b, 1, 1, 0.34)
+        p.note("pizz", "cb_pizz", root, b, 2, 1, 0.4)
+        p.note("pizz", "cb_pizz", m(root, 12), b, 3, 1, 0.32)
+        for beat in (0.5, 1.5, 2.5, 3.5):
+            strum(p, "pizz", "vln_pizz", b, beat, {"D": "F#4+A4+D5", "G#": "G#4+B4+D5", "A": "E4+A4+C#5", "E": "E4+G#4+B4"}[a], 0.3, 0.15, spread=0.006)
+    mel(p, "flute", "flute_nv", 1, BA_A, 0.42, release=0.12)
+    mel(p, "flute", "flute_nv", 9, BA_A, 0.4, release=0.12)
+    mel(p, "reed", "oboe", 9, BA_A, 0.3, tr=-12, release=0.12)
+    for b in (1, 9):
+        p.note("crash", "cymbal", 80, b, 0, 2, 0.16)
+    return p
+
+
 # ======================================================================== Kämpfe
 
 @stueck(40, "Disco-Inferno (Kampf gegen Emilian)", target=-18.0, hall=3.0, wet=0.5, send_scale=0.7, ratio=2.2)

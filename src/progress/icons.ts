@@ -38,6 +38,12 @@ const ICONS: Record<string, (c: Ctx) => void> = {
     r(c, 2, 3, 8, 7, '#f4f2ea'); blob(c, 2, 6.5, 1.5, 3.5, '#d8d4c8'); blob(c, 2, 6.5, 0.8, 1.6, '#8a7a5a');
     r(c, 10, 3, 1, 7, '#c8c4b8'); r(c, 6, 10, 4, 1, '#f4f2ea');
   },
+  ach_sponge: (c) => {
+    // Schwamm mit grüner Scheuerseite und Schaum
+    r(c, 1, 4, 10, 4, '#f0d040'); r(c, 1, 4, 10, 1, '#f8e880'); p(c, 3, 6, '#c8a820'); p(c, 7, 5, '#c8a820');
+    r(c, 1, 8, 10, 2, '#3a9a4a');
+    blob(c, 3, 2.5, 1.5, 1.3, '#ffffff'); blob(c, 7, 2, 1.2, 1, '#e8f4ff'); p(c, 10, 2, '#ffffff');
+  },
   ach_glass: (c) => {
     r(c, 3, 2, 6, 9, '#a8d0e8'); r(c, 3, 2, 6, 3, '#d8f0ff'); r(c, 4, 5, 4, 5, '#7ab0d8');
     r(c, 2, 1, 8, 1, '#c8e0f0'); p(c, 4, 3, '#ffffff');

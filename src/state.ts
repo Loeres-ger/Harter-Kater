@@ -2,7 +2,7 @@
 
 import type { StoryFlags } from './progress/flags';
 
-export type ItemId = 'bier' | 'kippe' | 'schnaps' | 'fusel' | 'pillen' | 'zeug' | 'wurst' | 'kaese' | 'pflanze' | 'koks';
+export type ItemId = 'bier' | 'kippe' | 'schnaps' | 'fusel' | 'pillen' | 'zeug' | 'wurst' | 'kaese' | 'curry' | 'lassi' | 'pflanze' | 'koks';
 
 export interface ItemDef {
   id: ItemId;
@@ -10,7 +10,7 @@ export interface ItemDef {
   price: number; // Einkaufspreis (bzw. Wert, falls nicht kaufbar)
   sucht: number;
   minSucht: number; // ab dieser Sucht nimmt er es an
-  shop: 'wirt' | 'automat' | 'dealer' | 'laden' | null;
+  shop: 'wirt' | 'automat' | 'dealer' | 'laden' | 'basar' | null;
   /** Inventar: Knopf, Beschreibung, Wirkung auf den Wirt */
   verb: string;
   text: string;
@@ -38,6 +38,9 @@ export const ITEMS: ItemDef[] = [
 export const EXTRA_ITEMS: ItemDef[] = [
   { id: 'wurst', name: 'Wurst', price: 4, sucht: 0, minSucht: 0, shop: 'laden', verb: 'ESSEN', text: 'Mayas Hausmacher. Macht satt und ein bisschen nüchtern.', wirkung: 'Rausch -1' },
   { id: 'kaese', name: 'Käse', price: 5, sucht: 0, minSucht: 0, shop: 'laden', verb: 'ESSEN', text: 'Bergkäse vom Stück. Riecht nach Kalle, schmeckt besser.', wirkung: 'Rausch -1' },
+  // Masala Basar (Adshayan)
+  { id: 'curry', name: 'Curry', price: 5, sucht: 0, minSucht: 0, shop: 'basar', verb: 'ESSEN', text: 'Adshayans Hauscurry mit Reis. Scharf, aber ehrlich. Diesmal bleibt es drin.', wirkung: 'Rausch -1' },
+  { id: 'lassi', name: 'Lassi', price: 4, sucht: 0, minSucht: 0, shop: 'basar', verb: 'TRINKEN', text: 'Mango-Lassi, kalt und dick wie Pudding. Löscht jedes Feuer, auch das vom Fusel.', wirkung: 'Rausch -2' },
 ];
 /** Quest-Waren (Nick-Strang): nicht benutzbar */
 export const QUEST_ITEMS: ItemDef[] = [
@@ -59,8 +62,8 @@ function freshState() {
     running: false,
     time: 0,
     money: 10,
-    inv: { bier: 1, kippe: 1, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, pflanze: 0, koks: 0 } as Record<ItemId, number>,
-    uses: { bier: 0, kippe: 0, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, pflanze: 0, koks: 0 } as Record<ItemId, number>,
+    inv: { bier: 1, kippe: 1, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0 } as Record<ItemId, number>,
+    uses: { bier: 0, kippe: 0, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0 } as Record<ItemId, number>,
     /** was der Wirt selbst genommen hat: bis wann Rausch, Qualm und bunte Wände anhalten (Spielzeit) */
     wirt: { rauschBis: 0, rauchBis: 0, tripBis: 0 },
     sucht: 0,
@@ -150,6 +153,7 @@ export function benutze(id: ItemId) {
   else if (id === 'kippe') w.rauchBis = now + 9;
   else if (id === 'pillen') state.boost.speed = Math.max(state.boost.speed, now) + 30;
   else if (id === 'zeug') w.tripBis = Math.max(w.tripBis, now) + 25;
+  else if (id === 'lassi') w.rauschBis = Math.max(now, w.rauschBis - 2 * RAUSCH_STUFE);
   else w.rauschBis = Math.max(now, w.rauschBis - RAUSCH_STUFE); // Essen macht nüchterner
   wirtAktionen.push(id);
   return true;

@@ -223,14 +223,6 @@
       "y": 366
     },
     {
-      "id": "stadt-tuer-13",
-      "kind": "interaktion",
-      "x": 296,
-      "y": 388,
-      "label": "Masala Basar",
-      "text": "Geschlossen. Durch die Scheibe riecht es nach Kardamom, Räucherstäbchen und Hoffnung."
-    },
-    {
       "id": "stadt-signStrip-14",
       "kind": "deko",
       "key": "signStrip",

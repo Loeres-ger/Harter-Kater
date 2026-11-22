@@ -27,49 +27,36 @@ function card(scene: Phaser.Scene, key: string, label: string, col: string, dark
   });
 }
 
-// ---------------------------------------------------------------- ALLES SAHNE (Früchte)
+// ---------------------------------------------------------------- ALLES SAHNE (Glückssymbole, Joker, Teufel)
 
 function sahneSymbols(scene: Phaser.Scene) {
-  sym(scene, 'fs_kirsche', (c) => {
-    for (let i = 0; i < 6; i++) { p(c, 6 + Math.floor(i / 2), 2 + i, '#3a7a2a'); p(c, 10 - Math.floor(i / 3), 2 + i, '#3a7a2a'); }
-    r(c, 8, 1, 4, 2, '#4a9a3a');
-    blob(c, 5, 11, 3.2, 3.2, '#d02030');
-    blob(c, 11, 11, 3.2, 3.2, '#c01828');
-    p(c, 4, 10, '#ff8a8a'); p(c, 10, 10, '#ff8a8a');
+  // leeres Feld: nur ein matter Strich
+  tex2x(scene, 'as_leer', S, S, (c) => { r(c, 5, 8, 6, 1, '#5a4a3a'); });
+  // Kleeblatt: vier Herzblätter, Stiel
+  sym(scene, 'as_klee', (c) => {
+    for (const [x, y] of [[5, 5], [10, 5], [5, 10], [10, 10]]) blob(c, x, y, 2.8, 2.8, '#2a9a3a');
+    for (const [x, y] of [[5, 5], [10, 5], [5, 10], [10, 10]]) p(c, x - 1, y - 1, '#6ad06a');
+    r(c, 7, 7, 2, 2, '#1a7a2a');
+    for (let i = 0; i < 3; i++) p(c, 9 + i, 12 + i, '#1a6a2a');
   });
-  sym(scene, 'fs_zitrone', (c) => {
-    blob(c, 8, 8, 6, 4.5, '#f0d830');
-    blob(c, 7, 7, 3, 2, '#f8f070');
-    p(c, 1, 8, '#d8b820'); p(c, 14, 8, '#d8b820');
-    r(c, 9, 3, 3, 1, '#4a9a3a');
+  // Glücksmünze: Goldrand, Prägung, Glanz
+  sym(scene, 'as_muenze', (c) => {
+    blob(c, 8, 8, 6.5, 6.5, '#b88a10'); blob(c, 8, 8, 5.5, 5.5, '#f0c030'); blob(c, 8, 8, 4, 4, '#e0b020');
+    r(c, 7, 5, 2, 6, '#b88a10'); r(c, 6, 6, 4, 1, '#b88a10'); r(c, 6, 9, 4, 1, '#b88a10');
+    p(c, 5, 4, '#fff4c0'); p(c, 4, 5, '#fff4c0');
   });
-  sym(scene, 'fs_pflaume', (c) => {
-    blob(c, 8, 9, 5, 5.5, '#6a2a8a');
-    blob(c, 6, 7, 1.5, 2, '#9a6aba');
-    r(c, 8, 2, 1, 3, '#5a3a1a');
-    r(c, 9, 2, 3, 2, '#4a9a3a');
+  // Marienkäfer: rote Flügel mit Punkten, schwarzer Kopf, Fühler
+  sym(scene, 'as_kaefer', (c) => {
+    blob(c, 8, 9.5, 6, 5.5, '#d02020');
+    r(c, 8, 4, 1, 11, '#1a1010');
+    for (const [x, y] of [[5, 8], [11, 8], [5, 12], [11, 12], [8, 10]]) blob(c, x, y, 1.2, 1.2, '#1a1010');
+    blob(c, 8, 4, 3, 2, '#1a1010');
+    p(c, 7, 4, '#f4f4f4'); p(c, 9, 4, '#f4f4f4');
+    p(c, 6, 1, '#1a1010'); p(c, 6, 2, '#1a1010'); p(c, 10, 1, '#1a1010'); p(c, 10, 2, '#1a1010');
+    p(c, 5, 7, '#ff7a6a');
   });
-  sym(scene, 'fs_melone', (c) => {
-    blob(c, 8, 9, 6.5, 5.5, '#2a7a2a');
-    for (let x = 3; x < 14; x += 3) r(c, x, 4, 1, 10, '#4aa04a');
-    p(c, 8, 3, '#5a3a1a');
-  });
-  sym(scene, 'fs_glocke', (c) => {
-    blob(c, 8, 7, 4.5, 5, '#e8b020');
-    r(c, 3, 10, 10, 3, '#e8b020');
-    r(c, 2, 12, 12, 1, '#c88a10');
-    blob(c, 8, 14, 1.5, 1.2, '#c88a10');
-    r(c, 6, 4, 1, 5, '#f8e070');
-    r(c, 7, 1, 2, 2, '#c88a10');
-  });
-  sym(scene, 'fs_sieben', (c) => {
-    r(c, 3, 2, 10, 3, '#e01828');
-    for (let i = 0; i < 9; i++) r(c, 11 - Math.floor(i * 0.6), 5 + i, 3, 1, '#e01828');
-    r(c, 3, 2, 10, 1, '#ff7a7a');
-    r(c, 4, 6, 2, 2, '#e01828');
-  });
-  // Top-Symbol: Sahnehaube im Glas mit Kirsche
-  sym(scene, 'fs_sahne', (c) => {
+  // Joker: Sahnehäubchen im Glas mit Kirsche
+  sym(scene, 'as_joker', (c) => {
     r(c, 4, 9, 8, 5, '#c8e8f0');
     r(c, 5, 14, 6, 1, '#a8c8d0');
     r(c, 5, 10, 6, 3, '#d88a5a');
@@ -77,6 +64,16 @@ function sahneSymbols(scene: Phaser.Scene) {
     blob(c, 8, 5, 3.5, 2.5, '#f8f4ec');
     blob(c, 8, 3, 2, 1.6, '#ffffff');
     blob(c, 9, 1.5, 1.4, 1.4, '#d02030');
+  });
+  // Teufel: rote Fratze mit Hörnern, gelben Augen und breitem Grinsen
+  sym(scene, 'as_teufel', (c) => {
+    for (let i = 0; i < 4; i++) { p(c, 3 + Math.floor(i / 2), 4 - i, '#f0e0c0'); p(c, 12 - Math.floor(i / 2), 4 - i, '#f0e0c0'); }
+    blob(c, 8, 9, 5.8, 5.8, '#c01818'); blob(c, 7, 8, 4, 4, '#e02a2a');
+    r(c, 4, 6, 3, 1, '#2a0606'); r(c, 9, 6, 3, 1, '#2a0606');
+    r(c, 5, 7, 2, 2, '#f8e040'); r(c, 9, 7, 2, 2, '#f8e040'); p(c, 6, 8, '#1a0606'); p(c, 9, 8, '#1a0606');
+    r(c, 4, 11, 8, 2, '#2a0606'); for (let x = 5; x < 12; x += 2) p(c, x, 11, '#f4f0e0');
+    p(c, 3, 10, '#2a0606'); p(c, 12, 10, '#2a0606');
+    r(c, 7, 14, 2, 2, '#7a0a0a'); // Spitzbart
   });
 }
 
@@ -191,7 +188,7 @@ function cabinet(scene: Phaser.Scene, key: string, body: string, trim: string, s
 }
 
 export function makeCasinoTextures(scene: Phaser.Scene) {
-  if (scene.textures.exists('fs_kirsche')) return;
+  if (scene.textures.exists('as_klee')) return;
   sahneSymbols(scene);
   ratteSymbols(scene);
   horses(scene);

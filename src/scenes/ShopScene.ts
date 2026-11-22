@@ -3,7 +3,7 @@ import { audio } from '../audio';
 import { ALL_ITEMS, ItemDef, ItemId, state } from '../state';
 import { H, W, txt } from '../ui';
 
-export type ShopId = 'wirt' | 'automat' | 'dealer' | 'laden';
+export type ShopId = 'wirt' | 'automat' | 'dealer' | 'laden' | 'basar';
 
 export interface ShopData {
   shop: ShopId;
@@ -17,6 +17,7 @@ const SHOPS: Record<ShopId, { title: string; line: string; accent: number; accen
   dealer: { title: 'DER DEALER', line: 'Psst. Keine Fragen, keine Quittung.', accent: 0x6ac04a, accentCss: '#9ae09a' },
   // Mayas Feinkost verkauft dieselbe Bierware wie die Kneipentheke
   laden: { title: 'MAYAS FEINKOST', line: 'Bier, Wurst, Käse. Barzahlung. Kein Anschreiben.', accent: 0x2a8a4a, accentCss: '#8ae0a0', items: ['bier', 'wurst', 'kaese'] },
+  basar: { title: 'MASALA BASAR', line: 'Alles bleibt drin. Ehrlich.', accent: 0xe09a1a, accentCss: '#f8c060', items: ['curry', 'lassi'] },
 };
 
 const CARD_W = 104, CARD_H = 142;

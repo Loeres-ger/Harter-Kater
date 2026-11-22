@@ -155,6 +155,7 @@ export abstract class TopDown extends Phaser.Scene {
     this.player = this.add.sprite(sx * T + 8, sy * T + 14, 'wirt', 0).setOrigin(0.5, 1).setScale(0.5);
 
     this.setupWorld();
+    this.befreien();
 
     if (state.carrying) this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5);
 
@@ -400,8 +401,41 @@ export abstract class TopDown extends Phaser.Scene {
   protected sichern() {
     if (!state.flags.glanzErledigt || this.leaving || !state.running || state.carrying || state.bodyDeadline !== null || state.gameOver) return;
     if (!this.scene.isActive()) return;
+    saveAuto(this.scene.key, this.hier());
+  }
+
+  /** Kachel, auf der der Wirt steht (Koordinaten der ursprünglichen Karte, wie Spawns). Maßgeblich ist die Mitte
+   *  seiner Kollisionsbox; früher wurde gerundet, und wer oben an einer Kachel stand, landete beim Laden eine Reihe
+   *  höher, mitten in Tresen oder Pflanze. */
+  protected hier(): [number, number] {
     const [ox, oy] = this.origin();
-    saveAuto(this.scene.key, [Math.floor(this.player.x / T) - ox, Math.round((this.player.y - 14) / T) - oy]);
+    return [Math.floor(this.player.x / T) - ox, Math.floor((this.player.y - 3) / T) - oy];
+  }
+
+  /**
+   * Steckt der Wirt in etwas Festem (alter Speicherstand, Möbel oder Pflanze, die erst später aufgestellt wurde),
+   * wird er auf die nächste freie Kachel gesetzt. true, wenn er versetzt wurde.
+   */
+  protected befreien() {
+    const p = this.player;
+    if (!this.blocked(p.x, p.y - 3)) return false;
+    const h = this.solid.length, w = this.solid[0]?.length ?? 0;
+    const sx = Phaser.Math.Clamp(Math.floor(p.x / T), 0, w - 1), sy = Phaser.Math.Clamp(Math.floor((p.y - 3) / T), 0, h - 1);
+    const seen = new Set([sy * w + sx]);
+    const queue: [number, number][] = [[sx, sy]];
+    for (let i = 0; i < queue.length && i < 2000; i++) {
+      const [x, y] = queue[i];
+      if (!this.blocked(x * T + 8, y * T + 11)) {
+        p.setPosition(x * T + 8, y * T + 14);
+        return true;
+      }
+      for (const [nx, ny] of [[x, y + 1], [x, y - 1], [x - 1, y], [x + 1, y]]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen.has(ny * w + nx)) continue;
+        seen.add(ny * w + nx);
+        queue.push([nx, ny]);
+      }
+    }
+    return false;
   }
 
   protected go(key: string, data?: object) {
@@ -427,8 +461,7 @@ export abstract class TopDown extends Phaser.Scene {
         return;
       }
       starteStrang(s, state.flags, state.time);
-      const [ox, oy] = this.origin();
-      const here: [number, number] = [Math.floor(this.player.x / T) - ox, Math.round((this.player.y - 14) / T) - oy];
+      const here = this.hier();
       this.go('Cutscene', { script: s.script, next: { scene: s.danach?.scene ?? this.scene.key, data: { spawn: s.danach?.spawn ?? here } } });
     });
   }
@@ -548,15 +581,15 @@ export abstract class TopDown extends Phaser.Scene {
   }
 
   private consumeFx(id: ItemId) {
-    if (id === 'bier' || id === 'schnaps' || id === 'fusel') void this.trinkFx(id);
+    if (id === 'bier' || id === 'schnaps' || id === 'fusel' || id === 'lassi') void this.trinkFx(id);
     else if (id === 'kippe') void this.rauchFx();
     else if (id === 'pillen') void this.pillenFx();
     else if (id === 'zeug') void this.zeugFx();
-    else if (id === 'wurst' || id === 'kaese') void this.essFx(id);
+    else if (id === 'wurst' || id === 'kaese' || id === 'curry') void this.essFx(id);
   }
 
   /** Trinken: Flasche in die Hand, kurz absenken, zum Mund, drei Schlucke, absetzen, wegwerfen */
-  private async trinkFx(id: 'bier' | 'schnaps' | 'fusel') {
+  private async trinkFx(id: 'bier' | 'schnaps' | 'fusel' | 'lassi') {
     const p = this.player;
     const rel = { x: 5, y: -6 };
     const fl = this.add.image(0, 0, `icon_${id}`).setScale(0).setDepth(5003);
@@ -580,7 +613,10 @@ export abstract class TopDown extends Phaser.Scene {
     this.tweens.add({ targets: fl, x: fl.x + dir * 14, duration: 420, ease: 'Linear' });
     this.tweens.add({ targets: fl, y: fl.y - 8, duration: 200, ease: 'Quad.easeOut', yoyo: true, onComplete: () => { audio.sfx('clang'); this.tweens.add({ targets: fl, alpha: 0, duration: 300, onComplete: () => fl.destroy() }); } });
     this.tweens.add({ targets: fl, angle: dir * 300, duration: 420 });
-    if (id === 'bier') {
+    if (id === 'lassi') {
+      this.sag('Mango!', '#ffc060');
+      this.partikel(p.x + (p.flipX ? -2 : 2), p.y - 13, 3, [0xf0a030, 0xf8e0b0], 'hoch');
+    } else if (id === 'bier') {
       this.sag('Ahh!');
       this.partikel(p.x + (p.flipX ? -2 : 2), p.y - 13, 4, [0xffffff, 0xf8f0d8], 'hoch');
     } else if (id === 'schnaps') {
@@ -687,7 +723,7 @@ export abstract class TopDown extends Phaser.Scene {
   }
 
   /** Essen: drei Bissen, das Stück wird jedes Mal kleiner, Krümel fallen */
-  private async essFx(id: 'wurst' | 'kaese') {
+  private async essFx(id: 'wurst' | 'kaese' | 'curry') {
     const p = this.player;
     const rel = { x: 5, y: -6 };
     const e = this.add.image(0, 0, `icon_${id}`).setScale(0).setDepth(5003);
@@ -700,12 +736,12 @@ export abstract class TopDown extends Phaser.Scene {
       this.stauch(1.04, 0.94, 90);
       // Biss: rechts fehlt jetzt ein Stück
       e.setCrop(0, 0, w * (1 - (i + 1) / 3.2), e.height);
-      this.partikel(e.x, e.y + 1, 3, id === 'wurst' ? [0xa8402c, 0xe8c0a0] : [0xf0c840, 0xc89820], 'fall');
+      this.partikel(e.x, e.y + 1, 3, id === 'wurst' ? [0xa8402c, 0xe8c0a0] : id === 'curry' ? [0xe0801a, 0xf4f0e0] : [0xf0c840, 0xc89820], 'fall');
       await this.ablauf({ targets: rel, x: 5, y: -6, duration: 160, ease: 'Sine.easeIn' });
       await this.warteKurz(120);
     }
     los(); e.destroy();
-    this.sag(id === 'wurst' ? 'Mmmh, Hausmacher.' : '*mampf*');
+    this.sag(id === 'wurst' ? 'Mmmh, Hausmacher.' : id === 'curry' ? 'Scharf!' : '*mampf*');
     this.stauch(1.05, 0.97, 200);
   }
 
@@ -740,6 +776,7 @@ export abstract class TopDown extends Phaser.Scene {
     const speed = (state.carrying || this.slow ? 46 : 74) * (speedy() ? 1.5 : 1) * (delta / 1000);
     const dx = (vx / len) * speed, dy = (vy / len) * speed;
     const p = this.player;
+    if ((dx || dy) && this.befreien()) return;
     const feetY = p.y - 3;
     if (dx && !this.blocked(p.x + dx, feetY)) p.x += dx;
     if (dy && !this.blocked(p.x, feetY + dy)) p.y += dy;

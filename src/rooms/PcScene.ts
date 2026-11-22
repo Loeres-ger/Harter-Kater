@@ -23,7 +23,7 @@ const N = 8;
 const C = 16;
 const GX = SX + 10, GY = SY + 26;
 /** Ziel: so viele Punkte, dann ist Claudius' Gegen-Hacker geschlagen */
-const ZIEL = 150;
+const ZIEL = 800;
 /** alle so viele Züge ohne gesprengte Reihe wirft Claudius Zensurblöcke ins Raster */
 const STOER_ALLE = 6;
 const ZENSUR = 0x6a6a72;

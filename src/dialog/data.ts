@@ -5,18 +5,19 @@ import { anneTree, felixAnneTree } from './anne';
 import { claudiusTree, kevinClubTree, kevinGasseTree } from './claudius';
 import { cemoTree, leni2Tree, leniWartetTree, leniXaviTree, tuncayTree } from './xavi';
 import { bornaNickTree, nickTree, nickWeissTree } from './nick';
+import { adshayanTree } from './adshayan';
 import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
 // Ein Knoten hat Zeilen der Figur (mit „W:“ davor spricht der Wirt) und Antworten zur Auswahl.
 
-export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'club' | 'shisha' | 'keller';
+export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'club' | 'shisha' | 'keller' | 'basar';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
   | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum' | 'anneJagd' | 'shishaDuell' | 'xaviSuche' | 'tuncayQuiz' | 'emilianKampf'
-  | 'nickStart' | 'nickPflanze' | 'nickKeller' | 'gitarrenDuell' | 'nickKoks' | 'nickJam';
+  | 'nickStart' | 'nickPflanze' | 'nickKeller' | 'gitarrenDuell' | 'nickKoks' | 'nickJam' | 'putzen';
 
 export interface Choice {
   text: string;
@@ -202,10 +203,10 @@ function dealer(): Record<string, DialogNode> {
   };
 }
 
-function dame(): Record<string, DialogNode> {
+function dame(gruss?: string[]): Record<string, DialogNode> {
   return {
     start: {
-      lines: [pick(['Na, Süßer? Kalt heute, was?', 'Hey Wirt. Spendierst du mal einen Kaffee?', 'Du schon wieder. Hast du Feierabend?'])],
+      lines: [pick(gruss ?? ['Na, Süßer? Kalt heute, was?', 'Hey Wirt. Spendierst du mal einen Kaffee?', 'Du schon wieder. Hast du Feierabend?'])],
       choices: [
         { text: 'Wie läuft das Geschäft?', next: 'geschaeft' },
         { text: 'Hast du was gesehen?', next: 'gesehen' },
@@ -276,6 +277,14 @@ export const SPEAKERS: Record<string, Speaker> = {
   cop: { name: 'POLIZIST FELIX', color: '#7aa8ff', portrait: 'nbust_cop', bg: 'street', tree: felixTree },
   dame0: { name: 'CHANTAL', color: '#ff7ac0', portrait: 'nbust_dame0', bg: 'street', tree: dame },
   dame1: { name: 'JACKY', color: '#d090ff', portrait: 'nbust_dame1', bg: 'street', tree: dame },
+  dame2: {
+    name: 'DESIRÉE', color: '#e0b070', portrait: 'nbust_dame2', bg: 'street',
+    tree: () => dame(['Unter 50 € red ich nicht mal. Für dich mach ich ’ne Ausnahme: 49.', 'Die Sonnenbrille bleibt auf. Ich will nicht wissen, wer mich anspricht.', 'Pelz ist echt. Die Frau, die ihn verkauft hat, auch.']),
+  },
+  dame3: {
+    name: 'ROXY', color: '#40d0e0', portrait: 'nbust_dame3', bg: 'street',
+    tree: () => dame(['Hey, hey, HEY! Du da! Ja, du! Kalt heute, oder? Ich red einfach weiter, egal.', 'Roxy. Mit X. Wie in ... Roxy.', 'Kaugummi? Nein? Ich hab eh nur noch einen. Den kau ich seit Dienstag.']),
+  },
   leonard: { name: 'KRÄFTIGER LEONARD', color: '#ff9a50', portrait: 'nbust_leonard', bg: 'street', drop: 30, tree: leonard },
   borna: { name: 'BEKIFFTER BORNA', color: '#a8d070', portrait: 'nbust_borna', bg: 'dach', tree: bornaTree },
   lily: { name: 'LILLY', color: '#c8a0e0', portrait: 'nbust_lily', bg: 'street', tree: lilyTree },
@@ -298,6 +307,7 @@ export const SPEAKERS: Record<string, Speaker> = {
   nick: { name: 'NICK', color: '#e04040', portrait: 'nbust_nick', bg: 'keller', tree: nickTree },
   nickWeiss: { name: 'NICK', color: '#f4f0e0', portrait: 'nbust_nickWeiss', bg: 'keller', tree: nickWeissTree },
   leni2: { name: 'LENI BLUME', color: '#f0e0f0', portrait: 'nbust_leni2', bg: 'club', tree: leni2Tree },
+  adshayan: { name: 'ADSHAYAN', color: '#f8b040', portrait: 'nbust_adshayan', bg: 'basar', tree: adshayanTree },
 };
 for (const g of GUESTS) SPEAKERS[g.id] = { name: g.name.toUpperCase(), color: '#f0c890', portrait: `gbustN_${g.id}`, bg: 'bar', tree: guest(g.id) };
 

@@ -32,6 +32,8 @@ import { WandlungUI } from './rooms/WandlungUI';
 import { HoellenbossScene } from './rooms/HoellenbossScene';
 import { ShishaScene } from './rooms/ShishaScene';
 import { ShishaDuellScene } from './rooms/ShishaDuellScene';
+import { BasarScene } from './rooms/BasarScene';
+import { PutzScene } from './rooms/PutzScene';
 import { QuizScene } from './rooms/QuizScene';
 import { KampfScene } from './rooms/KampfScene';
 import { InventarScene, GAMEPLAY } from './scenes/InventarScene';
@@ -73,7 +75,7 @@ async function boot() {
     // FIT: proportional einpassen, Balken wo nötig. Der Container bekommt seine Größe aus dem CSS.
     // Vollbild nimmt den ganzen Spielcontainer, damit Pause-, Inventar- und Vollbild-Knopf sichtbar bleiben
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: false, fullscreenTarget: 'game' },
-    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, ShishaScene, KellerScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, ShishaDuellScene, QuizScene, KampfScene, GitarrenDuellScene, WandlungUI, HoellenbossScene, InventarScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
+    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, ShishaScene, BasarScene, KellerScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, ShishaDuellScene, PutzScene, QuizScene, KampfScene, GitarrenDuellScene, WandlungUI, HoellenbossScene, InventarScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
   });
   if (import.meta.env.DEV) {
     Object.assign(window, { game, audio });
