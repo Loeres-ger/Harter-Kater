@@ -1,6 +1,6 @@
 // Die Storyline: Prolog, vier Kapitel-Zwischenspiele, der Epilog und Kapitel 5 im freien Spiel.
 
-export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'maya' | 'claudius' | 'kevin' | 'leni' | 'cemo' | 'tuncay' | 'xavi' | 'leni2' | 'emilian' | 'nick';
+export type Who = 'wirt' | 'glanz' | 'kalle' | 'katze' | 'telefon' | 'borna' | 'lily' | 'maya' | 'claudius' | 'kevin' | 'leni' | 'cemo' | 'tuncay' | 'xavi' | 'leni2' | 'emilian' | 'nick' | 'jan' | 'adshayan';
 
 export type Step =
   | { t: 'bg'; key: 'street' | 'dawn' | 'bar' | 'black' | 'letter' | 'eyes' | 'tod' | 'dach' | 'dachLeer' | 'laden' | 'wc' | 'shisha' | 'club' | 'keller' }
@@ -123,6 +123,72 @@ export const STORY: Record<string, Step[]> = {
   // ---------------------------------------------------------------- Xavi-Strang (Storybaum: „Rettung von Xavi“)
 
   /** Nach Lenis Bitte auf der Damentoilette (LadiesRoomScene): Einblendung und Speicherpunkt */
+  // ---------------------------------------------------------------- Teil 1 „Unter dem Eimer“ (story/drehbuch-teil1.md)
+
+  /** Kevin hat gestanden: Er ist in Jan verknallt. Der Plan: Käse. */
+  kapitel6: [
+    { t: 'bg', key: 'club' },
+    { t: 'caption', text: 'Kevin hat einen Plan.\nEr besteht aus Käse.' },
+    { t: 'title', text: 'KAPITEL 6', sub: 'Ein Tentakel zu viel' },
+  ],
+
+  /** Der Käse-Antrag auf der Bühne */
+  antrag: [
+    { t: 'bg', key: 'club' },
+    { t: 'caption', text: 'Die Musik stoppt.\nKevin steigt auf die Bühne und hält den Käse hoch wie einen Ring.' },
+    { t: 'say', who: 'kevin', text: 'Jan. Das ist für dich. Das ist ... Protein. Mit Seele.' },
+    { t: 'say', who: 'jan', text: '38 Gramm Protein auf 100 Gramm. Gereift. Ehrlich.' },
+    { t: 'say', who: 'jan', text: 'Kevin ... das ist das Romantischste, was mir je jemand geschenkt hat.' },
+    { t: 'say', who: 'jan', text: 'Ja. JA! Ich heirate dich! Hier! Im Muskelkater! Mit Buffet!' },
+    { t: 'fx', kind: 'hearts' },
+    { t: 'say', who: 'kevin', text: 'BRUDER! Du bist Trauzeuge! Du machst das Buffet! Und das Bier!' },
+    { t: 'caption', text: 'Hochzeit vorbereiten:\n10 Bier über Kalle, Buffet bei Adshayan.' },
+  ],
+
+  /** Phase 5: Das Tentakelgitter riecht das Curry und zieht sich zurück; das Klärwerk ist offen */
+  kapitel8: [
+    { t: 'bg', key: 'black' },
+    { t: 'caption', text: 'Das Gitter aus Tentakeln riecht das Curry.\nEs zuckt. Es zieht sich zurück. Die Tür zum Klärwerk steht offen.' },
+    { t: 'title', text: 'KAPITEL 8', sub: 'Der Oktopushirsch' },
+  ],
+
+  /** Nach dem Klärwerk (Teil 1, 8.9): Kevin und Jan im Muskelkater, die Katze geht wieder nach unten. */
+  kanalEnde: [
+    { t: 'bg', key: 'club' },
+    { t: 'caption', text: 'Muskelkater. Kevin und Jan liegen sich in den Armen.\nDer Käse steht noch immer auf der Bühne.' },
+    { t: 'say', who: 'kevin', text: 'Bruder. Du hast ihn mir zurückgebracht. Mit Katze.' },
+    { t: 'say', who: 'jan', text: 'Die Hochzeit holen wir nach. Nach dem Duschen. Nach sehr langem Duschen.' },
+    { t: 'say', who: 'katze', text: 'Da unten gibt es noch mehr von denen. Ich räume auf. Du kennst den Weg.' },
+    { t: 'caption', text: 'Der Oktopushirsch ist besiegt. Brenninger ist verschwunden.\nDie Akte bleibt im Eimer, hinter dem Tresen.\nDas Siegel kennt niemand. Noch nicht.' },
+    { t: 'title', text: 'DER OKTOPUSHIRSCH', sub: 'Fortsetzung folgt' },
+  ],
+
+  /** Nach der Glanz-Mission (statt Siegesbildschirm): Feierabend mit Kalle an der Theke. Danach ist die Stadt offen. */
+  feierabend: [
+    { t: 'bg', key: 'bar' },
+    { t: 'caption', text: 'Später. Der Regen hat aufgehört.\nIm Eimer brennt nur noch die Lampe über der Theke.\nKalle ist noch da. Kalle ist immer noch da.' },
+    { t: 'say', who: 'kalle', text: 'Chef. Setz dich. Heute gibst du einen aus.' },
+    { t: 'say', who: 'wirt', text: 'Kalle. Ich bin der Wirt. Ich geb immer einen aus.' },
+    { t: 'say', who: 'kalle', text: 'Eben. Darum mag ich dich.' },
+    { t: 'say', who: 'wirt', text: '(Ein Korn. Noch ein Korn. Der Anzug ist weg. Die Kneipe bleibt.)' },
+    { t: 'say', who: 'kalle', text: 'Der feine Herr kommt nicht wieder, oder?' },
+    { t: 'say', who: 'wirt', text: 'Der ist ... verreist.' },
+    { t: 'say', who: 'kalle', text: 'Gut. Hat eh nicht hergepasst.' },
+    { t: 'say', who: 'kalle', text: 'Weißt du, was du jetzt machst, Chef? Raus. Guck dir die Stadt an.' },
+    { t: 'say', who: 'kalle', text: 'So viele Leute hier. Jeder hat ’nen Knall, jeder hat ’ne Geschichte. Man kann echt viel entdecken.' },
+    { t: 'say', who: 'kalle', text: 'Und wenn du mal nicht weiterweißt: Ich sitz hier. Ich weiß alles. Fast alles. Frag einfach Kalle.' },
+    { t: 'say', who: 'kalle', text: 'Wer weiß, wann die nächste Tragödie kommt. Genieß die Zeit, Boss.' },
+    { t: 'say', who: 'wirt', text: 'Prost, Kalle.' },
+    { t: 'say', who: 'kalle', text: 'Prost, Chef. ... Die Runde geht auf dich.' },
+  ],
+
+  /** Nach der Entführung (Szene im Muskelkater, ClubScene.hochzeit): Einblendung und Speicherpunkt */
+  kapitel7: [
+    { t: 'bg', key: 'black' },
+    { t: 'caption', text: 'Eine fette, grün leuchtende Schleimspur führt aus dem Club.\nQuer durch die Stadt. Bis zum Gully in der Hintergasse.' },
+    { t: 'title', text: 'KAPITEL 7', sub: 'Unter dem Eimer' },
+  ],
+
   xaviStart: [
     { t: 'bg', key: 'wc' },
     { t: 'caption', text: 'Leni putzt sich die Nase. Mit Klopapier.\nDreilagig. Für besondere Anlässe.' },

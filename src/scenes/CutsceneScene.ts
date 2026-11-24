@@ -10,6 +10,7 @@ import { Btn } from './ShopScene';
 const SKRIPT_MUSIK: Partial<Record<string, Track>> = {
   prolog: 'prolog', epilog: 'epilog', kapitel2: 'tresen', kapitel3: 'tresen', kapitel4: 'traurig', kapitel5: 'marsch',
   claudiusEnde: 'marsch', bornaWeg: 'traurig', lilyDach: 'romantik', nickStart: 'dach', nickScheisse: 'spannung', nickFrei: 'erloesung',
+  kapitel6: 'club', antrag: 'romantik', kapitel7: 'spannung', feierabend: 'kneipe', kapitel8: 'monster', kanalEnde: 'erloesung',
 };
 
 export interface CutsceneData {
@@ -42,6 +43,8 @@ const NAMES: Record<Who, [string, string]> = {
   leni2: ['LENI BLUME', '#f0e0f0'],
   emilian: ['EMILIAN', '#9ad070'],
   nick: ['NICK', '#e04040'],
+  jan: ['JAN', '#e090ff'],
+  adshayan: ['ADSHAYAN', '#f8b040'],
 };
 
 /** Porträts der Nebenfiguren: Seite und Bild je nach look (0 = normal, 1 = glücklich bzw. bei Claudius: wütend) */
@@ -59,6 +62,9 @@ const CAST: Partial<Record<Who, { side: 'left' | 'right'; key: (look: number) =>
   borna: { side: 'left', key: (l) => (l ? 'nbust_bornaHappy' : 'nbust_borna') },
   lily: { side: 'right', key: (l) => (l ? 'nbust_lilyHappy' : 'nbust_lily') },
   maya: { side: 'right', key: (l) => (l ? 'nbust_mayaHappy' : 'nbust_maya') },
+  // 1 = in Panik
+  jan: { side: 'right', key: (l) => (l ? 'nbust_janAngst' : 'nbust_jan') },
+  adshayan: { side: 'right', key: (l) => (l ? 'nbust_adshayanSad' : 'nbust_adshayan') },
 };
 
 const BAR_H = 22; // Kinobalken
@@ -105,6 +111,7 @@ export class CutsceneScene extends Phaser.Scene {
   create(data: CutsceneData) {
     this.cfg = data;
     this.done = false;
+    this.gespeichert = new Set();
     this.portraits = { left: null, right: null };
     this.bulldozer = undefined;
     this.rain = undefined;
@@ -237,8 +244,17 @@ export class CutsceneScene extends Phaser.Scene {
     }
   }
 
+  /** Kapitel, die diese Zwischensequenz schon gespeichert hat */
+  private gespeichert = new Set<string>();
+
   private finish() {
     if (this.done) return;
+    // übersprungen (ESC)? Kapitel-Einblendungen, die noch kamen, trotzdem als Speicherpunkt sichern
+    for (const st of STORY[this.cfg.script] ?? []) {
+      if (st.t !== 'title') continue;
+      const c = chapterByTitle(st.text);
+      if (c && !this.gespeichert.has(c.id)) { saveChapter(c.id); this.gespeichert.add(c.id); }
+    }
     audio.setRain(false);
     this.done = true;
     this.advance = null;
@@ -476,7 +492,7 @@ export class CutsceneScene extends Phaser.Scene {
     this.tweens.add({ targets: st, alpha: 1, delay: 400, duration: 400 });
     // Kapitel-Einblendung: automatisch speichern (andere Einblendungen wie „BORNA“ speichern nicht)
     const chapter = chapterByTitle(text);
-    if (chapter) saveChapter(chapter.id);
+    if (chapter && !this.gespeichert.has(chapter.id)) { saveChapter(chapter.id); this.gespeichert.add(chapter.id); }
     await this.sleep(700);
     this.cameras.main.shake(120, 0.004);
     audio.sfx('thud');

@@ -6,6 +6,7 @@ import { hud } from '../scenes/HudScene';
 import { unlock } from '../progress/achievements';
 import type { DialogAction } from '../dialog/data';
 import { ALLEY_LADEN_SPAWN } from './spawns';
+import { strangZiel } from '../progress/quests';
 
 // „Mayas Feinkost“: kleiner, altmodischer Wurst- und Käseladen im Haus rechts neben der Kneipe.
 // Hinter der Theke steht Meisternutte Maya. Bei ihr gibt es dasselbe Bier wie an der Kneipentheke.
@@ -54,7 +55,7 @@ export class ShopRoomScene extends TopDown {
   }
 
   protected goalText() {
-    return 'Mayas Feinkost. Wurst, Käse, Bier. Und angeblich mehr.';
+    return strangZiel(state.flags) ?? 'Mayas Feinkost. Wurst, Käse, Bier. Und angeblich mehr.';
   }
 
   private find(ch: string): [number, number] {

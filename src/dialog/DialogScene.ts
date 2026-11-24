@@ -317,6 +317,11 @@ export class DialogScene extends Phaser.Scene {
         const l = this.add.image(x, 40, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.6).setTint(0xffa040).setAlpha(0.45);
         this.tweens.add({ targets: l, alpha: 0.32, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       }
+    } else if (kind === 'kanal') {
+      // Kanalisation: Tunnelbogen, Rinne mit grünem Schimmer, Tropfen
+      this.add.image(0, 0, 'csKanal').setOrigin(0);
+      const l = this.add.image(240, 150, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(2.6).setTint(0x4aff2a).setAlpha(0.16);
+      this.tweens.add({ targets: l, alpha: 0.1, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     } else if (kind === 'keller') {
       // Nicks Keller: rote Spots, Nebel
       this.add.image(0, 0, 'csKeller').setOrigin(0);

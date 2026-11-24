@@ -91,7 +91,39 @@ export const STRAENGE: Strang[] = [
       frei: '',
     } as Record<string, string>)[f.nick ?? 'pflanze'] ?? '',
   },
+  {
+    // Storybaum „KAPITEL 6 · Ein Tentakel zu viel“ und folgende (Teil 1 „Unter dem Eimer“, story/drehbuch-teil1.md):
+    // Kevin ist in Jan verknallt, Käse-Antrag, Hochzeitsprobe, Jan wird in den Kanal gezogen.
+    id: 'kanal', titel: 'KAPITEL 6', script: 'kapitel6', manuell: true,
+    hinweis: 'Aus dem Muskelkater: Kevin ruft nach dir. Er klingt ... verliebt.',
+    zielBereit: 'Muskelkater: Kevin will dringend mit dir reden.',
+    braucht: (f) => f.claudius === 'veroeffentlicht' && f.xavi === 'gerettet' && f.nick === 'frei',
+    gestartet: (f) => !!f.kanal,
+    fertig: (f) => f.kanal === 'gerettet',
+    starten: (f) => { f.kanal = 'kaese'; },
+    ziel: (f) => ({
+      kaese: state.inv.stinkekaese ? 'Muskelkater: Kevin den Stinkekäse bringen.' : 'Mayas Feinkost: Premium-Stinkekäse für Jan kaufen (300 €).',
+      vorbereitung: `Hochzeit vorbereiten: ${[!f.hochzeitBier && '10 Bier über Kalle (Kneipe)', !f.hochzeitBuffet && 'Buffet bei Adshayan (Basar)'].filter(Boolean).join(', ')}.`,
+      probe: 'Muskelkater: Hochzeitsprobe. Rede mit Kevin.',
+      entfuehrt: 'Jan ist entführt! Folge der Schleimspur zum Gully in der Hintergasse.',
+      ausruestung: 'Mit Tuncays Kanal-Paket: den Gully in der Hintergasse öffnen.',
+      unten: !f.kanalGitterOffen ? 'Kanalisation: Das Rostgitter im Osten aufhebeln (mit Haken).' : 'Kanalisation: Hinter dem Gitter weiter. Etwas raschelt.',
+      katze: !f.schleuseGeloest ? 'Kanalisation: Mit der Katze durch Spülrinne und Schieberkammer.' : 'Kanalisation: Mit der Katze zur Tür des Klärwerks.',
+      curry: 'Basar: Adshayan muss den großen Curry-Topf kochen.',
+      klaerwerk: 'Klärwerk: Jan retten.',
+      gerettet: '',
+    } as Record<string, string>)[f.kanal ?? 'kaese'] ?? '',
+  },
 ];
+
+/** Zieltext des laufenden (oder vorgemerkten) Strangs, sonst null; für Räume mit eigenem Standardtext */
+export function strangZiel(f: StoryFlags): string | null {
+  const bereit = f.strangBereit ? STRAENGE.find((s) => s.id === f.strangBereit) : undefined;
+  if (bereit?.zielBereit && status(bereit, f) === 'verfuegbar') return bereit.zielBereit;
+  const aktiv = STRAENGE.filter((s) => status(s, f) === 'aktiv');
+  const s = aktiv.find((x) => x.id === f.letzterStrang) ?? aktiv[0];
+  return s ? s.ziel(f) || null : null;
+}
 
 export function status(s: Strang, f: StoryFlags): StrangStatus {
   if (s.fertig(f)) return 'abgeschlossen';

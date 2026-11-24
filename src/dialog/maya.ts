@@ -7,7 +7,16 @@ import type { Choice, DialogNode } from './data';
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const BEER: Choice = { text: 'Ein Bier, bitte.', action: 'shop' };
 
+/** Kapitel 6: Solange Kevin den Stinkekäse braucht, spricht Maya ihn an */
 export function mayaTree(): Record<string, DialogNode> {
+  const t = mayaTreeBasis();
+  if (state.flags.kanal === 'kaese' && !state.inv.stinkekaese) {
+    t.start.lines = ['Den Stinkekäse? „Alter Schwede“? Den verkaufe ich nicht an jeden.', 'Der riecht nach Entscheidung. Und nach Fuß. 300 Euro. Barzahlung.'];
+  }
+  return t;
+}
+
+function mayaTreeBasis(): Record<string, DialogNode> {
   if (state.flags.mayaTraum) {
     return {
       start: {

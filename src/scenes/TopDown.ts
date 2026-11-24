@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { ItemId, bulky, lookStage, rauschStufe, raucht, speedy, state, wirtAktionen } from '../state';
+import { ItemId, anheitern, bulky, lookStage, rauschStufe, raucht, speedy, state, wirtAktionen } from '../state';
 import { fadeTo, floatText } from '../ui';
 import { hud, toast } from './HudScene';
 import { touch } from '../touch';
@@ -11,6 +11,7 @@ import { SPEAKERS } from '../dialog/data';
 import { MapData, MapObject, MapZone, bedingungErfuellt, zoneGesperrt } from '../maps/types';
 import { MAP_DEFS } from '../maps/palettes';
 import { LightHint, streetCell, streetLights } from '../maps/streetView';
+import { wirtFigur } from '../dialog/kanal';
 
 export const T = 16;
 const ZOOM = 2;
@@ -40,8 +41,11 @@ export abstract class TopDown extends Phaser.Scene {
   protected player!: Phaser.GameObjects.Sprite;
   protected shadow!: Phaser.GameObjects.Image;
   protected carried?: Phaser.GameObjects.Sprite;
+  /** Adshayans Curry-Topf auf dem Kopf (Kapitel 8): langsam wie mit einer Leiche, dampft */
+  protected topf?: Phaser.GameObjects.Image;
+  private topfDampfT = 0;
   protected interacts: Interact[] = [];
-  private facing: 'down' | 'up' | 'side' = 'down';
+  protected facing: 'down' | 'up' | 'side' = 'down';
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private current: Interact | null = null;
@@ -74,6 +78,7 @@ export abstract class TopDown extends Phaser.Scene {
     this.actBlockedUntil = 0;
     this.actsBlocked = false;
     this.carried = undefined;
+    this.topf = undefined;
     this.current = null;
     this.slow = false;
     this.frozen = false;
@@ -84,7 +89,14 @@ export abstract class TopDown extends Phaser.Scene {
     this.qualmT = 0;
   }
 
-  create(data: { spawn?: [number, number] }) {
+  create(data: { spawn?: [number, number]; rausch?: number }) {
+    // Nach der Glanz-Mission ist Glanz Geschichte: ältere oder unstimmige Stände (Glanz lebt noch) geradeziehen,
+    // sonst sitzt er wieder in der Bar, obwohl die Stadt längst offen ist. Der Kapitelstand „Es ist erwacht“ wird mitten
+    // im Epilog gespeichert (Spiel gewonnen, läuft nicht): auch das hier geraderücken, sonst gibt es keine Zwischenstände.
+    if (state.flags.glanzErledigt && !state.dead) Object.assign(state, { dead: true, bodyInAlley: true, carrying: false, wish: null });
+    if (state.flags.glanzErledigt && state.gameOver === 'win') Object.assign(state, { gameOver: null, bodyDeadline: null, running: true });
+    // angeheitert ankommen (z. B. nach dem Feierabend mit Kalle)
+    if (data?.rausch) anheitern(data.rausch);
     this.rows = this.mapRows();
     const mw = Math.max(...this.rows.map((r) => r.length));
     this.rows = this.rows.map((r) => r.padEnd(mw, '.'));
@@ -152,12 +164,13 @@ export abstract class TopDown extends Phaser.Scene {
     const [ox, oy] = this.origin();
     const [sx, sy] = (data?.spawn ?? [2, 2]).map((v, i) => v + (i ? oy : ox));
     this.shadow = this.add.image(0, 0, 'shadow').setDepth(1);
-    this.player = this.add.sprite(sx * T + 8, sy * T + 14, 'wirt', 0).setOrigin(0.5, 1).setScale(0.5);
+    this.player = this.add.sprite(sx * T + 8, sy * T + 14, this.wirtAussehen(), 0).setOrigin(0.5, 1).setScale(0.5);
 
     this.setupWorld();
     this.befreien();
 
     if (state.carrying) this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5);
+    if (state.flags.curryTopf) this.topfAufnehmen();
 
     // Stimmung: Lichtkarte. Die Dunkelheit liegt über der Welt, jede Lichtquelle (addLight) radiert einen weichen Lichtkegel
     // hinein. So hellt eine Laterne ihre Umgebung wirklich auf, statt nur einen Leuchtfleck darüber zu legen.
@@ -176,7 +189,7 @@ export abstract class TopDown extends Phaser.Scene {
     // verschwinden nicht unter der oberen HUD-Leiste
     // Außenkarten: weiter nach oben schauen, damit Obergeschoss und Gesims der Fassaden im Bild sind (Blick die Straße
     // entlang auf die Häuser, nicht auf leeren Asphalt)
-    cam.setFollowOffset(0, sdef ? 26 : 14);
+    cam.setFollowOffset(0, sdef && !sdef.raum ? 26 : 14);
     cam.setRoundPixels(true);
     cam.setBackgroundColor('#0a0608');
     cam.fadeIn(260);
@@ -199,6 +212,22 @@ export abstract class TopDown extends Phaser.Scene {
       this.scene.sleep('Hud');
       touch.onAction = null;
     });
+  }
+
+  /** Aussehen des Wirts (Kanal-Paket: Wathose); nur wenn die Grafik schon geladen ist */
+  private wirtAussehen() {
+    const k = wirtFigur();
+    return this.textures.exists(k) ? k : 'wirt';
+  }
+
+  /** Curry-Topf auf den Kopf nehmen bzw. wieder weg */
+  protected topfAufnehmen() {
+    this.topf?.destroy();
+    this.topf = this.add.image(this.player.x, this.player.y - 21, 'curryTopf').setScale(0.5);
+  }
+  protected topfWeg() {
+    this.topf?.destroy();
+    this.topf = undefined;
   }
 
   // ---------------------------------------------------------------- Karten aus dem Map-Editor
@@ -494,7 +523,7 @@ export abstract class TopDown extends Phaser.Scene {
 
   // ---------------------------------------------------------------- Bewegung
 
-  private blocked(x: number, y: number) {
+  protected blocked(x: number, y: number) {
     const hw = 3.5, hh = 2.5;
     for (const [cx, cy] of [[x - hw, y - hh], [x + hw, y - hh], [x - hw, y + hh], [x + hw, y + hh]]) {
       const tx = Math.floor(cx / T), ty = Math.floor(cy / T);
@@ -773,7 +802,7 @@ export abstract class TopDown extends Phaser.Scene {
       vy += Math.cos(tt * 1.3) * 0.12 * rausch;
     }
     const len = Math.hypot(vx, vy) || 1;
-    const speed = (state.carrying || this.slow ? 46 : 74) * (speedy() ? 1.5 : 1) * (delta / 1000);
+    const speed = (state.carrying || this.slow || this.topf ? 46 : 74) * (speedy() ? 1.5 : 1) * (delta / 1000);
     const dx = (vx / len) * speed, dy = (vy / len) * speed;
     const p = this.player;
     if ((dx || dy) && this.befreien()) return;
@@ -796,11 +825,14 @@ export abstract class TopDown extends Phaser.Scene {
       }
     }
 
+    // Kanal-Paket gekauft oder abgelegt: Figur wechseln (andere Verwandlungen nicht überschreiben)
+    const fig = this.wirtAussehen();
+    if (p.texture.key !== fig && (p.texture.key === 'wirt' || p.texture.key === 'wirtKanal')) p.setTexture(fig, p.frame.name);
     if (vx || vy) {
       if (vx) this.facing = 'side';
       else this.facing = vy < 0 ? 'up' : 'down';
       if (this.facing === 'side') p.setFlipX(vx < 0);
-      p.anims.play(`wirt_${this.facing}`, true);
+      p.anims.play(`${p.texture.key === 'wirtKanal' ? 'wirtKanal' : 'wirt'}_${this.facing}`, true);
       this.stepT -= delta;
       if (this.stepT <= 0) {
         audio.sfx('step');
@@ -813,6 +845,15 @@ export abstract class TopDown extends Phaser.Scene {
     p.setDepth(p.y);
     this.shadow.setPosition(p.x, p.y - 1);
     if (this.carried) this.carried.setPosition(p.x, p.y - 22).setDepth(p.y + 1);
+    if (this.topf) {
+      this.topf.setPosition(p.x, p.y - 21).setDepth(p.y + 1);
+      this.topfDampfT -= delta;
+      if (this.topfDampfT <= 0) {
+        this.topfDampfT = 260;
+        const d = this.add.circle(p.x + Phaser.Math.Between(-3, 3), p.y - 25, 1.2, 0xf4e8d8, 0.55).setDepth(p.y + 2);
+        this.tweens.add({ targets: d, y: d.y - 10, x: d.x + Phaser.Math.Between(-3, 3), scale: 2.2, alpha: 0, duration: 900, onComplete: () => d.destroy() });
+      }
+    }
 
     // Nächste Interaktion
     let best: Interact | null = null, bestD = Infinity;

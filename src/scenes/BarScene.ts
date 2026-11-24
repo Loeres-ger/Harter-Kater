@@ -149,6 +149,8 @@ export class BarScene extends TopDown {
 
   protected setupWorld() {
     audio.music('kneipe');
+    // Kapitel 8: mit Adshayans Curry-Topf durch die Kneipe zum Herrenklo; Kalle ruft Happy Hour, alle spülen
+    if (state.flags.curryTopf) this.time.delayedCall(700, () => this.toast('Kalle: „Chef bringt Curry! HAPPY HOUR! Alles halber Preis!“ Oben rauschen alle Klospülungen gleichzeitig.'));
     this.enteredAt = this.time.now;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.anneEvent?.destroy(); hud.alert = ''; });
     const [vx, vy] = VICTIM_TILE;

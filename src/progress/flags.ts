@@ -46,6 +46,41 @@ export interface StoryFlags {
   basarSauber?: boolean;
   basarVersuche?: number;
 
+  /** „Unter dem Eimer“ (Teil 1, story/drehbuch-teil1.md): Stufe des Strangs; Bier und Buffet für Kevins Hochzeit */
+  kanal?: 'kaese' | 'vorbereitung' | 'probe' | 'entfuehrt' | 'ausruestung' | 'unten' | 'katze' | 'curry' | 'klaerwerk' | 'gerettet';
+  hochzeitBier?: boolean;
+  hochzeitBuffet?: boolean;
+  /** Kapitel 7: der Gullydeckel in der Hintergasse ist mit Tuncays Haken aufgehebelt */
+  gullyOffen?: boolean;
+  /** das Kanal-Paket (Wathose, Stirnlampe, Haken) ist ausgezogen */
+  wathoseAus?: boolean;
+  /** Kapitel 7: das Rostgitter hinter dem Einstieg ist aufgehebelt */
+  kanalGitterOffen?: boolean;
+  /** Schieberkammer: Wasser in Nord, Mitte, Süd (0/1) und das Fass (0 = weggespült, 1 = Nordufer, 2 = Südufer) */
+  schleuse?: [number, number, number, number];
+  /** einmal über die Schieberkammer gekommen */
+  schleuseGeloest?: boolean;
+  porscheGefunden?: boolean;
+  rolexGefunden?: boolean;
+  rolexVerkauft?: boolean;
+  /** Bianca aus dem Schleimkokon befreit */
+  biancaFrei?: boolean;
+  /** Felix ist dem Wirt in den Kanal gefolgt und wurde vom Wesen in die Brühe gezogen (bis Teil 2 verschwunden) */
+  felixKanal?: 'verloren';
+  /** Klo-Abkürzung: Kabine 1 der Herrentoilette führt durchs Rohr in den Kanal */
+  kloAbkuerzung?: boolean;
+  /** Phase 5: der Wirt trägt Adshayans großen Curry-Topf (langsam, wie mit einer Leiche) */
+  curryTopf?: boolean;
+  /** so oft hat Adshayan schon gekocht (beim zweiten Mal: „Schon wieder?“) */
+  curryGekocht?: number;
+  /** der Topf steht vor der Klärwerk-Tür, das Tentakelgitter hat sich zurückgezogen */
+  curryAnTuer?: boolean;
+  /** Klärwerk-Endkampf: gefütterte Ratten (Phase 1) und ob der Kampf schon im Duell ist (Phase 2) */
+  klaerwerkRatten?: number;
+  klaerwerk?: 'duell' | 'ende';
+  /** Brenningers Akte „Projekt Achtarm“ (nach dem Klärwerk) */
+  akte?: boolean;
+
   /** Xavi-Strang: Leni hat um Hilfe gebeten, Cemo hat die Spur verraten (Tuncay), Tuncay hat den Club verraten, Xavi ist gerettet */
   xavi?: 'vermisst' | 'spur' | 'club' | 'gerettet';
 

@@ -29,6 +29,11 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'beweismittel', name: 'Beweismittelbeschaffer', desc: 'Claudius’ Mails mit der BLÖD-Zeitung gelesen.', icon: 'ach_file' },
   { id: 'pressefreiheit', name: 'Pressefreiheit mit Nebenwirkungen', desc: 'Claudius’ Gegen-Hacker geschlagen und die Fake-Statistiken an seriöse Redaktionen geschickt.', icon: 'ach_mic' },
   { id: 'neugierig', name: 'Ortskundig', desc: 'Alle kleinen Geheimnisse der Stadt gefunden.', icon: 'ach_file', hidden: true, hint: 'Schau genauer hin. Und öfter.' },
+  { id: 'proteinMitSeele', name: 'Protein mit Seele', desc: 'Kevin hat Jan mit Käse erobert.', icon: 'ach_kaese' },
+  { id: 'kanalratte', name: 'Kanalratte', desc: 'Zum ersten Mal in die Kanalisation gestiegen.', icon: 'ach_ente' },
+  { id: 'schleusenwaerter', name: 'Schleusenwärter', desc: 'Die Schieberkammer bezwungen. Heinz wäre stolz.', icon: 'ach_schleuse' },
+  { id: 'zweiSeelen', name: 'Zwei Seelen, ein Fell', desc: 'Zehn Ratten verfüttert, auf die Monsterkatze gestiegen.', icon: 'ach_katzenwirt' },
+  { id: 'geweihAb', name: 'Geweih ab!', desc: 'Den Oktopushirsch im Klärwerk versenkt. Jan ist frei.', icon: 'ach_geweih' },
   { id: 'blitzblank', name: 'Blitzblank', desc: 'Adshayans Curry von den Fliesen geschrubbt.', icon: 'ach_sponge' },
   { id: 'glasWasser', name: 'Ein Glas Wasser', desc: 'Leni ein Glas Wasser hingestellt.', icon: 'ach_glass', hidden: true, hint: 'Auf der Damentoilette braucht wer Hilfe.' },
 ];

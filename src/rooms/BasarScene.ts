@@ -7,6 +7,8 @@ import { unlock } from '../progress/achievements';
 import { floatText } from '../ui';
 import type { DialogAction } from '../dialog/data';
 import { ALLEY_BASAR_SPAWN } from './spawns';
+import { strangZiel } from '../progress/quests';
+import { WandlungUI } from './WandlungUI';
 
 // „Masala Basar“: der indische Laden in der Weststadt (offen, sobald die Baustellen weg sind).
 // Adshayan steht hinter der Theke. Nach der Eröffnungsfeier liegt sein Curry überall auf dem Boden;
@@ -57,6 +59,7 @@ export class BasarScene extends TopDown {
   }
 
   protected goalText() {
+    if (state.flags.basarSauber && strangZiel(state.flags)) return strangZiel(state.flags)!;
     return state.flags.basarSauber ? 'Masala Basar. Curry, Lassi und der sauberste Boden der Stadt.' : 'Adshayan hinter der Theke braucht Hilfe. Dringend.';
   }
 
@@ -87,6 +90,210 @@ export class BasarScene extends TopDown {
     spot(8 * T + 16, 5 * T + 2, 'Gewürzkegel', () => 'Perfekte Kegel aus Gewürzpulver. Ein Schild davor: „Wer niest, zahlt.“');
     spot(3 * T, 5 * T + 2, 'Reissäcke', () => 'Basmati, 25 Kilo. Auf einem Sack ist ein Abdruck. Hier hat jemand geschlafen. Nach der Feier, vermutlich.');
     this.addAdshayan();
+  }
+
+  // ---------------------------------------------------------------- Kapitel 8: Adshayan kocht den großen Topf
+  // Zwischensequenz in der Welt (Kinobalken, Untertitel zum Durchklicken, ESC überspringt): Adshayan holt den Topf von
+  // der Eröffnung, wirft Gewürze und Chilis hinein, der Laden füllt sich mit Rauch, er weint vor Schärfe und probiert
+  // NICHT. Am Ende hebt der Wirt den Topf auf den Kopf und trägt ihn langsam zum Eimer.
+
+  private kino = false;
+  private kinoAus = false;
+  private ui?: WandlungUI;
+
+  private tw(cfg: Phaser.Types.Tweens.TweenBuilderConfig) {
+    return new Promise<void>((done) => this.tweens.add({ ...cfg, onComplete: () => done() }));
+  }
+
+  private klick() {
+    return new Promise<void>((done) => {
+      const kb = this.input.keyboard!;
+      const start = this.time.now;
+      let fertig = false;
+      const ende = () => {
+        if (fertig) return;
+        fertig = true;
+        kb.off('keydown-E', weiter); kb.off('keydown-SPACE', weiter); kb.off('keydown-ENTER', weiter);
+        this.input.off('pointerdown', weiter);
+        this.events.off('kinoAus', ende);
+        done();
+      };
+      const weiter = () => { if (this.time.now - start > 350) ende(); };
+      kb.on('keydown-E', weiter); kb.on('keydown-SPACE', weiter); kb.on('keydown-ENTER', weiter);
+      this.input.on('pointerdown', weiter);
+      this.events.once('kinoAus', ende);
+    });
+  }
+
+  private async sagK(wer: string, farbe: string, text: string) {
+    if (this.kinoAus) return;
+    this.ui?.zeige(wer, farbe, text);
+    this.ui?.weiterZeigen(true);
+    await this.klick();
+    this.ui?.weiterZeigen(false);
+  }
+
+  /** Gewürzwolke über dem Topf */
+  private wolke(x: number, y: number, farbe: number) {
+    for (let i = 0; i < 7; i++) {
+      const w = this.add.circle(x + Phaser.Math.Between(-4, 4), y, Phaser.Math.FloatBetween(1.5, 3), farbe, 0.7).setDepth(5000);
+      this.tweens.add({ targets: w, x: w.x + Phaser.Math.Between(-14, 14), y: w.y - Phaser.Math.Between(8, 22), scale: 3, alpha: 0, duration: Phaser.Math.Between(800, 1400), onComplete: () => w.destroy() });
+    }
+  }
+
+  private async curryKochen() {
+    const f = state.flags, a = this.adshayan;
+    if (!a || this.kino) return;
+    const nochmal = (f.curryGekocht ?? 0) > 0;
+    this.kino = true;
+    this.kinoAus = false;
+    this.frozen = true;
+    hud.prompt = '';
+    this.scene.launch('WandlungUI');
+    this.scene.bringToTop('WandlungUI');
+    this.scene.sleep('Hud');
+    this.ui = this.scene.get('WandlungUI') as WandlungUI;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.kinoAus = true; this.scene.stop('WandlungUI'); });
+    this.input.keyboard!.once('keydown-ESC', () => this.kochenEnde());
+    this.tweens.killTweensOf(a);
+    const [ax, ay] = ADSHAYAN_TILE;
+    const tx = (ax + 1) * T + 8, ty = (ay + 1) * T + 6;
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    cam.pan(tx - 8, ty - 6, 800, 'Sine.easeInOut');
+    cam.zoomTo(2.8, 800, 'Sine.easeInOut');
+    const p = this.player;
+    void this.tw({ targets: p, x: tx, y: ty + 2 * T + 4, duration: 700 }).then(() => p.setFrame(3));
+    await this.wartet(800);
+    if (this.kinoAus) return;
+
+    // ---- der große Topf kommt auf die Flamme
+    const flamme = this.add.image(tx, ty + 6, 'curryFlamme').setScale(0.5).setDepth(ty + 30).setAlpha(0);
+    const topf = this.add.image(tx, ty - 34, 'curryTopf').setScale(0.6).setDepth(ty + 31);
+    this.kochTopf = topf;
+    this.kochFlamme = flamme;
+    audio.sfx('rummage');
+    await this.tw({ targets: topf, y: ty, duration: 420, ease: 'Bounce.easeOut' });
+    audio.sfx('clang');
+    cam.shake(140, 0.004);
+    this.tweens.add({ targets: flamme, alpha: 1, duration: 300 });
+    this.tweens.add({ targets: flamme, scaleY: 0.6, duration: 160, yoyo: true, repeat: -1 });
+    const glut = this.addLight(tx, ty, 0.6, 0.6).setTint(0xff8a2a);
+    this.kochExtras.push(glut);
+    const blubber = this.time.addEvent({
+      delay: 140, loop: true, callback: () => {
+        const b = this.add.circle(tx + Phaser.Math.Between(-6, 6), ty - 3, 0.8, 0xffb040, 0.9).setDepth(ty + 32);
+        this.tweens.add({ targets: b, y: b.y - 3, scale: 1.8, alpha: 0, duration: 380, onComplete: () => b.destroy() });
+      },
+    });
+    this.kochExtras.push(blubber);
+    if (!nochmal) await this.sagK('ADSHAYAN', '#ffb040', 'Kreuzkümmel. Kardamom. Bockshornklee. Und das Glas, auf dem VORSICHT steht.');
+    if (this.kinoAus) return;
+
+    // ---- Gewürze und Chilis: er rennt zwischen Regal und Topf hin und her
+    const regal = [ax * T - 8, (ax + 2) * T + 8, (ax - 1) * T + 8, (ax + 3) * T + 8];
+    const farben = [0xf0c020, 0xe0701a, 0x6a9a2a, 0xd02a1a];
+    const rauch = this.add.rectangle(0, 0, this.rows[0].length * T, this.rows.length * T, 0xff8a2a, 0).setOrigin(0).setDepth(4998);
+    this.kochExtras.push(rauch);
+    for (let i = 0; i < (nochmal ? 2 : 4); i++) {
+      if (this.kinoAus) return;
+      a.setFrame(6).setFlipX(regal[i] < a.x);
+      await this.tw({ targets: a, x: regal[i], duration: 260, ease: 'Quad.easeInOut' });
+      a.setFrame(3);
+      await this.wartet(160);
+      a.setFrame(6).setFlipX(tx < a.x);
+      await this.tw({ targets: a, x: tx - 10, duration: 260, ease: 'Quad.easeInOut' });
+      a.setFrame(0);
+      // werfen
+      for (let k = 0; k < 2; k++) {
+        const ch = this.add.image(a.x, a.y - 14, 'chili').setScale(0.5).setDepth(ty + 33);
+        this.tweens.add({ targets: ch, x: tx + Phaser.Math.Between(-3, 3), duration: 320, delay: k * 90 });
+        this.tweens.add({ targets: ch, y: ty - 16, duration: 160, delay: k * 90, ease: 'Quad.easeOut', onComplete: () => this.tweens.add({ targets: ch, y: ty - 2, angle: 360, duration: 160, ease: 'Quad.easeIn', onComplete: () => ch.destroy() }) });
+      }
+      audio.sfx('zisch');
+      this.wolke(tx, ty - 6, farben[i]);
+      this.tweens.add({ targets: rauch, fillAlpha: Math.min(0.32, rauch.fillAlpha + 0.08), duration: 400 });
+      cam.shake(100, 0.002);
+      await this.wartet(380);
+    }
+    if (this.kinoAus) return;
+
+    // ---- die Schärfe: Tränen, Husten
+    const traenen = this.time.addEvent({
+      delay: 180, loop: true, callback: () => {
+        for (const dx of [-2, 2]) {
+          const t = this.add.circle(a.x + dx, a.y - 15, 0.7, 0x8ac8ff, 0.9).setDepth(a.depth + 1);
+          this.tweens.add({ targets: t, y: t.y + 8, alpha: 0, duration: 500, onComplete: () => t.destroy() });
+        }
+      },
+    });
+    this.kochExtras.push(traenen);
+    floatText(this, a.x, a.y - 22, 'HUST! HUST!', '#ffb040');
+    this.tweens.add({ targets: a, x: a.x + 1, duration: 60, yoyo: true, repeat: 8 });
+    await this.sagK('ADSHAYAN', '#ffb040', 'Meine Augen! Meine AUGEN! ... Das ist gut. Das heißt, es wirkt.');
+    floatText(this, p.x, p.y - 22, 'hust', '#f4ead0');
+    await this.sagK('WIRT', '#f4ead0', '(Mir tränen die Augen. Und ich stehe zwei Meter weg.)');
+    if (this.kinoAus) return;
+
+    // ---- der Löffel. Er probiert NICHT.
+    const loeffel = this.add.rectangle(a.x + 4, a.y - 8, 1, 6, 0xc8c8d0).setDepth(a.depth + 2);
+    this.kochExtras.push(loeffel);
+    await this.tw({ targets: loeffel, y: a.y - 14, duration: 500, ease: 'Sine.easeOut' });
+    this.tweens.add({ targets: loeffel, x: loeffel.x + 1, duration: 50, yoyo: true, repeat: 14 });
+    await this.sagK('ADSHAYAN', '#ffb040', 'Nicht probieren. NICHT probieren. ... Ich probiere nicht.');
+    await this.tw({ targets: loeffel, y: a.y + 6, alpha: 0, duration: 400, ease: 'Quad.easeIn' });
+    if (this.kinoAus) return;
+
+    // ---- fertig: der Topf glüht und zischt
+    audio.sfx('zisch');
+    audio.sfx('roar');
+    cam.flash(160, 255, 140, 40);
+    cam.shake(300, 0.005);
+    this.wolke(tx, ty - 8, 0xd02a1a);
+    this.tweens.add({ targets: glut, scale: 1.1, alpha: 0.85, duration: 300, yoyo: true, repeat: 2 });
+    await this.sagK('ADSHAYAN', '#ffb040', nochmal
+      ? 'Fertig. Diesmal noch schärfer. Ich habe aus Versehen die Wut mit reingekocht.'
+      : 'Fertig. Er ist ... lebendig. Trag ihn vorsichtig. Und sprich nicht mit ihm.');
+    if (this.kinoAus) return;
+    // der Wirt nimmt den Topf auf den Kopf
+    await this.tw({ targets: p, x: tx, y: ty + T + 8, duration: 400 });
+    await this.tw({ targets: topf, x: p.x, y: p.y - 21, scale: 0.5, duration: 420, ease: 'Quad.easeOut' });
+    this.kochenEnde();
+  }
+
+  private kochTopf?: Phaser.GameObjects.Image;
+  private kochFlamme?: Phaser.GameObjects.Image;
+  private kochExtras: { destroy?: () => void; remove?: () => void }[] = [];
+
+  /** Ende (auch beim Überspringen): Topf auf dem Kopf, raus aus dem Kino */
+  private kochenEnde() {
+    if (!this.kino) return;
+    this.kino = false;
+    this.kinoAus = true;
+    this.events.emit('kinoAus');
+    const f = state.flags;
+    f.curryTopf = true;
+    f.curryGekocht = (f.curryGekocht ?? 0) + 1;
+    this.ui?.leer();
+    this.scene.stop('WandlungUI');
+    this.scene.wake('Hud');
+    this.kochTopf?.destroy();
+    this.kochFlamme?.destroy();
+    for (const x of this.kochExtras) { x.remove?.(); x.destroy?.(); }
+    this.kochExtras = [];
+    const a = this.adshayan;
+    if (a) {
+      const [ax, ay] = ADSHAYAN_TILE;
+      this.tweens.killTweensOf(a);
+      a.setPosition(ax * T + 8, ay * T + 14).setFrame(0).setFlipX(false);
+      this.tweens.add({ targets: a, y: a.y - 1, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+    this.topfAufnehmen();
+    const cam = this.cameras.main;
+    cam.zoomTo(2, 500);
+    cam.startFollow(this.player, true, 0.12, 0.12);
+    this.frozen = false;
+    this.toast('Der Topf ist schwer und heiß. Ab zum Eimer: durch die Herrentoilette, Kabine 1, runter zur Klärwerk-Tür.');
   }
 
   /** bunte Lichterkette entlang der Rückwand, die Lämpchen blinken versetzt */
@@ -149,6 +356,8 @@ export class BasarScene extends TopDown {
       this.scene.launch('Shop', { shop: 'basar', resume: 'Basar' });
       this.scene.bringToTop('Shop');
       this.scene.pause();
+    } else if (a === 'curryKochen') {
+      void this.curryKochen();
     } else if (a === 'putzen') {
       hud.prompt = '';
       this.scene.launch('Putzen', { resume: this.scene.key, onDone: (win: boolean) => this.putzDone(win) });

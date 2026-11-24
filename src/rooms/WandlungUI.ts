@@ -7,6 +7,7 @@ export class WandlungUI extends Phaser.Scene {
   private name!: Phaser.GameObjects.Text;
   private text!: Phaser.GameObjects.Text;
   private oben!: Phaser.GameObjects.Rectangle;
+  private weiter?: Phaser.GameObjects.Text;
   private unten!: Phaser.GameObjects.Rectangle;
 
   constructor() {
@@ -20,7 +21,10 @@ export class WandlungUI extends Phaser.Scene {
     this.tweens.add({ targets: this.oben, y: 0, duration: 400, ease: 'Quad.easeOut' });
     this.tweens.add({ targets: this.unten, y: H - 36, duration: 400, ease: 'Quad.easeOut' });
     this.name = txt(this, 12, H - 32, '', '#ff5040');
-    this.text = txt(this, 12, H - 20, '', '#f4ead0').setWordWrapWidth(W - 24);
+    this.text = txt(this, 12, H - 20, '', '#f4ead0').setWordWrapWidth(W - 44);
+    // Hinweis „weiter“, wenn eine Szene auf einen Klick wartet (Felix-Szene im Kanal)
+    this.weiter = txt(this, W - 8, H - 10, '>>', '#f4ead0').setOrigin(1, 0.5).setVisible(false);
+    this.tweens.add({ targets: this.weiter, alpha: 0.35, duration: 450, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     const skip = txt(this, W - 8, 6, 'ESC: überspringen', '#6a5a4a').setOrigin(1, 0).setAlpha(0);
     this.time.delayedCall(2500, () => skip.setAlpha(0.6));
   }
@@ -30,6 +34,10 @@ export class WandlungUI extends Phaser.Scene {
     this.name.setText(wer).setColor(farbe);
     this.text.setText(text).setAlpha(0);
     this.tweens.add({ targets: this.text, alpha: 1, duration: 200 });
+  }
+
+  weiterZeigen(an: boolean) {
+    this.weiter?.setVisible(an);
   }
 
   leer() {

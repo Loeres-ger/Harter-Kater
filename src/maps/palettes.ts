@@ -1,3 +1,5 @@
+import type { LightHint } from './streetView';
+
 // Kachel-Tabellen je Karte: welches Zeichen welche Grafik hat, ob es fest ist und ob es eine Wand ist.
 // Spiel (AlleyScene) und Map-Editor lesen dieselbe Tabelle, deshalb sieht der Editor genau das, was das Spiel baut.
 
@@ -24,6 +26,17 @@ export interface MapDef {
   floor: (rows: string[], x: number, y: number) => string;
   /** Dunkelheit der Lichtkarte (0..1), gilt für Spiel und Editor-Spielansicht */
   dunkel: number;
+  /** Innenraum statt Straßenansicht: Wände zeigen vorn ihre Front, sonst die Draufsicht (wandOben); ohne Fassaden-Regel */
+  raum?: {
+    wandOben: string;
+    /** Schatten auf dem Boden direkt unter einer Wand */
+    schatten?: string;
+    /** Kante auf begehbarem Boden, wenn darunter das Zeichen wasser liegt */
+    kante?: string;
+    wasser?: string;
+  };
+  /** Lichter der Karte (Spiel und Editor-Spielansicht); sonst die der Straßenansicht */
+  lichter?: (rows: string[]) => LightHint[];
 }
 
 const v = (a: string, b: string, f: (x: number, y: number) => boolean) => (x: number, y: number) => (f(x, y) ? a : b);
@@ -120,8 +133,63 @@ export function alleyFloor(rows: string[], x: number, y: number) {
   return `cobble${(x * 5 + y * 11) % 3}`;
 }
 
+// ---------------------------------------------------------------- Kanalisation („Unter dem Eimer“)
+
+/** Kanalisation unter der Stadt: Betonstege, Abwasserrinnen, nasse Backsteinwände */
+export const KANAL_TILES: Record<string, TileDef> = {
+  '.': { label: 'Betonsteg', key: '', solid: false, group: 'Boden' },
+  '~': { label: 'Abwasser (nicht begehbar)', key: v('kanalWasser0', 'kanalWasser1', (x, y) => (x * 3 + y) % 4 !== 0), solid: true, group: 'Boden' },
+  b: { label: 'Holzbrücke', key: 'kanalBruecke', solid: false, group: 'Boden' },
+  x: { label: 'Schleim', key: 'kanalSchleimBoden', solid: false, group: 'Boden' },
+  n: { label: 'Nische (Schutz vor Spülwellen)', key: 'kanalNische', solid: false, group: 'Boden' },
+  '#': { label: 'Backsteinwand', key: 'kanalWandFront', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  H: { label: 'Wand mit Rohr', key: 'kanalRohrFront', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  G: { label: 'Lichtschacht (Gitter nach oben)', key: 'kanalGitterFront', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  K: { label: 'Kreide-Graffiti', key: 'kanalKreideFront', solid: true, wall: true, group: 'Mauern & Fassaden' },
+  L: { label: 'Leiter zum Gully', key: 'kanalLeiterFront', solid: true, wall: true, group: 'Figuren & Spezial' },
+  D: { label: 'Stahltür (Klärwerk)', key: 'kanalTuerFront', solid: true, wall: true, group: 'Figuren & Spezial' },
+  Z: { label: 'Rostgitter (versperrt)', key: 'kanalTor', solid: true, group: 'Figuren & Spezial' },
+  f: { label: 'Fass', key: 'kanalFass', solid: true, object: true, group: 'Objekte' },
+  m: { label: 'Müllhaufen', key: 'kanalMuell', solid: true, object: true, group: 'Objekte' },
+  S: { label: 'Schieber (hier wacht man nach Ohnmacht/Spülwelle auf)', key: 'kanalSchieber', solid: true, object: true, group: 'Objekte' },
+  r: { label: 'Spülrinne (trocken, hier rollen die Wellen)', key: 'kanalRinne', solid: false, group: 'Boden' },
+  P: { label: 'Rattenloch (Rudel)', key: 'kanalRattenlochFront', solid: true, wall: true, group: 'Figuren & Spezial' },
+  '1': { label: 'Schieberkammer: Rinne Nord', key: 'kanalWasser0', solid: true, group: 'Figuren & Spezial' },
+  '2': { label: 'Schieberkammer: Rinne Mitte', key: 'kanalWasser0', solid: true, group: 'Figuren & Spezial' },
+  '3': { label: 'Schieberkammer: Rinne Süd (tief, Fass)', key: 'kanalWasser1', solid: true, group: 'Figuren & Spezial' },
+  q: { label: 'Schieber Rot (Nord → Mitte)', key: 'kanalSchieberRot', solid: true, object: true, group: 'Figuren & Spezial' },
+  w: { label: 'Schieber Gelb (Mitte → Süd)', key: 'kanalSchieberGelb', solid: true, object: true, group: 'Figuren & Spezial' },
+  e: { label: 'Schieber Grün (Süd → Nord)', key: 'kanalSchieberGruen', solid: true, object: true, group: 'Figuren & Spezial' },
+  h: { label: 'Hebel: alles auf Anfang', key: 'kanalHebel', solid: true, object: true, group: 'Figuren & Spezial' },
+  k: { label: 'Gitter mit Porsche-Schlüssel', key: 'kanalGitterSchluesselFront', solid: true, wall: true, group: 'Figuren & Spezial' },
+  u: { label: 'Müll mit Rolex', key: 'kanalMuellRolex', solid: true, object: true, group: 'Figuren & Spezial' },
+  c: { label: 'Schleimkokon (Bianca)', key: 'kanalKokon', solid: true, object: true, group: 'Figuren & Spezial' },
+};
+
+export function kanalFloor(rows: string[], x: number, y: number) {
+  const ch = rows[y]?.[x];
+  if (ch === '~' || ch === 'b' || ch === '1' || ch === '2' || ch === '3') return (x * 3 + y) % 4 ? 'kanalWasser0' : 'kanalWasser1';
+  const h = (x * 7 + y * 13) % 9;
+  return h === 0 ? 'kanalSteg1' : h === 4 ? 'kanalSteg2' : 'kanalSteg0';
+}
+
+/** Kaltes Licht fällt durch die Gitter der Lichtschächte, die Leiter bekommt etwas Schein vom Gully */
+export function kanalLichter(rows: string[]): LightHint[] {
+  const out: LightHint[] = [];
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch === 'G') out.push({ x: x * 16 + 8, y: (y + 1) * 16 + 6, scale: 0.9, alpha: 0.55, tint: 0x9ac8e8, pool: true });
+    if (ch === 'L') out.push({ x: x * 16 + 8, y: (y + 1) * 16 + 2, scale: 0.6, alpha: 0.45, tint: 0xd8e0c8, pool: true });
+    if (ch === 'x') out.push({ x: x * 16 + 8, y: y * 16 + 8, scale: 0.3, alpha: 0.5, tint: 0x6aff4a, pool: false });
+  }));
+  return out;
+}
+
 export const MAP_DEFS: Record<string, MapDef> = {
   alley: { id: 'alley', name: 'Straße und Gasse', tiles: ALLEY_TILES, empty: '.', floor: alleyFloor, dunkel: 0.66 },
+  kanal: {
+    id: 'kanal', name: 'Kanalisation', tiles: KANAL_TILES, empty: '.', floor: kanalFloor, dunkel: 0.9, lichter: kanalLichter,
+    raum: { wandOben: 'kanalWandTop', schatten: 'kanalSchatten', kante: 'kanalKante', wasser: '~' },
+  },
 };
 
 export function tileKey(def: TileDef | undefined, x: number, y: number) {

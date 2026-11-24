@@ -11,6 +11,8 @@ import { makeLadenTextures } from '../rooms/ladenGfx';
 import { makeClubTextures } from '../rooms/clubGfx';
 import { makeShishaTextures } from '../rooms/shishaGfx';
 import { makeBasarTextures } from '../rooms/basarGfx';
+import { makeKanalTextures } from '../rooms/kanalGfx';
+import { makeKanalTiles } from '../world/kanalTiles';
 import { makePassantenTextures } from '../world/passantenGfx';
 import { STRASSEN_NPCS } from '../world/passanten';
 import { makeXaviTextures } from '../rooms/xaviGfx';
@@ -92,6 +94,7 @@ export class TitleScene extends Phaser.Scene {
       ['Stripclub', () => makeClubTextures(this)],
       ['Shisha-Bar', () => makeShishaTextures(this)],
       ['Masala Basar', () => makeBasarTextures(this)],
+      ['Unter dem Eimer', () => { makeKanalTextures(this); makeKanalTiles(this); }],
       ['Leute auf der Straße', () => { if (STRASSEN_NPCS) makePassantenTextures(this); }],
       ['Xavi-Strang', () => makeXaviTextures(this)],
       ['Bornas Business', () => makeNickTextures(this)],

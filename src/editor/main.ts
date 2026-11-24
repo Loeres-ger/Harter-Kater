@@ -12,6 +12,7 @@ import { makeAnneTextures } from '../events/anne';
 import { makeClaudiusTextures } from '../events/claudius';
 import { makeStreetTextures } from '../world/street';
 import { makeCityTextures } from '../world/city';
+import { makeKanalTiles } from '../world/kanalTiles';
 import alleyFile from '../maps/alley.json';
 import { MAP_DEFS, MapDef, TileDef, tileKey } from '../maps/palettes';
 import type { MapData, MapObject, MapZone, ObjectKind, ZoneState } from '../maps/types';
@@ -593,7 +594,7 @@ function runCheck() {
     seen.add(k);
     queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
   }
-  const NAMEN: Record<string, string> = { D: 'Kneipentür', Q: 'Hintertür der Kneipe', U: 'Eingang Feinkostladen', A: 'Kippenautomat' };
+  const NAMEN: Record<string, string> = def.id === 'kanal' ? { L: 'Leiter zum Gully' } : { D: 'Kneipentür', Q: 'Hintertür der Kneipe', U: 'Eingang Feinkostladen', A: 'Kippenautomat' };
   const anzahl: Record<string, number> = {};
   for (let y = 0; y < H(); y++)
     for (let x = 0; x < W(); x++) {
@@ -1287,7 +1288,7 @@ game = new Phaser.Game({
   audio: { noAudio: true },
   scene: class extends Phaser.Scene {
     create() {
-      for (const make of [makeAllTextures, makeCasinoTextures, makeGuestTextures, makeWorldTextures, makeLeonardTextures, makeAchievementIcons, makeRoomTextures, makeLadenTextures, makeAnneTextures, makeClaudiusTextures, makeStreetTextures, makeCityTextures]) {
+      for (const make of [makeAllTextures, makeCasinoTextures, makeGuestTextures, makeWorldTextures, makeLeonardTextures, makeAchievementIcons, makeRoomTextures, makeLadenTextures, makeAnneTextures, makeClaudiusTextures, makeStreetTextures, makeCityTextures, makeKanalTiles]) {
         try {
           make(this);
         } catch (err) {

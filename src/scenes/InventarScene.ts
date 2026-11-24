@@ -3,13 +3,14 @@ import { audio } from '../audio';
 import { ALL_ITEMS, ItemDef, ItemId, benutze, state } from '../state';
 import { H, W, txt } from '../ui';
 import { Btn } from './ShopScene';
+import { toast } from './HudScene';
 
 // Inventar: alle Waren an einem Ort. Öffnen mit dem Knopf unter dem Pause-Knopf oder der Taste I.
 // Jede Ware lässt sich selbst benutzen (trinken, rauchen, schlucken, essen). Die Wirkung und eine kleine Animation
 // spielt danach die Draufsicht-Szene am Wirt ab (state.benutze, TopDown).
 
 /** Szenen, in denen der Wirt herumläuft: nur dort lässt sich das Inventar öffnen */
-export const GAMEPLAY = ['Bar', 'Alley', 'Dach', 'HerrenWC', 'DamenWC', 'Laden', 'Club', 'Shisha', 'Basar', 'Keller'];
+export const GAMEPLAY = ['Bar', 'Alley', 'Dach', 'HerrenWC', 'DamenWC', 'Laden', 'Club', 'Shisha', 'Basar', 'Keller', 'Kanal'];
 
 const COLS = 5, SLOT = 56, GAP = 4;
 
@@ -135,13 +136,21 @@ export class InventarScene extends Phaser.Scene {
     this.textT.setText(def.text);
     this.wirkT.setText(`Wirkung: ${def.wirkung}`);
     this.haveT.setText(n > 0 ? `Im Inventar: ${n}` : 'Nichts mehr da.');
-    this.useBtn.setLabel(def.verb);
-    this.useBtn.setEnabled(n > 0 && !def.quest);
+    this.useBtn.setLabel(def.tragen && def.tragen.an() ? def.tragen.verbAus : def.verb);
+    this.useBtn.setEnabled(n > 0 && (!def.quest || !!def.tragen));
   }
 
   private use() {
     if (this.closing) return;
     const def = this.items[this.sel];
+    if (def.tragen && state.inv[def.id] > 0) {
+      const text = def.tragen.wechseln();
+      audio.sfx('rummage');
+      this.refresh();
+      this.closing = true;
+      this.time.delayedCall(220, () => { this.closing = false; this.close(); toast(text); });
+      return;
+    }
     if (def.quest) {
       audio.sfx('error');
       this.haveT.setText(def.nein ?? 'Das brauchst du noch.').setColor('#e07a7a');

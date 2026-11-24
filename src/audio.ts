@@ -19,10 +19,11 @@ const STUECK = {
   club: { dateien: ['club'] }, kampf: { dateien: ['kampf'] }, pruegel: { dateien: ['pruegel'] }, galopp: { dateien: ['galopp'] },
   quiz: { dateien: ['quiz'] }, pc: { dateien: ['pc'] }, marsch: { dateien: ['marsch'] }, ritual: { dateien: ['ritual'] },
   spannung: { dateien: ['spannung'] }, traurig: { dateien: ['traurig'] }, erloesung: { dateien: ['erloesung'] }, monster: { dateien: ['monster'] },
-  basar: { dateien: ['basar'] }, putzen: { dateien: ['putzen'] },
+  basar: { dateien: ['basar'] }, putzen: { dateien: ['putzen'] }, probe: { dateien: ['probe'] }, kanal: { dateien: ['kanal'] }, schleuse: { dateien: ['schleuse'] },
   shisha: { dateien: ['shisha_p1', 'shisha_p2'], phase: 1 },
   shishaDuell: { dateien: ['shisha_p1', 'shisha_p2'], phase: 2 },
   hoelle: { dateien: ['hoelle_p1', 'hoelle_p2', 'hoelle_p3'] },
+  klaerwerk: { dateien: ['klaerwerk_p1', 'klaerwerk_p2', 'klaerwerk_p3'] },
   // Nicks Keller: mit audio.synthRendern() aus dem Synth vorgerendert (läuft so auch auf dem Handy ohne Aussetzer)
   keller: { dateien: ['keller'] }, kellerClean: { dateien: ['kellerClean'] },
 } satisfies Record<string, { dateien: string[]; phase?: number }>;

@@ -6,6 +6,11 @@ import { floatText } from '../ui';
 import { DANCER_LOOKS } from './clubGfx';
 import { ALLEY_CLUB_SPAWN } from './spawns';
 import type { DialogAction } from '../dialog/data';
+import { janWeg, kanalAb } from '../dialog/kanal';
+import { STRAENGE, starteStrang, strangZiel } from '../progress/quests';
+import { unlock } from '../progress/achievements';
+import { hud } from '../scenes/HudScene';
+import type { WandlungUI } from './WandlungUI';
 
 // „Muskelkater“: Stripclub mit Ladies Night. Männliche Tänzer in Kostümen tanzen an den Stangen, laufen über den
 // Laufsteg und tanzen zwischendurch vor einzelnen Gästen. Gäste sitzen, jubeln, werfen Scheine, holen sich Getränke
@@ -54,6 +59,11 @@ const KEVIN_SEAT: Pt = [10, 10];
 /** Leni Blume, Chefin des Clubs, steht neben ihrem Türsteher am VIP-Bereich */
 const LENI2: Pt = [6, 12];
 const BALL = { x: 13 * T + 8, y: 4 * T };
+/** Kapitel 6, Trauung auf dem Laufsteg: Kevin links, Jan rechts, Leni Blume traut unter dem Rosenbogen */
+const KEVIN_TRAU = { x: 12 * T + 12, y: 8 * T + 14 };
+const JAN_TRAU = { x: 14 * T + 4, y: 8 * T + 14 };
+/** Weg des Tentakels: durch die Eingangstür, den Gang hoch, auf den Laufsteg zu Jan (Pixel) */
+const TENTAKEL_WEG = [[18 * T + 8, 17 * T + 10], [18 * T + 8, 15 * T + 4], [17 * T + 6, 13 * T + 6], [15 * T + 10, 11 * T + 4], [14 * T + 10, 9 * T + 12], [JAN_TRAU.x, JAN_TRAU.y - 2]];
 
 /** Wer wo sitzt bzw. steht (Kachel des Sitzplatzes) */
 const GUESTS: [string, Pt][] = [
@@ -119,6 +129,13 @@ export class ClubScene extends TopDown {
   private sparkles?: Phaser.GameObjects.Graphics;
   private tipIt!: Interact;
   private tipTarget?: Npc;
+  /** Kapitel 6: Trauung und Entführung als Szene im Club */
+  private kino = false;
+  private kinoAus = false;
+  private ui?: WandlungUI;
+  private leni2Sp?: Phaser.GameObjects.Sprite;
+  private dunkel?: Phaser.GameObjects.Rectangle;
+  private flackern = 0;
 
   constructor() {
     super('Club');
@@ -132,6 +149,9 @@ export class ClubScene extends TopDown {
     this.seats = [];
     this.spots = [];
     this.dancers = [];
+    this.kino = false;
+    this.kinoAus = false;
+    this.flackern = 0;
     this.barWait = [];
     this.barTaken = new Set();
     this.tipTarget = undefined;
@@ -140,7 +160,7 @@ export class ClubScene extends TopDown {
   protected mapRows() { return MAP; }
   protected isWall(ch: string) { return '#nVPhDW'.includes(ch); }
   protected darkness() { return 0.42; }
-  protected goalText() { return 'Muskelkater: Ladies Night. Jeden Abend.'; }
+  protected goalText() { return strangZiel(state.flags) ?? 'Muskelkater: Ladies Night. Jeden Abend.'; }
 
   protected floorKey(x: number, y: number) {
     const ch = this.rows[y][x];
@@ -358,14 +378,17 @@ export class ClubScene extends TopDown {
     }
 
     // Kevin sitzt nach der Veröffentlichung am Laufsteg
-    if (state.flags.claudius === 'veroeffentlicht') this.addKevin();
+    if (state.flags.claudius === 'veroeffentlicht' && !janWeg(state.flags)) this.addKevin();
+    this.hochzeitDeko();
     this.addLeni2();
 
     // Tänzer: zwei tanzen schon, die anderen warten hinter dem Vorhang
     const tints = [0xff4ac0, 0xc060ff, 0x40c8ff];
-    Object.keys(DANCER_LOOKS).forEach((id, i) => {
+    // Jan fehlt auf der Bühne, solange er entführt ist (Kapitel 6 bis 8)
+    Object.keys(DANCER_LOOKS).filter((id) => id !== 'jan' || !janWeg(state.flags)).forEach((id, i) => {
       const d = this.spawn(`cd_${id}`, BACKSTAGE, dancerWalk, 36);
       if (id === 'soldat') d.sp.setScale(0.64); // Emilian: einen Kopf größer als alle anderen
+      if (id === 'jan') d.sp.setScale(0.6); // Jan: zwei Meter
       this.occ.delete(K(...BACKSTAGE));
       d.light = this.addLight(0, 0, 0.9, 0.7).setTint(tints[i % 3]).setVisible(false);
       this.dancers.push(d);
@@ -407,6 +430,7 @@ export class ClubScene extends TopDown {
     const [x, y] = LENI2;
     const px = x * T + 8, py = y * T + 14;
     const l = this.add.sprite(px, py, 'leni2', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(py);
+    this.leni2Sp = l;
     this.add.image(px, py - 1, 'shadow').setDepth(1);
     this.time.addEvent({ delay: 4600, loop: true, callback: () => { l.setFrame(6).setFlipX(Math.random() < 0.5); this.time.delayedCall(1400, () => l.setFrame(0)); } });
     this.interacts.push({ x: px, y: py - 4, r: 18, label: () => 'Mit Leni Blume reden', act: () => this.talk('leni2', (a) => this.leni2Done(a)) });
@@ -427,12 +451,391 @@ export class ClubScene extends TopDown {
     this.scene.pause();
   }
 
+  /** Kapitel 6: Strang starten, Käse-Antrag, Hochzeitsprobe */
+  private kevinDone(a?: DialogAction) {
+    const f = state.flags;
+    if (a === 'kanalStart' && !f.kanal) {
+      const s = STRAENGE.find((x) => x.id === 'kanal');
+      if (s) starteStrang(s, f, state.time);
+      f.strangBereit = undefined;
+      this.zwischen('kapitel6', 'club');
+    } else if (a === 'kaeseGeben' && f.kanal === 'kaese' && state.inv.stinkekaese > 0) {
+      state.inv.stinkekaese = 0;
+      f.kanal = 'vorbereitung';
+      unlock('proteinMitSeele');
+      this.zwischen('antrag', 'romantik');
+    } else if (a === 'probe' && f.kanal === 'probe') {
+      void this.hochzeit();
+    }
+  }
+
+  private zwischen(script: string, music: string) {
+    this.scene.launch('Cutscene', { script, resume: this.scene.key, music });
+    this.scene.bringToTop('Cutscene');
+    this.scene.pause();
+  }
+
+  /** Bier und Buffet stehen bereit, der Rosenbogen steht; nach der Entführung: Schleimspur bis zur Tür, Jans Fliege */
+  private hochzeitDeko() {
+    const f = state.flags;
+    if (f.hochzeitBuffet && !janWeg(f)) this.add.image(26 * T + 8, 11 * T + 14, 'hz_buffet').setOrigin(0.5, 1).setScale(0.5).setDepth(11 * T + 14);
+    if (f.hochzeitBier && !janWeg(f)) this.add.image(24 * T + 8, 11 * T + 15, 'hz_kiste').setOrigin(0.5, 1).setScale(0.5).setDepth(11 * T + 15);
+    if (f.kanal === 'probe') this.add.image(13 * T + 8, 6 * T + 8, 'hz_bogen').setOrigin(0.5, 1).setScale(0.5).setDepth(6 * T + 5);
+    if (!janWeg(f)) return;
+    this.schleimSpur(true);
+    const fx = JAN_TRAU.x - 4, fy = JAN_TRAU.y - 2;
+    this.add.image(fx, fy, 'hz_fliege').setScale(0.5).setDepth(1.6);
+    this.interacts.push({ x: fx, y: fy, r: 16, label: () => 'Jans Fliege', act: () => this.toast('Jans Glitzerfliege. Im Schleim. Daneben ein Abdruck wie von einem Saugnapf. Groß wie ein Bierdeckel.') });
+  }
+
+  /** Fette Schleimspur entlang des Tentakel-Wegs (Laufsteg bis Tür), mit grünem Schimmer */
+  private schleimSpur(dauerhaft: boolean) {
+    const pts = this.bahn(5);
+    pts.forEach(([x, y], i) => {
+      const b = this.add.image(x + rnd(-4, 4), y + rnd(-3, 3), 'hz_schleim').setScale(Phaser.Math.FloatBetween(0.55, 1.3), Phaser.Math.FloatBetween(0.5, 1.1)).setAngle(rnd(-40, 40)).setDepth(1.5)
+        .setAlpha(Phaser.Math.FloatBetween(0.6, 0.9)).setTint(pick([0x9ad88a, 0x7ac06a, 0xb8f0a0, 0x6aa85a]));
+      if (i % 9 === 0) { const l = this.addLight(x, y, 0.45, 0.45).setTint(0x6aff4a); if (dauerhaft) this.tweens.add({ targets: l, alpha: 0.2, duration: 1100, yoyo: true, repeat: -1, delay: i * 40 }); }
+    });
+    // Pfützen an der Tür und am Laufsteg
+    for (const [x, y] of [[18 * T + 8, 16 * T + 12], [JAN_TRAU.x, JAN_TRAU.y]]) for (let k = 0; k < 4; k++) this.add.image(x + rnd(-8, 8), y + rnd(-5, 5), 'hz_schleim').setScale(Phaser.Math.FloatBetween(1.1, 1.8), Phaser.Math.FloatBetween(0.7, 1.2)).setAlpha(0.7).setTint(0x7ac06a).setDepth(1.4);
+  }
+
+  /** Der Tentakel-Weg als Punktfolge im Abstand d (Pixel), von der Tür bis zu Jan */
+  private bahn(d: number): [number, number][] {
+    const out: [number, number][] = [];
+    for (let i = 0; i < TENTAKEL_WEG.length - 1; i++) {
+      const [x0, y0] = TENTAKEL_WEG[i], [x1, y1] = TENTAKEL_WEG[i + 1];
+      const n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / d));
+      for (let k = 0; k < n; k++) out.push([Phaser.Math.Linear(x0, x1, k / n), Phaser.Math.Linear(y0, y1, k / n)]);
+    }
+    out.push(TENTAKEL_WEG[TENTAKEL_WEG.length - 1] as [number, number]);
+    return out;
+  }
+
+  // ---------------------------------------------------------------- Kapitel 6: Trauung und Entführung
+
+  /** Untertitel der Szene (Kinobalken in WandlungUI) */
+  private async sagK(wer: string, farbe: string, text: string, ms: number, sprecher?: Phaser.GameObjects.Sprite) {
+    if (this.kinoAus) return;
+    this.ui?.zeige(wer, farbe, text);
+    if (sprecher) this.tweens.add({ targets: sprecher, y: sprecher.y - 2, duration: 120, yoyo: true, repeat: 1 });
+    await this.wartet(ms);
+  }
+
+  private figur(key: string, x: number, y: number, frame: number, flip = false, scale = 0.5) {
+    const sp = this.add.sprite(x, y, key, frame).setOrigin(0.5, 1).setScale(scale).setFlipX(flip).setDepth(y);
+    const sh = this.add.image(x, y - 1, 'shadow').setDepth(1);
+    return { sp, sh };
+  }
+
+  /**
+   * Die Trauung: Kevin und Jan auf dem Laufsteg, Leni Blume traut, Rosenblätter, Jubel. Das Licht beginnt zu flackern.
+   * Ein riesiger Tentakel schiebt sich durch die Eingangstür, alle geraten in Panik, er wickelt sich um Jan.
+   * Das Licht flackert immer wilder, geht aus, geht an: Jan ist weg, der Tentakel auch, eine fette Schleimspur bleibt.
+   */
+  private async hochzeit() {
+    if (this.kino) return;
+    this.kino = true;
+    this.kinoAus = false;
+    this.frozen = true;
+    hud.prompt = '';
+    this.scene.launch('WandlungUI');
+    this.scene.bringToTop('WandlungUI');
+    this.scene.sleep('Hud');
+    this.ui = this.scene.get('WandlungUI') as WandlungUI;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.kinoAus = true; this.scene.stop('WandlungUI'); this.scene.wake('Hud'); });
+    this.input.keyboard!.once('keydown-ESC', () => this.hochzeitEnde());
+    audio.music('probe');
+
+    // Bühne frei: die Tänzer gehen hinter den Vorhang
+    for (const d of this.dancers) {
+      this.tweens.killTweensOf(d.sp);
+      d.path = [];
+      d.hidden = true;
+      d.sp.setVisible(false);
+      d.shadow.setVisible(false);
+      d.light?.setVisible(false);
+    }
+    this.tipTarget = undefined;
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    cam.pan(13 * T + 8, 8 * T + 4, 1000, 'Sine.easeInOut');
+    cam.zoomTo(2.6, 1000, 'Sine.easeInOut');
+
+    // Brautpaar, Ehrengarde, Trauzeuge, Koch
+    const kevin = this.figur('kevin', KEVIN_TRAU.x, KEVIN_TRAU.y, 0, false, 0.4);
+    const jan = this.figur('cd_jan', JAN_TRAU.x, JAN_TRAU.y, 6, true, 0.66);
+    const emil = this.figur('cd_soldat', 14 * T + 12, 10 * T + 14, 0, false, 0.64);
+    const feuer = this.figur('cd_feuerwehr', 12 * T + 4, 10 * T + 14, 0);
+    const adsh = this.figur('adshayan', 26 * T + 8, 10 * T + 12, 0);
+    const leni = this.leni2Sp;
+    leni?.setPosition(13 * T + 8, 6 * T + 14).setFrame(0).setDepth(6 * T + 14);
+    this.player.setPosition(11 * T + 10, 9 * T + 12).setFlipX(false).setFrame(6);
+    if (!this.children.list.some((o) => o instanceof Phaser.GameObjects.Image && o.texture.key === 'hz_bogen')) {
+      this.add.image(13 * T + 8, 6 * T + 8, 'hz_bogen').setOrigin(0.5, 1).setScale(0.5).setDepth(6 * T + 5);
+    }
+    const rosa = this.addLight(13 * T + 8, 8 * T, 1.3, 0.75).setTint(0xff7ac0);
+    // Rosenblätter
+    const blaetter = this.time.addEvent({
+      delay: 120, loop: true,
+      callback: () => {
+        const b = this.add.image(rnd(11 * T, 16 * T), 5 * T, 'clubHeart').setScale(0.3).setDepth(5003).setTint(pick([0xff5ab0, 0xffffff, 0xff9ad0, 0xe8406a]));
+        this.tweens.add({ targets: b, y: b.y + rnd(50, 80), x: b.x + rnd(-10, 10), angle: rnd(-180, 180), alpha: 0, duration: rnd(2000, 3000), onComplete: () => b.destroy() });
+      },
+    });
+    // Gäste jubeln
+    const gaeste = this.seats.map((x) => x.guest).filter((g): g is Npc => !!g && !g.hidden);
+    const jubel = this.time.addEvent({
+      delay: 650, loop: true,
+      callback: () => {
+        const g = pick(gaeste);
+        if (!g) return;
+        if (Math.random() < 0.55) this.say(g, pick(['WOOO!', 'HACH!', 'KÜSSEN!', 'JAAA!', 'SCHÖN!', 'PROST!']), '#ffb0e0');
+        else this.heart(g.sp.x, g.sp.y - 18);
+      },
+    });
+    // Licht: dunkle Decke über dem ganzen Club, deren Deckkraft flackert
+    this.dunkel = this.add.rectangle(0, 0, 30 * T, 18 * T, 0x000000, 0).setOrigin(0).setDepth(5600);
+    const flacker = this.time.addEvent({
+      delay: 55, loop: true,
+      callback: () => {
+        const st = this.flackern;
+        if (!this.dunkel || st <= 0) return;
+        this.dunkel.setFillStyle(0x000000, Math.random() < 0.25 + st * 0.4 ? Phaser.Math.FloatBetween(0.25, 0.95) * st : 0);
+      },
+    });
+    const aufraeumen = () => { blaetter.remove(); jubel.remove(); flacker.remove(); };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, aufraeumen);
+    await this.wartet(1200);
+
+    // ---- 1. Die Trauung
+    await this.sagK('LENI BLUME', '#f0e0f0', 'Liebe Gäste. Liebe Tänzer. Lieber ... Käse.', 2600, leni);
+    await this.sagK('LENI BLUME', '#f0e0f0', 'Wir sind heute hier versammelt, um zwei Herzen zu verbinden. Und vier Bauchmuskeln. Sechs. Acht.', 3400, leni);
+    if (this.kinoAus) return;
+    for (let i = 0; i < 4; i++) this.time.delayedCall(i * 260, () => this.heart(jan.sp.x + rnd(-4, 4), jan.sp.y - 26));
+    await this.sagK('JAN', '#e090ff', 'Kevin. Du hast mir Käse geschenkt. Und dein Herz. In dieser Reihenfolge.', 3200, jan.sp);
+    await this.sagK('KURDISCHER KEVIN', '#ff8a50', 'Bruder ... ich weine. Das ist die Akustik.', 2600, kevin.sp);
+    await this.sagK('ADSHAYAN', '#f8b040', 'Das Buffet ist eröffnet! Ich habe nur zweimal probiert. ... Dreimal.', 2800, adsh.sp);
+    if (this.kinoAus) return;
+
+    // ---- 2. Das Licht flackert, draußen schmatzt etwas
+    this.flackern = 0.25;
+    audio.sfx('gurgle');
+    await this.sagK('', '#a8a8a8', '*Das Licht flackert. Von draußen: ein nasses, schweres Schmatzen.*', 2600);
+    jubel.paused = true;
+    await this.sagK('LENI BLUME', '#f0e0f0', 'Was war das? ... Wer hat das Curry so scharf gemacht? Das riecht man bis in die Kanalisation!', 3200, leni);
+    await this.sagK('ADSHAYAN', '#f8b040', '... Qualitätskontrolle.', 2000, adsh.sp);
+    if (this.kinoAus) return;
+
+    // ---- 3. Die Tür fliegt auf
+    this.flackern = 0.45;
+    audio.music('monster');
+    audio.sfx('crack');
+    audio.sfx('thud');
+    cam.shake(500, 0.012);
+    cam.pan(15 * T + 4, 12 * T + 10, 900, 'Sine.easeInOut');
+    cam.zoomTo(1.4, 900, 'Sine.easeInOut');
+    this.ui?.leer();
+    for (const g of gaeste) this.time.delayedCall(rnd(0, 400), () => this.say(g, '!', '#ff5040'));
+    blaetter.paused = true;
+    rosa.setTint(0x80ff60);
+    const tk = this.tentakelStart();
+    await this.tentakelKriecht(tk, 3400, () => {
+      // auf halbem Weg: Panik
+      if (!tk.panik && tk.kopf > tk.bahn.length * 0.35) { tk.panik = true; this.panikImClub(gaeste, [feuer.sp, emil.sp, adsh.sp]); }
+    });
+    if (this.kinoAus) return;
+    await this.sagK('EMILIAN', '#9ad070', 'EHRENGARDE ... RÜCKZUG!', 1400, emil.sp);
+
+    // ---- 4. Er wickelt sich um Jan: Kamera fährt aufs Brautpaar
+    cam.pan(13 * T + 12, 8 * T + 6, 500, 'Sine.easeInOut');
+    cam.zoomTo(2.4, 500, 'Sine.easeInOut');
+    jan.sp.setFrame(12);
+    audio.sfx('slap');
+    cam.shake(300, 0.01);
+    await this.tentakelWickelt(tk, 900);
+    this.tweens.add({ targets: jan.sp, y: jan.sp.y - 10, duration: 500, ease: 'Quad.easeOut' });
+    this.tweens.add({ targets: jan.sp, angle: { from: -12, to: 12 }, duration: 110, yoyo: true, repeat: -1 });
+    audio.sfx('scream');
+    await this.sagK('JAN', '#e090ff', 'KEVIN! Der Käse! Rette den KÄSE! ... und mich!', 2400, jan.sp);
+    // Kevin stürzt los und fällt hin
+    this.tweens.add({ targets: kevin.sp, x: kevin.sp.x + 9, duration: 250, ease: 'Quad.easeIn', onComplete: () => { this.tweens.add({ targets: kevin.sp, angle: 80, y: kevin.sp.y + 3, duration: 200 }); audio.sfx('thud'); } });
+    await this.sagK('KURDISCHER KEVIN', '#ff8a50', 'JAAAAAN!', 1400, kevin.sp);
+    if (this.kinoAus) return;
+
+    // ---- 5. Flackern, Blackout, Licht an: Jan weg
+    this.flackern = 1;
+    audio.sfx('roar');
+    await this.wartet(1600);
+    if (this.kinoAus) return;
+    flacker.remove();
+    this.dunkel?.setFillStyle(0x000000, 1);
+    audio.music('none');
+    this.ui?.leer();
+    audio.sfx('scream');
+    this.time.delayedCall(350, () => audio.sfx('slap'));
+    this.time.delayedCall(700, () => audio.sfx('splash'));
+    this.time.delayedCall(1000, () => audio.sfx('gurgle'));
+    // im Dunkeln: Jan und Tentakel verschwinden, die Spur bleibt
+    jan.sp.destroy(); jan.sh.destroy();
+    tk.g.destroy(); tk.licht.destroy();
+    this.tweens.killTweensOf(kevin.sp);
+    kevin.sp.setPosition(JAN_TRAU.x - 6, JAN_TRAU.y).setAngle(0).setScale(0.4, 0.33);
+    this.schleimSpur(true);
+    rosa.setTint(0xff7ac0).setAlpha(0.5);
+    await this.wartet(1500);
+    if (this.kinoAus) return;
+    for (const a of [0.7, 0, 0.6, 0.1, 0.45, 0]) { this.dunkel?.setFillStyle(0x000000, a); await this.wartet(90); }
+    cam.pan(14 * T, 10 * T, 700, 'Sine.easeInOut');
+    cam.zoomTo(2.2, 700, 'Sine.easeInOut');
+    await this.wartet(900);
+    await this.sagK('', '#a8a8a8', '*Stille. Wo Jan stand: nur noch Schleim. Viel Schleim.*', 2600);
+    audio.sfx('clang');
+    await this.sagK('', '#a8a8a8', '*Emilian lässt die Ölflasche fallen. Sie rollt über den Laufsteg.*', 2400);
+    this.tweens.add({ targets: kevin.sp, y: kevin.sp.y + 1, duration: 300, yoyo: true, repeat: -1 });
+    await this.sagK('KURDISCHER KEVIN', '#ff8a50', 'BRUDER. Die haben meinen Jan.', 3200, kevin.sp);
+    this.hochzeitEnde();
+  }
+
+  /** Ende der Szene (auch beim Überspringen): Jan ist weg, Kapitel 7 beginnt, der Club wird neu aufgebaut */
+  private hochzeitEnde() {
+    if (this.kinoAus) return;
+    this.kinoAus = true;
+    state.flags.kanal = 'entfuehrt';
+    this.frozen = false;
+    this.go('Cutscene', { script: 'kapitel7', next: { scene: 'Club', data: { spawn: [16, 13] } } });
+  }
+
+  /** Gäste und Personal fliehen schreiend an die Wände, weg vom Gang */
+  private panikImClub(gaeste: Npc[], extra: Phaser.GameObjects.Sprite[]) {
+    const ziele: [number, number][] = [[2, 3], [3, 4], [2, 11], [4, 10], [3, 12], [24, 5], [26, 6], [27, 9], [25, 13], [28, 14], [23, 15], [22, 6]];
+    gaeste.forEach((g, i) => {
+      this.time.delayedCall(i * 90, () => {
+        if (this.kinoAus) return;
+        this.tweens.killTweensOf(g.sp);
+        g.seated = false;
+        g.path = [];
+        g.sp.setFrame(0);
+        if (i % 3 === 0) audio.sfx('scream');
+        this.say(g, pick(['AAAH!', 'HILFE!', 'MAMA!', 'WEG HIER!', 'IIIH!', 'MEIN SEKT!']), '#ffd0c0');
+        const [tx, ty] = ziele[i % ziele.length];
+        const x = tx * T + 8 + rnd(-6, 6), y = ty * T + 14 + rnd(-4, 4);
+        const dx = x - g.sp.x, dy = y - g.sp.y;
+        const dir = Math.abs(dx) > Math.abs(dy) ? 'side' : dy < 0 ? 'up' : 'down';
+        if (this.anims.exists(`${g.sheet}_${dir}`)) g.sp.play(`${g.sheet}_${dir}`);
+        g.sp.setFlipX(dir === 'side' && dx < 0);
+        this.tweens.add({
+          targets: g.sp, x, y, duration: (Math.hypot(dx, dy) / 120) * 1000, ease: 'Quad.easeOut',
+          onUpdate: () => { g.sp.setDepth(g.sp.y); g.shadow.setPosition(g.sp.x, g.sp.y - 1); },
+          onComplete: () => { g.sp.anims.stop(); g.sp.setFrame(0); this.tweens.add({ targets: g.sp, x: g.sp.x + 1, duration: 60, yoyo: true, repeat: -1 }); },
+        });
+      });
+    });
+    extra.forEach((sp, i) => this.tweens.add({ targets: sp, y: sp.y + 6 + i * 2, x: sp.x + (i % 2 ? 10 : -10), duration: 500, delay: 150 + i * 120, ease: 'Quad.easeOut', onUpdate: () => sp.setDepth(sp.y) }));
+  }
+
+  // ---------------------------------------------------------------- Der Tentakel
+
+  private tentakelStart() {
+    const bahn = this.bahn(2);
+    const g = this.add.graphics().setDepth(4500);
+    const licht = this.addLight(bahn[0][0], bahn[0][1], 0.8, 0.7).setTint(0x6aff4a);
+    const tk = { g, licht, bahn, kopf: 0, wickel: 0, panik: false, tropfen: 0 };
+    // Tür: grüner Schwall
+    for (let i = 0; i < 18; i++) {
+      const d = this.add.circle(18 * T + 8, 17 * T, rnd(1, 3), pick([0x6aff4a, 0x3aa02a, 0x8a4aaa]), 0.9).setDepth(4501);
+      this.tweens.add({ targets: d, x: d.x + rnd(-24, 24), y: d.y - rnd(4, 30), alpha: 0, duration: rnd(400, 900), ease: 'Quad.easeOut', onComplete: () => d.destroy() });
+    }
+    this.time.addEvent({ delay: 16, loop: true, callback: () => { if (g.active) this.tentakelMalen(tk); } });
+    return tk;
+  }
+
+  /** Der Kopf kriecht den Weg entlang, der Körper hängt bis zur Tür nach; Schleim tropft und bleibt liegen */
+  private tentakelKriecht(tk: ReturnType<ClubScene['tentakelStart']>, ms: number, jedesBild: () => void) {
+    return new Promise<void>((done) => {
+      this.tweens.addCounter({
+        from: 0, to: tk.bahn.length - 1, duration: ms, ease: 'Sine.easeInOut',
+        onUpdate: (tw) => {
+          const k = Math.floor(tw.getValue() ?? 0);
+          if (k > tk.kopf + 2) {
+            tk.kopf = k;
+            const [x, y] = tk.bahn[k];
+            tk.licht.setPosition(x, y);
+            if (k % 4 === 0) {
+              const b = this.add.image(x + rnd(-2, 2), y + rnd(-1, 2), 'hz_schleim').setScale(0).setDepth(1.5).setAngle(rnd(-30, 30));
+              this.tweens.add({ targets: b, scale: Phaser.Math.FloatBetween(0.8, 1.4), duration: 300 });
+            }
+            if (k % 7 === 0) audio.sfx(pick(['slap', 'gurgle']));
+          }
+          jedesBild();
+        },
+        onComplete: () => done(),
+      });
+    });
+  }
+
+  private tentakelWickelt(tk: ReturnType<ClubScene['tentakelStart']>, ms: number) {
+    return new Promise<void>((done) => this.tweens.add({ targets: tk, wickel: 1, duration: ms, ease: 'Quad.easeOut', onComplete: () => done() }));
+  }
+
+  /**
+   * Zeichnet den Tentakel: dicker, pulsierender Leib von der Tür bis zum Kopf, Schleimglanz, Saugnäpfe, Geweih-Ende.
+   * Beim Umwickeln läuft das Ende als Spirale um Jan.
+   */
+  private tentakelMalen(tk: ReturnType<ClubScene['tentakelStart']>) {
+    const g = tk.g.clear();
+    const t = this.time.now / 1000;
+    const n = Math.max(2, tk.kopf);
+    const pts: [number, number, number][] = [];
+    for (let i = 0; i <= n; i++) {
+      const [x, y] = tk.bahn[i];
+      const [x2, y2] = tk.bahn[Math.min(i + 1, tk.bahn.length - 1)];
+      const ang = Math.atan2(y2 - y, x2 - x) + Math.PI / 2;
+      const s = i / n;
+      const wob = Math.sin(t * 6 + i * 0.18) * 1.6 * s;
+      const dick = (1.8 + 6.5 * Math.pow(1 - s, 0.8)) * (1 + 0.2 * Math.sin(t * 9 - i * 0.22));
+      pts.push([x + Math.cos(ang) * wob, y + Math.sin(ang) * wob, dick]);
+    }
+    // Wickel: Spirale um Jan
+    if (tk.wickel > 0) {
+      const [jx, jy] = [JAN_TRAU.x, JAN_TRAU.y];
+      const m = Math.floor(26 * tk.wickel);
+      for (let k = 1; k <= m; k++) {
+        const a = k * 0.55 + t * 2;
+        pts.push([jx + Math.cos(a) * 6.5, jy - 1 - k * 0.5 + Math.sin(a) * 2, 2.2 + 1.2 * (1 - k / 26)]);
+      }
+    }
+    for (const [x, y, r] of pts) g.fillStyle(0x16380f, 0.95).fillCircle(x, y + 1.2, r + 1.4);
+    pts.forEach(([x, y, r], i) => g.fillStyle(i % 3 ? 0x6a2e8a : 0x7a3a9a).fillCircle(x, y, r));
+    pts.forEach(([x, y, r]) => g.fillStyle(0xa86ac8, 0.85).fillCircle(x - r * 0.2, y - r * 0.4, r * 0.45));
+    pts.forEach(([x, y, r], i) => {
+      if (i % 5 === 0 && r > 2.4) { g.fillStyle(0xf0b0c8).fillCircle(x + r * 0.55, y + r * 0.25, r * 0.32); g.fillStyle(0xa04870).fillCircle(x + r * 0.55, y + r * 0.25, r * 0.14); }
+      if (i % 9 === 4) g.fillStyle(0xc8ffb0, 0.7).fillCircle(x - r * 0.3, y - r * 0.55, Math.max(0.6, r * 0.18));
+    });
+    // Geweih-Ende am Kopf
+    const [ex, ey] = pts[pts.length - 1], [qx, qy] = pts[Math.max(0, pts.length - 3)];
+    const a = Math.atan2(ey - qy, ex - qx);
+    g.lineStyle(1.4, 0x8a4aaa);
+    for (const da of [-0.8, 0, 0.8]) {
+      const x2 = ex + Math.cos(a + da) * 6, y2 = ey + Math.sin(a + da) * 6;
+      g.lineBetween(ex, ey, x2, y2);
+      g.lineBetween(x2, y2, x2 + Math.cos(a + da * 2.2) * 3, y2 + Math.sin(a + da * 2.2) * 3);
+    }
+    g.fillStyle(0xd0a0ff).fillCircle(ex, ey, 1.3);
+    // Schleim tropft
+    if (Math.random() < 0.35) {
+      const [dx, dy, dr] = pts[Math.floor(Math.random() * pts.length)];
+      const tr = this.add.circle(dx + rnd(-2, 2), dy, Math.max(0.6, dr * 0.25), 0x6aff4a, 0.9).setDepth(4501);
+      this.tweens.add({ targets: tr, y: dy + rnd(3, 7), alpha: 0.2, duration: 380, ease: 'Quad.easeIn', onComplete: () => tr.destroy() });
+    }
+  }
+
   private addKevin() {
     const seat = this.seatAt(KEVIN_SEAT)!;
     seat.kevin = true;
     const [x, y] = KEVIN_SEAT;
     const kevin = this.add.sprite(x * T + 8, y * T + 15, 'kevinSit', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(y * T + 14);
-    this.interacts.push({ x: x * T + 2, y: y * T + 10, r: 20, label: () => 'Mit Kevin reden', act: () => this.talk('kevinClub') });
+    this.interacts.push({ x: x * T + 2, y: y * T + 10, r: 20, label: () => 'Mit Kevin reden', act: () => this.talk('kevinClub', (a) => this.kevinDone(a)) });
     this.time.addEvent({
       delay: 2600, loop: true,
       callback: () => {
@@ -907,7 +1310,7 @@ export class ClubScene extends TopDown {
 
     for (const n of this.npcs) {
       if (n.hidden) continue;
-      if (n.path.length) this.stepNpc(n, dt);
+      if (n.path.length && !this.kino) this.stepNpc(n, dt);
       n.sp.setDepth(n.sp.y);
       n.shadow.setPosition(n.sp.x, n.sp.y - 1);
       if (n.light?.visible) n.light.setPosition(n.sp.x, n.sp.y - 12);

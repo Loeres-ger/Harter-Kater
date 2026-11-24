@@ -30,13 +30,17 @@ import { KellerScene } from './rooms/KellerScene';
 import { GitarrenDuellScene } from './rooms/GitarrenDuellScene';
 import { WandlungUI } from './rooms/WandlungUI';
 import { HoellenbossScene } from './rooms/HoellenbossScene';
+import { KlaerwerkScene } from './rooms/KlaerwerkScene';
+import { HirschduellScene } from './rooms/HirschduellScene';
 import { ShishaScene } from './rooms/ShishaScene';
 import { ShishaDuellScene } from './rooms/ShishaDuellScene';
 import { BasarScene } from './rooms/BasarScene';
 import { PutzScene } from './rooms/PutzScene';
 import { QuizScene } from './rooms/QuizScene';
+import { KanalScene } from './rooms/KanalScene';
 import { KampfScene } from './rooms/KampfScene';
 import { InventarScene, GAMEPLAY } from './scenes/InventarScene';
+import { alleKapitelFreischalten } from './progress/testStaende';
 import { PcScene } from './rooms/PcScene';
 import { SavesScene } from './scenes/SavesScene';
 
@@ -75,10 +79,10 @@ async function boot() {
     // FIT: proportional einpassen, Balken wo nötig. Der Container bekommt seine Größe aus dem CSS.
     // Vollbild nimmt den ganzen Spielcontainer, damit Pause-, Inventar- und Vollbild-Knopf sichtbar bleiben
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: false, fullscreenTarget: 'game' },
-    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, ShishaScene, BasarScene, KellerScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, ShishaDuellScene, PutzScene, QuizScene, KampfScene, GitarrenDuellScene, WandlungUI, HoellenbossScene, InventarScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
+    scene: [TitleScene, BarScene, AlleyScene, AtticScene, MensRoomScene, LadiesRoomScene, ShopRoomScene, ClubScene, ShishaScene, BasarScene, KellerScene, TresenScene, EndScene, HudScene, CutsceneScene, ShopScene, SahneScene, RatteScene, DerbyScene, FightScene, DialogScene, StallScene, PcScene, ShishaDuellScene, PutzScene, QuizScene, KanalScene, KampfScene, GitarrenDuellScene, WandlungUI, HoellenbossScene, KlaerwerkScene, HirschduellScene, InventarScene, PauseScene, AchievementsScene, SavesScene, NotifyScene],
   });
   if (import.meta.env.DEV) {
-    Object.assign(window, { game, audio });
+    Object.assign(window, { game, audio, alleKapitel: alleKapitelFreischalten });
     Object.defineProperty(window, 'st', { get: () => state });
   }
   // Pause-Knopf oben rechts (liegt im Spiel-Container, also auch im Vollbild sichtbar)

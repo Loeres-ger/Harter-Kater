@@ -246,6 +246,8 @@ export function personSheet(scene: Phaser.Scene, key: string, L: Look) {
 
 /** Tänzer: immer mit Hose, Kostüm erkennbar an Helm, Mütze, Weste, Hosenträgern */
 export const DANCER_LOOKS: Record<string, Look> = {
+  /** Jan: zwei Meter, Muskelpaket, Glitzerhose und -fliege (Kapitel 6: Kevins große Liebe) */
+  jan: { skin: '#c08a62', skinD: '#a06e48', hair: '#2a1a12', bottom: '#b070ff', stripe: '#f0d0ff', bow: '#c040ff', shoes: '#f4f4f4', bulk: true },
   feuerwehr: { skin: '#e8b48a', skinD: '#c8926a', hair: '#3a2416', bottom: '#d8b040', stripe: '#e8f0a0', suspenders: '#d02a2a', shoes: '#141414', hat: 'helmet', hatCol: '#c82020', hatCol2: '#a01818' },
   polizei: { skin: '#a8724c', skinD: '#88583a', hair: '#141010', bottom: '#1e2a5a', belt: '#101010', shoes: '#0a0a0a', hat: 'cap', hatCol: '#1e2a5a', glasses: '#28323e', bow: '#1e2a5a' },
   matrose: { skin: '#f0c8a0', skinD: '#d0a47c', hair: '#e8c860', bottom: '#f4f4f4', neck: '#2a4aa0', shoes: '#f4f4f4', hat: 'sailor', hatCol: '#2a4aa0' },

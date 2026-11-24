@@ -265,6 +265,32 @@ export function tuncayTree(): Record<string, DialogNode> {
       choices: [back, bye],
     },
   };
+  // Kapitel 7: Jan ist im Kanal, Tuncay hat das Kanal-Paket im Kofferraum
+  if (state.flags.kanal === 'entfuehrt') {
+    return {
+      ...nodes,
+      start: {
+        lines: [
+          'Bruder, du guckst, als hättest du einen Tentakel gesehen.',
+          'W:Hab ich. Er hat Jan geklaut. Ich muss in die Kanalisation.',
+          'Kanalisation. Kein Problem. Ich hab das Kanal-Paket.',
+        ],
+        choices: [{ text: 'Was ist drin?', next: 'paket' }, { text: 'Was verkaufst du sonst?', next: 'ware' }, bye],
+      },
+      paket: {
+        lines: [
+          'Wathose, Stirnlampe, Gullyhaken. Achtzig Euro. Für dich, weil du Bruder bist: achtzig Euro.',
+          'Wathose ist von einem Kunden. Hat sie nie abgeholt. Riecht noch nach ihm. Nach Angst, glaub ich.',
+          'Stirnlampe hält drei Stunden. Oder zwanzig Minuten. Je nachdem, wie sehr du sie brauchst.',
+        ],
+        choices: [{ text: 'Her damit. (80 €)', action: 'kanalPaket' }, { text: 'Zu teuer.', next: 'teuer' }],
+      },
+      teuer: {
+        lines: ['Zu teuer? Bruder. Da unten sind Enten mit Armen. Was ist dir dein Jan wert?', 'W:Es ist Kevins Jan.', 'Dann soll Kevin zahlen. Kevin hat aber kein Geld. Also du.'],
+        choices: [{ text: 'Na gut. (80 €)', action: 'kanalPaket' }, { text: 'Später.' }],
+      },
+    };
+  }
   if (x === 'spur') {
     return {
       ...nodes,
@@ -302,7 +328,18 @@ export function tuncayTree(): Record<string, DialogNode> {
           'Tuncay. Autowerkstatt Tuncay. Was ich nicht repariere, verkaufe ich.',
           'Psst. Original Rolex. Fast. Die Zeiger fehlen, dafür ist sie leicht.',
         ])],
-      choices: [{ text: 'Was verkaufst du da?', next: 'ware' }, { text: 'Woher kommst du eigentlich?', next: 'heimat' }, bye],
+      choices: [
+        ...(state.inv.rolex > 0 ? [{ text: 'Willst du eine Rolex kaufen?', next: 'rolex' }] : []),
+        { text: 'Was verkaufst du da?', next: 'ware' }, { text: 'Woher kommst du eigentlich?', next: 'heimat' }, bye,
+      ],
+    },
+    rolex: {
+      lines: [
+        'N:Tuncay hält die Uhr ins Licht. Er beißt drauf. Er hält sie ans Ohr. Er riecht dran.',
+        'Echt? Bruder, die ist echter als ich.',
+        'Woher hast du die? ... Nein. Sag nichts. Riecht nach Kanal. Ich will es nicht wissen. Hundertfünfzig.',
+      ],
+      choices: [{ text: 'Deal. (150 €)', action: 'rolexVerkauf' }, { text: 'Behalte ich.' }],
     },
   };
 }

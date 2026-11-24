@@ -2,7 +2,7 @@
 
 import type { StoryFlags } from './progress/flags';
 
-export type ItemId = 'bier' | 'kippe' | 'schnaps' | 'fusel' | 'pillen' | 'zeug' | 'wurst' | 'kaese' | 'curry' | 'lassi' | 'pflanze' | 'koks';
+export type ItemId = 'bier' | 'kippe' | 'schnaps' | 'fusel' | 'pillen' | 'zeug' | 'wurst' | 'kaese' | 'curry' | 'lassi' | 'pflanze' | 'koks' | 'stinkekaese' | 'kanalpaket' | 'porsche' | 'rolex';
 
 export interface ItemDef {
   id: ItemId;
@@ -23,6 +23,12 @@ export interface ItemDef {
   zeigen?: () => boolean;
   /** Antwort, wenn man sie selbst benutzen will */
   nein?: string;
+  /** Quest-Ware: für wen sie ist (Hinweis auf der Ladenkarte) */
+  fuer?: string;
+  /** Meldung im Laden, wenn man mehr als max kaufen will */
+  maxText?: string;
+  /** Quest-Ware zum Anziehen: Knopf wechselt zwischen verb (an) und verbAus; wechseln gibt die Meldung zurück */
+  tragen?: { an: () => boolean; wechseln: () => string; verbAus: string };
 }
 
 export const ITEMS: ItemDef[] = [
@@ -45,6 +51,18 @@ export const EXTRA_ITEMS: ItemDef[] = [
 /** Quest-Waren (Nick-Strang): nicht benutzbar */
 export const QUEST_ITEMS: ItemDef[] = [
   { id: 'pflanze', name: 'Pflanze', price: 0, sucht: 0, minSucht: 0, shop: null, quest: true, verb: 'FINGER WEG', text: 'Bornas Pflanze aus dem Busch hinter der Bar. Noch klein, riecht aber schon nach Ärger.', wirkung: 'Für Borna auf dem Dachboden', nein: 'Die ist für Borna. Nicht rauchen, nicht gießen, nicht mit ihr reden.' },
+  { id: 'stinkekaese', name: 'Stinkekäse', price: 300, sucht: 0, minSucht: 0, shop: 'laden', quest: true, max: 1, zeigen: () => state.flags.kanal === 'kaese' && !state.inv.stinkekaese, maxText: 'EINER REICHT. ER STINKT FÜR ZWEI', fuer: 'für Kevins Antrag', verb: 'FINGER WEG', text: 'Premium-Stinkekäse „Alter Schwede“. Riecht nach Entscheidung. Und nach Fuß.', wirkung: 'Für Kevins Antrag', nein: 'Der ist für Jan. Wehe.' },
+  { id: 'porsche', name: 'Porsche', price: 0, sucht: 0, minSucht: 0, shop: null, quest: true, max: 1, verb: 'ANSEHEN', text: 'Der Schlüssel zu Dr. von Glanz\' Porsche. Wo der Wagen steht, weiß keiner. Noch nicht.', wirkung: 'Irgendwo steht ein Porsche', nein: 'Erst mal den Wagen finden.' },
+  { id: 'rolex', name: 'Rolex', price: 150, sucht: 0, minSucht: 0, shop: null, quest: true, max: 1, verb: 'ANSEHEN', text: 'Glanz\' Rolex. Echt Gold, echt schwer, echt geklaut. Aus dem Kanal. Tuncay zahlt sicher was dafür.', wirkung: 'Tuncay kauft sie (150 €)', nein: 'Die tickt noch. Glanz nicht mehr.' },
+  { id: 'kanalpaket', name: 'Wathose', price: 80, sucht: 0, minSucht: 0, shop: null, quest: true, max: 1, verb: 'ANZIEHEN', text: 'Tuncays Kanal-Paket: Wathose, Stirnlampe, Gullyhaken. Riecht nach dem Vorbesitzer.', wirkung: 'Schutz vor den Enten',
+    tragen: {
+      an: () => !state.flags.wathoseAus,
+      verbAus: 'AUSZIEHEN',
+      wechseln: () => {
+        state.flags.wathoseAus = !state.flags.wathoseAus;
+        return state.flags.wathoseAus ? 'Wathose aus. Du fühlst dich leicht. Und sehr, sehr essbar.' : 'Wathose an, Lampe an, Haken in der Hand. Du riechst wie ein Gully. Perfekt.';
+      },
+    } },
   { id: 'koks', name: 'Koks', price: 20, sucht: 0, minSucht: 0, shop: 'dealer', quest: true, max: 5, zeigen: () => state.flags.nick === 'koks', verb: 'FINGER WEG', text: 'Eine Ladung vom Dealer hinten. Für Nick. Nur für Nick.', wirkung: 'Nick will fünf Stück', nein: 'Das ist für Nick, Horst. Finger weg.' },
 ];
 export const ALL_ITEMS: ItemDef[] = [...ITEMS, ...EXTRA_ITEMS, ...QUEST_ITEMS];
@@ -62,8 +80,8 @@ function freshState() {
     running: false,
     time: 0,
     money: 10,
-    inv: { bier: 1, kippe: 1, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0 } as Record<ItemId, number>,
-    uses: { bier: 0, kippe: 0, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0 } as Record<ItemId, number>,
+    inv: { bier: 1, kippe: 1, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0, stinkekaese: 0, kanalpaket: 0, porsche: 0, rolex: 0 } as Record<ItemId, number>,
+    uses: { bier: 0, kippe: 0, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0, stinkekaese: 0, kanalpaket: 0, porsche: 0, rolex: 0 } as Record<ItemId, number>,
     /** was der Wirt selbst genommen hat: bis wann Rausch, Qualm und bunte Wände anhalten (Spielzeit) */
     wirt: { rauschBis: 0, rauchBis: 0, tripBis: 0 },
     sucht: 0,
@@ -101,6 +119,11 @@ export const speedy = () => state.time < state.boost.speed;
 /** Rote Pille: der Wirt ist richtig breit */
 export const bulky = () => state.time < state.boost.bulk;
 
+/** frischer Spielstand (z. B. für Test-Kapitelstände) */
+export function frischerStand() {
+  return freshState();
+}
+
 export function resetState() {
   state = freshState();
 }
@@ -134,6 +157,10 @@ export function loadState(data: Record<string, unknown>) {
 
 /** Sekunden Rausch pro Stufe */
 const RAUSCH_STUFE = 20;
+/** Rausch wie nach n Bier (vergeht genauso schnell) */
+export function anheitern(n: number) {
+  state.wirt.rauschBis = Math.max(state.wirt.rauschBis, state.time) + n * RAUSCH_STUFE;
+}
 /** Rausch des Wirts, 0 (nüchtern) bis 5 (sternhagelvoll) */
 export const rauschStufe = () => Math.max(0, Math.min(5, Math.ceil((state.wirt.rauschBis - state.time) / RAUSCH_STUFE)));
 export const raucht = () => state.time < state.wirt.rauchBis;

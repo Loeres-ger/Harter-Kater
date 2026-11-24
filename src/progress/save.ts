@@ -31,6 +31,10 @@ export const CHAPTERS: ChapterDef[] = [
   { id: 'nick', title: 'BORNAS BUSINESS', name: 'Bornas Business', scene: 'Dach', spawn: [6, 5] },
   { id: 'nickKeller', title: 'DER KELLER', name: 'Der Keller', scene: 'Keller', spawn: [11, 14] },
   { id: 'nickFrei', title: 'NICK IST CLEAN', name: 'Nick ist clean', scene: 'Keller', spawn: [11, 14] },
+  // Teil 1 „Unter dem Eimer“
+  { id: 'k6', title: 'KAPITEL 6', name: 'Ein Tentakel zu viel', scene: 'Club', spawn: [18, 16] },
+  { id: 'k7', title: 'KAPITEL 7', name: 'Unter dem Eimer', scene: 'Alley', spawn: [-21, 18] },
+  { id: 'k8', title: 'KAPITEL 8', name: 'Der Oktopushirsch', scene: 'Klaerwerk', spawn: [0, 0] },
 ];
 
 const KEY = 'harterkarter.saves.v1';

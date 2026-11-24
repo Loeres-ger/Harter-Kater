@@ -59,7 +59,8 @@ export class HudScene extends Phaser.Scene {
         ? ''
         : state.dead ? `${VICTIM}: tot` : `SUCHT ${Math.round(state.sucht)}  MISSTRAUEN ${Math.round(state.misstrauen)}`,
     );
-    this.goal.setText(hud.goal);
+    // Ziele stehen nicht mehr unten im Bild: Was zu tun ist, ergibt sich aus den Gesprächen, und Kalle hilft weiter.
+    this.goal.setText('');
     const left = (until: number) => Math.max(0, Math.ceil(until - state.time));
     const fast = speedy(), broad = bulky();
     const rausch = rauschStufe();

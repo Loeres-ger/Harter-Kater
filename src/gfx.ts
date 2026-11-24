@@ -411,7 +411,7 @@ export const SCHNOESEL_PALS: Pal[] = [
   { skin: '#bfa07a', hair: '#6d645a', coat: '#5a4632', coat2: '#45351f', pants: '#3a3226', shoes: '#2a2018', shirt: '#8e8060', beard: '#6d645a' },
 ];
 
-const WIRT_PAL: Pal = {
+export const WIRT_PAL: Pal = {
   skin: '#f0c08a', hair: '#2a2a2a', coat: '#e8e8e2', coat2: '#c4c4bc', pants: '#222', shoes: '#111', beard: '#2a2a2a', bald: true,
 };
 const DAME_PALS: Pal[] = [

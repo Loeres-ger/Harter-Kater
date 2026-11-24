@@ -24,6 +24,15 @@ export const ALLEY_CLUB_SPAWN: [number, number] = [-21, 18];
 export const SHISHA_SPAWN: [number, number] = [7, 8];
 export const ALLEY_SHISHA_SPAWN: [number, number] = [-11, 18];
 
+/** Kanalisation: unten an der Leiter, oben neben dem Gully (Koordinaten der ursprünglichen Gassenkarte) */
+export const KANAL_SPAWN: [number, number] = [1, 2];
+export const ALLEY_GULLY_SPAWN: [number, number] = [31, 3];
+/** Klo-Abkürzung: im Kanal unter dem Rohr im Vorraum, in der Herrentoilette vor Kabine 1 */
+export const KANAL_ROHR_SPAWN: [number, number] = [58, 39];
+/** vor der Klärwerk-Tür im Vorraum (zurück aus dem Klärwerk) */
+export const KLAERWERK_TUER_SPAWN: [number, number] = [56, 40];
+export const HERREN_KABINE_SPAWN: [number, number] = [9, 4];
+
 /** Masala Basar: drinnen vor der Tür, draußen vor dem Eingang (Koordinaten der ursprünglichen Gassenkarte) */
 export const BASAR_SPAWN: [number, number] = [6, 6];
 export const ALLEY_BASAR_SPAWN: [number, number] = [-8, 7];

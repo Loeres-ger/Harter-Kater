@@ -4,7 +4,8 @@ import { state } from '../state';
 import { T, TileInfo, TopDown } from '../scenes/TopDown';
 import { hud } from '../scenes/HudScene';
 import { unlock } from '../progress/achievements';
-import { BAR_HERREN_SPAWN } from './spawns';
+import { BAR_HERREN_SPAWN, KANAL_ROHR_SPAWN } from './spawns';
+import { kanalAb, rohrAnkunft } from '../dialog/kanal';
 
 // Herrentoilette: Waschbecken, Pissoirs, zwei Kabinen. Kabine 1 ist abgeschlossen (darin: Kurdischer Kevin),
 // Kabine 2 ist frei und hat ein Loch in der Trennwand (StallScene). Wer dagegen klopft und die Kabine
@@ -74,11 +75,18 @@ export class MensRoomScene extends TopDown {
     this.time.addEvent({ delay: 120, loop: true, callback: () => lamp.setAlpha(Math.random() < 0.1 ? 0.08 : 0.45 + Math.random() * 0.12) });
 
     const [xx, xy] = this.find('X');
-    if (state.flags.kevinFlucht) this.add.image(xx * T, xy * T, 'stallDoorOpen').setOrigin(0).setScale(0.5).setDepth(xy * T + T + 1);
+    // Klo-Abkürzung: offen, sobald die Katze vom Curry spricht (dann ist Kevin längst nicht mehr in Kabine 1)
+    const abkuerzung = () => !!state.flags.kloAbkuerzung || kanalAb(state.flags, 'curry');
+    if (state.flags.kevinFlucht || abkuerzung()) this.add.image(xx * T, xy * T, 'stallDoorOpen').setOrigin(0).setScale(0.5).setDepth(xy * T + T + 1);
+    // aus dem Kanal durchs Rohr: der Wirt kriecht aus dem Klo in Kabine 1
+    if (rohrAnkunft.jetzt) {
+      rohrAnkunft.jetzt = false;
+      this.time.delayedCall(500, () => this.toast('Du kriechst aus der Kloschüssel von Kabine 1. Niemand hat es gesehen. Hoffentlich. Ab jetzt führt dieses Klo in den Kanal.'));
+    }
     this.interacts.push({
       x: xx * T + 8, y: (xy + 1) * T + 4, r: 14,
-      label: () => 'Kabine 1',
-      act: () => this.toast(state.flags.kevinFlucht
+      label: () => (abkuerzung() ? 'Kabine 1: Runter in den Kanal' : 'Kabine 1'),
+      act: () => abkuerzung() ? this.go('Kanal', { spawn: KANAL_ROHR_SPAWN }) : this.toast(state.flags.kevinFlucht
         ? 'Leer. Es riecht nach Kokosöl und Panik.'
         : Phaser.Utils.Array.GetRandom(['Abgeschlossen. Von drinnen: tiefes, zufriedenes Atmen.', 'Abgeschlossen. Unter der Tür: zwei riesige Badelatschen.', 'Abgeschlossen. Jemand summt da drin sehr selbstbewusst.'])),
     });

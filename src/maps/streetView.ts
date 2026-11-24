@@ -78,7 +78,28 @@ function floorType(rows: string[], def: MapDef, x: number, y: number): 'road' | 
   return k.startsWith('asph') || k === 'parkLine' ? 'road' : k.startsWith('slab') ? 'walk' : 'other';
 }
 
+/** Innenraum (z. B. Kanalisation): Wand mit Front, wenn darunter Boden liegt, sonst Draufsicht; Boden mit Schatten und Kanten */
+function raumCell(rows: string[], def: MapDef, x: number, y: number): Cell {
+  const raum = def.raum!;
+  const ch = rows[y]?.[x] ?? def.empty;
+  const td = def.tiles[ch];
+  const below = rows[y + 1]?.[x];
+  if (td?.wall) {
+    const front = below !== undefined && !def.tiles[below]?.wall;
+    return { key: front ? tileKey(td, x, y) : raum.wandOben, overlays: [], building: true };
+  }
+  const overlays: string[] = [];
+  const above = rows[y - 1]?.[x];
+  const istWasser = ch === raum.wasser;
+  if (raum.schatten && above !== undefined && def.tiles[above]?.wall) overlays.push(raum.schatten);
+  if (raum.kante && !istWasser && below === raum.wasser) overlays.push(raum.kante);
+  const key = tileKey(td, x, y);
+  // Wasser liegt schon als Boden darunter, eine zweite Lage braucht es nicht
+  return { floor: def.floor(rows, x, y), key: istWasser ? undefined : key || undefined, object: td?.object, overlays, building: false };
+}
+
 export function streetCell(rows: string[], def: MapDef, x: number, y: number): Cell {
+  if (def.raum) return raumCell(rows, def, x, y);
   const ch = rows[y]?.[x] ?? def.empty;
   const td = def.tiles[ch];
   if (isBuilding(def, ch)) {
@@ -157,6 +178,8 @@ export function streetCell(rows: string[], def: MapDef, x: number, y: number): C
 
 /** Lichtquellen, die sich aus der Karte ergeben (Laternen, Fenster, Türen). */
 export function streetLights(rows: string[], def: MapDef): LightHint[] {
+  if (def.lichter) return def.lichter(rows);
+  if (def.raum) return [];
   const out: LightHint[] = [];
   for (let y = 0; y < rows.length; y++)
     for (let x = 0; x < rows[y].length; x++) {

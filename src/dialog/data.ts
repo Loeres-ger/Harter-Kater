@@ -6,18 +6,21 @@ import { claudiusTree, kevinClubTree, kevinGasseTree } from './claudius';
 import { cemoTree, leni2Tree, leniWartetTree, leniXaviTree, tuncayTree } from './xavi';
 import { bornaNickTree, nickTree, nickWeissTree } from './nick';
 import { adshayanTree } from './adshayan';
+import { biancaTree, katzeKanalTree, katzeTuerTree, kevinGullyTree, kevinKanalTree, kevinWachTree } from './kanal';
+import { kalleTree } from './kalle';
 import { bornaTree, kevinTree, leniDanachTree, leniTree, lilyDachTree, lilyTree } from './sidestories';
 import { PILLS, bulky, lookStage, state } from '../state';
 
 // Gespräche: wer redet (Name, Farbe, Porträt, Kulisse) und was gesagt wird.
 // Ein Knoten hat Zeilen der Figur (mit „W:“ davor spricht der Wirt) und Antworten zur Auswahl.
 
-export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'club' | 'shisha' | 'keller' | 'basar';
+export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'club' | 'shisha' | 'keller' | 'basar' | 'kanal';
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
   | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum' | 'anneJagd' | 'shishaDuell' | 'xaviSuche' | 'tuncayQuiz' | 'emilianKampf'
-  | 'nickStart' | 'nickPflanze' | 'nickKeller' | 'gitarrenDuell' | 'nickKoks' | 'nickJam' | 'putzen';
+  | 'nickStart' | 'nickPflanze' | 'nickKeller' | 'gitarrenDuell' | 'nickKoks' | 'nickJam' | 'putzen'
+  | 'kanalStart' | 'kaeseGeben' | 'probe' | 'kanalPaket' | 'rolexVerkauf' | 'curryKochen';
 
 export interface Choice {
   text: string;
@@ -56,65 +59,6 @@ export interface Speaker {
 
 const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 const BYE: Choice = { text: 'Bis später.' };
-
-/** Kalles Tipps, wenn man ihn um Rat fragt */
-const KALLE_TIPS = [
-  'Der Lackaffe da? Gib ihm, was er will. Dann zahlt er.',
-  'Nicht zu hastig, Chef. Sonst merkt er was.',
-  'Hinten in der Gasse steht einer, der hat ... Spezielles.',
-  'Die Katze draußen? Hat nur noch ein Auge. Das andere glüht. Die frisst alles. ALLES.',
-  'Sie nennen sie die Königskatze, Chef. Aber das ist kein König. Das ist ... die Pest.',
-  'Hinten in der Gasse läuft jetzt Polizist Felix Streife. Pass auf seine Taschenlampe auf.',
-  'Lass den Lackaffen nicht warten, Chef. Ungeduldige Gäste werden misstrauisch.',
-  'Die Automaten da hinten? Die Risikoleiter hat mich mein Haus gekostet, Chef.',
-  'Buch der Ratte ... drei Bücher, Chef. Dann geht die Post ab.',
-  'Setz nie auf Schnecke. Ich weiß, wovon ich rede.',
-  'Mülltonnen, Chef. Da liegt oft noch Fusel drin.',
-  'Knapp bei Kasse? Die Damen in der Gasse haben Bares. Aber lass keine Leichen rumliegen, Chef.',
-];
-
-function kalle(): Record<string, DialogNode> {
-  return {
-    start: {
-      lines: ['Zzz ... hm? ... Ah, Chef. Noch ein Korn?'],
-      choices: [
-        { text: 'Was weißt du über den Lackaffen?', next: 'glanz' },
-        { text: 'Erzähl mir von der Katze.', next: 'katze' },
-        { text: 'Wie komm ich an Geld?', next: 'geld' },
-        { text: 'Hast du einen Tipp für mich?', next: 'tipp' },
-        { text: 'Schlaf weiter, Kalle.' },
-      ],
-    },
-    glanz: {
-      lines: ['Von Glanz. Anwalt. Will den Eimer abreißen für seine Lofts.', 'Gib ihm, was er will, Chef. Erst Bier, dann Härteres. Und nicht zu hastig, sonst merkt er was.'],
-      choices: [{ text: 'Und wenn er misstrauisch wird?', next: 'misstrauen' }, { text: 'Was noch?', next: 'start' }],
-    },
-    misstrauen: {
-      lines: ['Lass ihn nicht warten. Ungeduldige Gäste werden misstrauisch.', 'Und was er nicht kennt, nimmt er erst, wenn er weich genug ist.'],
-      choices: [{ text: 'Was noch?', next: 'start' }, BYE],
-    },
-    katze: {
-      lines: ['Die Königskatze. Hinten in der Gasse. Ein Auge glüht, das andere ist blind.', 'Die frisst alles, Chef. ALLES. Und sie wird immer hungriger.'],
-      choices: [{ text: 'Alles?', next: 'alles' }, { text: 'Was noch?', next: 'start' }],
-    },
-    alles: {
-      lines: ['W:Alles?', 'Wenn einer hier mal ... nicht mehr aufsteht, Chef. Die Katze räumt auf. Hab ich gehört.'],
-      choices: [{ text: 'Was noch?', next: 'start' }, BYE],
-    },
-    geld: {
-      lines: [
-        pick(['Mülltonnen, Chef. Da liegt oft noch Fusel drin.', 'Die Automaten da hinten. Aber setz nie auf Schnecke.']),
-        'Und wenn die Stammgäste pöbeln: rausprügeln. Die lassen dann was da.',
-      ],
-      choices: [{ text: 'Und der Dealer?', next: 'dealer' }, { text: 'Was noch?', next: 'start' }],
-    },
-    tipp: { lines: [() => pick(KALLE_TIPS)], choices: [{ text: 'Noch einen Tipp?', next: 'tipp' }, { text: 'Was noch?', next: 'start' }] },
-    dealer: {
-      lines: ['Hinten in der Gasse. Pillen und Zeug. Aber nie kaufen, wenn Felix guckt. Der Bulle.'],
-      choices: [{ text: 'Was noch?', next: 'start' }, BYE],
-    },
-  };
-}
 
 function glanz(): Record<string, DialogNode> {
   const s = lookStage();
@@ -204,6 +148,7 @@ function dealer(): Record<string, DialogNode> {
 }
 
 function dame(gruss?: string[]): Record<string, DialogNode> {
+  if (state.flags.biancaFrei) gruss = ['Bianca ist wieder da! Sie redet nur nicht über Donnerstage.', 'Du hast Bianca gefunden? Sie duscht seit zwei Tagen. Wir sagen nichts.'];
   return {
     start: {
       lines: [pick(gruss ?? ['Na, Süßer? Kalt heute, was?', 'Hey Wirt. Spendierst du mal einen Kaffee?', 'Du schon wieder. Hast du Feierabend?'])],
@@ -215,7 +160,7 @@ function dame(gruss?: string[]): Record<string, DialogNode> {
       ],
     },
     geschaeft: {
-      lines: ['Mies. Seit die Glasbauten kommen, schickt Felix uns ständig weiter. Und meine Kollegin ist seit Tagen weg.'],
+      lines: [state.flags.biancaFrei ? 'Mies. Aber Bianca ist wieder da. Sie redet nur nicht über Donnerstage.' : 'Mies. Seit die Glasbauten kommen, schickt Felix uns ständig weiter. Und meine Kollegin ist seit Tagen weg.'],
       choices: [{ text: 'Umlegen', action: 'kill' }, BYE],
     },
     gesehen: {
@@ -271,7 +216,7 @@ function cat(): Record<string, DialogNode> {
 }
 
 export const SPEAKERS: Record<string, Speaker> = {
-  kalle: { name: 'KALLE', color: '#d8a880', portrait: 'bustPenner', bg: 'bar', tree: kalle },
+  kalle: { name: 'KALLE', color: '#d8a880', portrait: 'bustPenner', bg: 'bar', tree: kalleTree },
   glanz: { name: 'DR. VON GLANZ', color: '#90b8ff', portrait: 'bust0', bg: 'bar', tree: glanz },
   dealer: { name: 'DEALER', color: '#8ad08a', portrait: 'nbust_dealer', bg: 'street', tree: dealer },
   cop: { name: 'POLIZIST FELIX', color: '#7aa8ff', portrait: 'nbust_cop', bg: 'street', tree: felixTree },
@@ -299,7 +244,12 @@ export const SPEAKERS: Record<string, Speaker> = {
   katze: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: cat },
   claudius: { name: 'CAPTAIN CLAUDIUS', color: '#7ab0ff', portrait: 'nbust_claudius', bg: 'street', tree: claudiusTree },
   kevinGasse: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'street', tree: kevinGasseTree },
-  kevinClub: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'club', tree: kevinClubTree },
+  kevinClub: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'club', tree: () => kevinKanalTree() ?? kevinClubTree() },
+  kevinGully: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'street', tree: kevinGullyTree },
+  bianca: { name: 'BIANCA', color: '#40d0b0', portrait: 'nbust_bianca', bg: 'kanal', tree: biancaTree },
+  katzeKanal: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: katzeKanalTree },
+  katzeTuer: { name: 'DIE KATZE', color: '#b8f060', portrait: '', bg: 'cat', tree: katzeTuerTree },
+  kevinWach: { name: 'KURDISCHER KEVIN', color: '#ff8a50', portrait: 'nbust_kevin', bg: 'street', tree: kevinWachTree },
   cemo: { name: 'CEMO', color: '#7ad0c0', portrait: 'nbust_cemo', bg: 'shisha', tree: cemoTree },
   leniXavi: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leniSad', bg: 'wc', tree: leniXaviTree },
   leniWartet: { name: 'LENI', color: '#ff90b0', portrait: 'nbust_leniSad', bg: 'wc', tree: leniWartetTree },

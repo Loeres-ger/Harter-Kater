@@ -1,10 +1,11 @@
 import alley from './alley.json';
+import kanal from './kanal.json';
 import type { MapData } from './types';
 
 // Karten des Spiels. Im Dev-Modus kann der Map-Editor eine Testversion unterschieben (Knopf „Im Spiel testen“),
 // die nur in diesem Browser gilt; die Projektdatei bleibt dabei unangetastet.
 
-const MAPS: Record<string, MapData> = { alley: alley as MapData };
+const MAPS: Record<string, MapData> = { alley: alley as MapData, kanal: kanal as MapData };
 
 export const TEST_KEY = 'harterkarter.testmap';
 

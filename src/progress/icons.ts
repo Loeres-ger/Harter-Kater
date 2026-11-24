@@ -38,6 +38,36 @@ const ICONS: Record<string, (c: Ctx) => void> = {
     r(c, 2, 3, 8, 7, '#f4f2ea'); blob(c, 2, 6.5, 1.5, 3.5, '#d8d4c8'); blob(c, 2, 6.5, 0.8, 1.6, '#8a7a5a');
     r(c, 10, 3, 1, 7, '#c8c4b8'); r(c, 6, 10, 4, 1, '#f4f2ea');
   },
+  ach_kaese: (c) => {
+    // Käseecke mit Herz
+    for (let y = 0; y < 6; y++) r(c, 1 + Math.floor(y / 2), 5 + y, 10 - Math.floor(y / 2), 1, '#f0c840');
+    r(c, 1, 4, 10, 1, '#f8dc70'); p(c, 4, 7, '#c89820'); p(c, 7, 9, '#c89820');
+    r(c, 7, 1, 2, 2, '#ff4a8a'); r(c, 10, 1, 2, 2, '#ff4a8a'); r(c, 8, 2, 3, 2, '#ff4a8a'); p(c, 9, 4, '#ff4a8a');
+  },
+  ach_ente: (c) => {
+    // Ente mit Saugnapf-Tentakeln statt Füßen
+    blob(c, 5, 6, 4, 2.4, '#d8c890'); blob(c, 8.5, 3.5, 2, 1.8, '#3a7a4a');
+    r(c, 10, 3, 2, 1, '#e0a020'); p(c, 9, 3, '#101010'); r(c, 3, 5, 4, 1, '#b8a870');
+    for (const x of [3, 5, 7]) { r(c, x, 8, 1, 3, '#8a4aaa'); p(c, x + 1, 10, '#8a4aaa'); p(c, x, 10, '#f0b0c8'); }
+  },
+  ach_schleuse: (c) => {
+    // Schieberrad über Wasserwellen
+    r(c, 0, 9, 12, 3, '#3a6a8a'); for (let x = 0; x < 12; x += 3) p(c, x, 9, '#8ac0e0');
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) { const d = Math.hypot(x - 6, y - 5); if (d > 2.6 && d < 4.4) p(c, x, y, '#c03028'); }
+    r(c, 2, 5, 9, 1, '#e05a4a'); r(c, 6, 1, 1, 9, '#e05a4a'); p(c, 6, 5, '#f0e0c0');
+  },
+  ach_katzenwirt: (c) => {
+    // grüne Monsterkatze mit Reiter
+    blob(c, 6, 8, 5, 2.6, '#4e5a3c'); blob(c, 10, 6.5, 2, 1.8, '#66734c'); p(c, 10, 6, '#f0e840'); p(c, 11, 6, '#ff3a10');
+    for (const x of [3, 5, 8, 10]) r(c, x, 10, 1, 2, '#38412a');
+    r(c, 5, 2, 3, 4, '#3a5a2a'); r(c, 5, 1, 3, 1, '#e8b48a'); p(c, 1, 6, '#c08474'); p(c, 0, 5, '#c08474');
+  },
+  ach_geweih: (c) => {
+    // gebrochenes Knochengeweih über grüner Brühe
+    r(c, 0, 10, 12, 2, '#2a7a1a'); p(c, 3, 10, '#8ac83a'); p(c, 8, 10, '#8ac83a');
+    for (let k = 0; k < 7; k++) { p(c, 3 - Math.floor(k / 3), 9 - k, '#ddd4b2'); p(c, 8 + Math.floor(k / 3), 9 - k, '#ddd4b2'); }
+    p(c, 1, 4, '#ddd4b2'); p(c, 0, 3, '#ddd4b2'); p(c, 10, 4, '#ddd4b2'); p(c, 11, 2, '#ddd4b2'); p(c, 9, 1, '#7a2a2a'); p(c, 5, 6, '#b040ff');
+  },
   ach_sponge: (c) => {
     // Schwamm mit grüner Scheuerseite und Schaum
     r(c, 1, 4, 10, 4, '#f0d040'); r(c, 1, 4, 10, 1, '#f8e880'); p(c, 3, 6, '#c8a820'); p(c, 7, 5, '#c8a820');

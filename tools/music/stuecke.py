@@ -574,6 +574,48 @@ def club():
     return p
 
 
+# ======================================================================== Hochzeitsprobe im Muskelkater (Kapitel 6)
+
+HZ_AKK = ["F", "Dm", "Bb", "C", "Am", "Dm", "Gm", "C"]
+HZ = {"F": ("F2", "A3+C4+F4"), "Dm": ("D2", "A3+D4+F4"), "Bb": ("Bb1", "Bb3+D4+F4"), "C": ("C2", "G3+C4+E4"),
+      "Am": ("A1", "A3+C4+E4"), "Gm": ("G1", "G3+Bb3+D4")}
+HZ_MEL = ["C5:1.5 A4:0.5 F4:1 A4:1", "D5:3 -:1", "D5:1.5 C5:0.5 Bb4:1 A4:1", "G4:3 -:1",
+          "E4:1 F4:1 G4:1 A4:1", "F5:2 E5:1 D5:1", "D5:1 C5:1 Bb4:1 G4:1", "C5:4"]
+
+
+@stueck(33, "Hochzeitsprobe (Muskelkater)", target=-20.0, hall=3.2, wet=0.55, ratio=1.8)
+def probe():
+    """Romantische Club-Disco für Kevin und Jan: Bassdrum durch, Pizzicato-Oktaven, Streicherteppich,
+    die Solo-Geige singt das Liebesthema, Harfe glitzert, am Ende jeder Strophe ein Glockenspiel-Herz."""
+    p = Piece(112, beats=4, bars=32, seed=632)
+    p.key = {5, 10}
+    for k in range(32):
+        b = 1 + k
+        r, ch = HZ[HZ_AKK[k % 8]]
+        for j in range(8):
+            p.note("pizz", "cb_pizz", m(r, 12 if j % 2 else 0), b, j * 0.5, 0.45, 0.42 if j % 2 == 0 else 0.34)
+        for n in ch.split("+"):
+            p.note("vln", "vln", m(n, 12), b, 0, 4, 0.14, swell=(0.3, 1.0, 0.8, 0.7))
+        tones = ch.split("+")
+        for j in range(8):
+            p.note("lyre", "lyre", m(tones[j % 3], 12 + (12 if j >= 4 else 0)), b, j * 0.5, 1, 0.14)
+        if k >= 4:
+            p.grid("kit", "dkick", b, 1, "X...X...X...X...", 0.5)
+            p.grid("kit", "clap", b, 1, "....X.......X...", 0.22)
+            p.grid("hats", "dhat", b, 1, "o.o.o.o.o.o.o.o.", 0.18)
+            p.grid("hats", "dhat_o", b, 1, "..x...x...x...x.", 0.22)
+    mel(p, "solo", "solo", 5, HZ_MEL, 0.4)
+    mel(p, "solo", "solo", 13, HZ_MEL, 0.38, tr=12)
+    mel(p, "flute", "flute", 21, HZ_MEL, 0.36, tr=12)
+    mel(p, "vln", "vln", 21, HZ_MEL, 0.28)
+    for b in (12, 20, 28):
+        for j, n in enumerate(("F6", "A6", "C7")):
+            p.note("bells", "glock", n, b, 2 + j * 0.5, 1, 0.14)
+    for b in (5, 21):
+        p.note("crash", "dcrash", 60, b, 0, 4, 0.3)
+    return p
+
+
 # ======================================================================== Shisha 1001 (zwei Phasen: Lounge, Duell)
 
 SH_MEL = ["A4:1.5 Bb4:0.5 A4:1 G4:0.5 F#4:0.5", "Eb4:1 F#4:1 D4:2",
@@ -1092,6 +1134,52 @@ def erloesung():
     return p
 
 
+@stueck(64, "Kanalisation", target=-23.0, hall=6.0, wet=0.8)
+def kanal():
+    """Unter der Stadt: tiefer Bordun, Tropfen auf der Glocke, eine Klarinette tastet sich vor, Kratzen im Rohr."""
+    p = Piece(76, beats=4, bars=16, seed=64)
+    p.key = {1, 4, 8}
+    for s0 in (1, 9):
+        p.hold("cb", "cb", s0, 8, "C2 G2", 0.3)
+        p.note("vla", "vla_trem", "Eb4", s0, 0, 32, 0.13, swell=(0.0, 1.0, 0.4, 0.7))
+    p.note("vla", "vla_trem", "D4", 13, 0, 16, 0.12, swell=(0.0, 1.0, 0.3, 0.8))
+    tropfen = [(1, 1.5, "G6"), (2, 3, "Eb6"), (3, 0.5, "C7"), (4, 2.5, "G6"), (5, 1, "Ab6"), (6, 3.5, "Eb6"), (7, 2, "G6"), (8, 0.5, "D7"),
+               (9, 1.5, "G6"), (10, 3, "Eb6"), (11, 1, "C7"), (12, 2.5, "Bb6"), (13, 0.5, "G6"), (14, 2, "Ab6"), (15, 3.5, "Eb6"), (16, 1, "G6")]
+    for b, beat, n in tropfen:
+        p.note("bells", "glock", n, b, beat, 1, 0.1)
+    for b in range(1, 17):
+        p.note("pizz", "cb_pizz", "C2" if b % 4 else "Ab1", b, 0, 1, 0.36)
+        p.note("pizz", "cb_pizz", "G2", b, 2.5, 0.5, 0.22)
+    mel(p, "reed", "clar", 3, ["C4:2 Eb4:1 D4:1", "C4:4", "-:4", "G3:2 Ab3:1 G3:1", "F3:2 Eb3:2", "-:4"], 0.32)
+    mel(p, "reed", "clar", 11, ["Eb4:2 F4:1 G4:1", "Ab4:2 G4:2", "F4:1 Eb4:1 D4:2", "C4:4"], 0.3)
+    for b in (4, 12):
+        p.note("fx", "scrape", 49, b, 2, 4, 0.18)
+    for b in (8, 16):
+        p.note("timp", "timp", "C2", b, 3, 1, 0.3)
+    return p
+
+
+@stueck(65, "Schieberkammer", target=-24.0, hall=5.5, wet=0.75)
+def schleuse():
+    """Nachdenken unter der Stadt: Glockenspiel wie Tropfen, die nach einem Muster suchen, Harfe, sanfter Bordun."""
+    p = Piece(84, beats=4, bars=16, seed=65)
+    p.key = {1, 4, 8}
+    p.hold("cb", "cb", 1, 8, "C2 G2", 0.22)
+    p.hold("cb", "cb", 9, 8, "Ab1 Eb2", 0.22)
+    p.note("vla", "vla_trem", "Eb4", 1, 0, 32, 0.08, swell=(0.0, 1.0, 0.5, 0.6))
+    p.note("vla", "vla_trem", "C4", 9, 0, 32, 0.08, swell=(0.0, 1.0, 0.5, 0.6))
+    muster = [["C6", "Eb6", "G6", "Eb6"], ["D6", "F6", "Ab6", "F6"], ["C6", "Eb6", "G6", "C7"], ["Bb5", "D6", "F6", "D6"]]
+    for b in range(1, 17):
+        reihe = muster[(b - 1) % 4]
+        for j, n in enumerate(reihe):
+            p.note("bells", "glock", n, b, j, 1, 0.13 if j == 0 else 0.09)
+    mel(p, "reed", "clar", 5, ["G4:2 Ab4:1 G4:1", "F4:2 Eb4:2", "D4:2 Eb4:1 F4:1", "G4:4"], 0.24)
+    mel(p, "reed", "clar", 13, ["Eb4:2 D4:1 C4:1", "D4:2 G3:2", "C4:4", "-:4"], 0.24)
+    for b in (4, 8, 12, 16):
+        p.note("pizz", "cb_pizz", "C2", b, 3, 1, 0.28)
+    return p
+
+
 @stueck(63, "Monster", target=-20.0, hall=5.0)
 def monster():
     """Horror: Streicher-Cluster, Blech schwillt an, Glissandi, ein Herz, Metall auf Stein."""
@@ -1116,4 +1204,67 @@ def monster():
     for b in (1, 9):
         p.note("timp", "timp", "E2", b, 0, 2, 0.6)
         p.note("crash", "swell", 81, b + 4, 0, 16, 0.3, delay=-2.0)
+    return p
+
+
+# ======================================================================== Klärwerk: der Oktopushirsch (drei Phasen)
+
+@stueck(66, "Klärwerk (Endkampf)", target=-18.0, hall=3.5, wet=0.5, send_scale=0.7, ratio=2.4,
+        phases=(1, 2, 3), phase_step=1.5)
+def klaerwerk():
+    """Im Klärwerk, e-Phrygisch mit Tritonus: tiefer Puls, Herz, Metall und Streicher-Cluster (Phase 1, Ratten
+    fangen), treibende Celli, Chor, Snare und Blechstöße (Phase 2), das Duell der Monster mit verzerrten Gitarren,
+    Doppelbass, Leadgitarre, Braams und Gong (Phase 3)."""
+    p = Piece(132, beats=4, bars=32, seed=66)
+    p.key = {4, 10}
+    roots = ["E1", "E1", "F1", "E1", "E1", "G1", "F1", "E1"]
+    for k in range(32):
+        b = 1 + k
+        rn = roots[k % 8]
+        r = m(rn)
+        p.note("cb", "cb_pizz", rn, b, 0, 1, 0.5)
+        p.note("cb", "cb_pizz", rn, b, 1.5, 0.5, 0.4)
+        p.note("drums", "bd", 36, b, 0, 1, 0.5)
+        p.note("drums", "bd", 36, b, 0.42, 1, 0.34)
+        p.grid("hand", "tumba", b, 1, "x.....x...x.....", 0.3)
+        if k % 4 == 3:
+            p.note("fx", "scrape", 61, b, 2, 2, 0.3)
+            p.note("metal", "anvil", 84, b, 3.5, 1, 0.2)
+        for j in range(8):
+            p.note("p2.drv", "vc_spic", r + 24, b, j * 0.5, 0.5, 0.42 if j % 2 == 0 else 0.3, release=0.12)
+        if k % 2 == 1:
+            p.note("p2.stab", "tbn_stac", r + 24, b, 2.5, 0.5, 0.5)
+            p.note("p2.stab", "horn_stac", r + 36, b, 3.5, 0.5, 0.45)
+        for j, c in enumerate("X.xxX.xxX.x.Xx.x"):
+            if c == "X":
+                p.note("p3.gtr", "zerre", r + 12 if j == 0 else r, b, j * 0.25, 0.25 if j else 0.9, 0.6)
+            elif c == "x":
+                p.note("p3.gtr", "chug", r, b, j * 0.25, 0.22, 0.5)
+            if c in "Xx":
+                p.note("p3.bass", "ebass", r, b, j * 0.25, 0.22, 0.5 if c == "X" else 0.4)
+    for s0 in (1, 9, 17, 25):
+        for n in ("E5", "F5", "Bb5"):
+            p.note("vln", "vln_trem", n, s0, 0, 32, 0.16, swell=(0.0, 1.0, 0.4, 0.8))
+        p.note("vc", "vc_trem", "E2", s0, 0, 32, 0.26, swell=(0.2, 1.0, 0.6, 0.7))
+        p.note("timp", "timp", "E2", s0, 0, 2, 0.55)
+    for b in (8, 16, 24, 32):
+        slide(p, "vln", "vln_trem", b, 0, "F5", "E4", 4, 0.2)
+    p.grid("p2.kit", "dsnare", 1, 32, "....X.......X...", 0.5)
+    p.grid("p2.hats", "dride", 1, 32, "x.x.x.x.x.x.x.x.", 0.22)
+    for b in range(1, 33, 2):
+        p.note("p2.choir", "choir_a", "E4", b, 0, 8, 0.36, attack=0.3)
+        p.note("p2.choir", "choir_a", "B4" if b % 4 == 1 else "C5", b, 0, 8, 0.32, attack=0.3)
+    p.grid("p3.kit", "dkick", 1, 32, "XxXxXxXxXxXxXxXx", 0.42)
+    p.grid("p3.kit", "esnare", 1, 32, "....X.......X...", 0.3)
+    for b in range(1, 33, 4):
+        p.note("p3.crash", "dchina", 60, b, 0, 4, 0.4)
+    for b in (1, 9, 17, 25):
+        p.note("p3.metal", "gong", 40, b, 0, 8, 0.42)
+        for inst, n in (("tuba", "E1"), ("tbn", "E2"), ("tbn", "Bb2")):
+            p.note("p3.braam", inst, n, b, 0, 8, 0.6, attack=0.03, swell=(0.7, 1.0, 0.2, 0.06))
+    lead = ["E5:1 F5:1 G5:2", "Bb5:1.5 A5:0.5 G5:2", "F5:1 G5:1 A5:2", "Bb5:1 A5:1 G5:1 F5:1",
+            "E5:1 G5:1 Bb5:1 C6:1", "D6:1 C6:1 Bb5:1 G5:1", "F6:2 E6:1 D6:1", "E6:4"]
+    mel(p, "p3.lead", "glead", 9, lead, 0.52)
+    mel(p, "p3.lead", "glead", 25, lead, 0.52)
+    mel(p, "p2.vln", "vln", 17, lead, 0.32, tr=-12)
     return p

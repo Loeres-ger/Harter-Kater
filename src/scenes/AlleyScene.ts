@@ -7,7 +7,7 @@ import { unlock } from '../progress/achievements';
 import { freiesSpiel, lilyWartet } from '../progress/flags';
 import { entdecke, weltZiel, zaehle } from '../progress/quests';
 import { countBarEntry } from '../events/anne';
-import { BAR_LADDER_SPAWN, BASAR_SPAWN, CLUB_SPAWN, LADEN_SPAWN, SHISHA_SPAWN } from '../rooms/spawns';
+import { BAR_LADDER_SPAWN, BASAR_SPAWN, CLUB_SPAWN, KANAL_SPAWN, LADEN_SPAWN, SHISHA_SPAWN } from '../rooms/spawns';
 import { fadeTo, floatText } from '../ui';
 import { hud } from './HudScene';
 import { Interact, T, TileInfo, TopDown } from './TopDown';
@@ -15,6 +15,7 @@ import { getMap } from '../maps';
 import { ALLEY_TILES, MAP_DEFS, alleyFloor, tileKey } from '../maps/palettes';
 import { Passanten, STRASSEN_NPCS, Welt } from '../world/passanten';
 import { Kachel, weg } from '../world/wege';
+import { janWeg, kanalAb, kanalOhnmacht, wirtFigur } from '../dialog/kanal';
 
 // Draußen: Straße und Gasse. Die Karte steht in maps/alley.json (bearbeitbar mit dem Map-Editor, editor.html),
 // die Bedeutung der Zeichen in maps/palettes.ts.
@@ -235,6 +236,16 @@ export class AlleyScene extends TopDown {
     this.copSpot = { x: this.cop.x, y: this.cop.y - 4, r: 20, label: () => (this.copGone || this.busted || state.carrying || this.corpseCarried ? null : 'Polizist Felix ansprechen'), act: () => this.talk('cop', (a) => a === 'felixKnueppel' && this.felixKnueppel()) };
     this.interacts.push(this.copSpot);
     this.npcs.push(this.cop);
+    // Teil 1: Felix im Kanal verloren: keine Streife mehr, am Eimer hängt ein Vermisstenplakat
+    if (state.flags.felixKanal === 'verloren') {
+      this.copGone = true;
+      this.cop.setVisible(false).setActive(false);
+      const [tx, ty] = this.find('D');
+      const plakat = this.add.rectangle(tx * T + 26, ty * T - 2, 9, 12, 0xf4f0e0).setStrokeStyle(0.6, 0x3a3a3a).setDepth(ty * T + 1);
+      this.add.rectangle(plakat.x, plakat.y - 2, 5, 4, 0x7aa8ff).setDepth(ty * T + 2);
+      this.add.rectangle(plakat.x, plakat.y + 3, 7, 1, 0xc02a2a).setDepth(ty * T + 2);
+      this.interacts.push({ x: plakat.x, y: plakat.y + 10, r: 12, label: () => 'Vermisstenplakat', act: () => this.toast('VERMISST: Polizeimeister Felix. Zuletzt gesehen mit Taschenlampe und Notizblock. Hinweise an jede Dienststelle. Darunter, mit Kuli: „Ich hab nichts gesehen.“') });
+    }
     this.cone = this.add.graphics().setDepth(5001).setBlendMode(Phaser.BlendModes.ADD);
 
     // Damen der Nacht
@@ -270,6 +281,8 @@ export class AlleyScene extends TopDown {
     this.addBasar();
     this.addXavi();
     this.addBusch();
+    this.addSchleimspur();
+    if (kanalOhnmacht.aufwachen) void this.aufwachen();
     this.scheduleStory(() => !!this.corpse);
 
     // Leute auf der Straße; die zusätzlichen Streifen gibt es erst im freien Spiel
@@ -337,9 +350,21 @@ export class AlleyScene extends TopDown {
           });
         } else if (ch === 'o') {
           // Easter Egg: aus dem Gully klingt es nach Kneipe (nach Claudius' Niederlage feiert die Unterwelt)
+          this.addGully(x, y);
           this.interacts.push({
-            x: x * T + 8, y: y * T + 8, r: 12, label: () => 'Gullydeckel',
+            x: x * T + 8, y: y * T + 8, r: 12,
+            label: () => {
+              if (!kanalAb(state.flags, 'ausruestung')) return 'Gullydeckel';
+              if (this.corpse || state.carrying) return 'Erst die Leiche loswerden!';
+              return state.flags.gullyOffen ? 'Runter in den Kanal' : 'Gully öffnen';
+            },
             act: () => {
+              if (kanalAb(state.flags, 'ausruestung')) {
+                if (this.corpse || state.carrying) return this.toast('Mit einer Leiche in den Kanal? Die Enten würden reden.');
+                if (state.flags.curryTopf && state.flags.gullyOffen) return this.toast('Mit dem Riesentopf die Leiter runter? Keine Chance. Durch die Herrentoilette im Eimer, Kabine 1.');
+                return void (state.flags.gullyOffen ? this.abstieg(x, y) : this.gullyOeffnen());
+              }
+              if (state.flags.kanal === 'entfuehrt') return this.toast('Der Deckel bewegt sich keinen Millimeter. Darunter: Quaken. Viel Quaken.');
               entdecke(state.flags, 'gully');
               this.toast(state.flags.claudius === 'veroeffentlicht' ? 'Aus dem Gully: Gläserklirren und ein dreistimmiges „Prost!“. Die Kanalisation feiert die Pressefreiheit.' : 'Aus dem Gully: ein leises Quaken. Enten? Hier unten?');
             },
@@ -409,6 +434,108 @@ export class AlleyScene extends TopDown {
     });
   }
 
+  /** Kapitel 6/7: Nach Jans Entführung führt eine leuchtende Schleimspur vom Muskelkater zum Gully; Kevin wartet dort */
+  private addSchleimspur() {
+    const f = state.flags;
+    if (!janWeg(f)) return;
+    const gully = this.find('o');
+    const [cx, cy] = this.at(CLUB_DOOR);
+    const pfad = weg(this.solid, [cx, cy + 1], [gully[0], gully[1] + 1 <= this.rows.length - 1 && !this.solid[gully[1] + 1]?.[gully[0]] ? gully[1] + 1 : gully[1]]);
+    (pfad ?? []).forEach(([x, y], i) => {
+      if (i % 2) return;
+      const s = this.add.image(x * T + 8 + Phaser.Math.Between(-4, 4), y * T + 9 + Phaser.Math.Between(-3, 3), 'hz_schleim')
+        .setScale(0.5 * Phaser.Math.FloatBetween(0.7, 1.2)).setAngle(Phaser.Math.Between(-20, 20)).setDepth(0.8);
+      if (i % 8 === 0) this.addLight(s.x, s.y, 0.35, 0.4).setTint(0x6aff4a);
+    });
+    // Kevin kniet neben dem Gully
+    const [gx, gy] = gully;
+    const kx = [gx - 1, gx + 1].find((x) => this.solid[gy]?.[x] === false) ?? gx - 1;
+    const kevin = this.add.sprite(kx * T + 8, gy * T + 14, 'kevin', 0).setOrigin(0.5, 1).setScale(0.5).setDepth(gy * T + 14).setFlipX(kx > gx);
+    this.npcs.push(kevin, this.add.image(kevin.x, kevin.y - 1, 'shadow').setDepth(1));
+    this.solid[gy][kx] = true;
+    this.tweens.add({ targets: kevin, y: kevin.y + 1, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.interacts.push({ x: kevin.x, y: kevin.y - 4, r: 18, label: () => (kevin.active && !this.corpse && !state.carrying ? 'Mit Kevin reden' : null), act: () => this.talk('kevinGully') });
+    this.addLight(gx * T + 8, gy * T + 8, 0.5, 0.55).setTint(0x6aff4a);
+  }
+
+  private gullyLoch?: Phaser.GameObjects.Image;
+  private gullyDeckel?: Phaser.GameObjects.Image;
+
+  /** Kapitel 7: Ab Tuncays Kanal-Paket liegt ein eigener Deckel auf dem Gully; offen ist er beiseitegeschoben */
+  private gullyPos: [number, number] = [0, 0];
+  private addGully(x: number, y: number) {
+    this.gullyLoch = undefined;
+    this.gullyDeckel = undefined;
+    this.gullyPos = [x, y];
+    if (!kanalAb(state.flags, 'ausruestung')) return;
+    const cx = x * T + 8, cy = y * T + 8;
+    const offen = !!state.flags.gullyOffen;
+    this.gullyLoch = this.add.image(cx, cy, 'kanalGullyOffen').setScale(0.5).setDepth(0.7).setVisible(offen);
+    this.gullyDeckel = this.add.image(offen ? cx + 13 : cx, offen ? cy + 3 : cy, 'kanalDeckel').setScale(0.5).setDepth(0.75).setAngle(offen ? 18 : 0);
+    if (offen) this.addLight(cx, cy, 0.4, 0.5).setTint(0x6aff4a);
+  }
+
+  /** Tuncays Gullyhaken unter den Deckel, hebeln, Deckel schrammt beiseite */
+  private async gullyOeffnen() {
+    // Paket erst in dieser Szene gekauft: Deckel und Loch jetzt anlegen
+    if (!this.gullyDeckel) this.addGully(...this.gullyPos);
+    const d = this.gullyDeckel, loch = this.gullyLoch;
+    if (!d || !loch || this.frozen) return;
+    this.frozen = true;
+    hud.prompt = '';
+    await this.blase(this.player.x, this.player.y - 26, 'Haken drunter. Hebeln, nicht ziehen.');
+    audio.sfx('clang');
+    this.tweens.add({ targets: d, x: d.x + 1, duration: 50, yoyo: true, repeat: 5 });
+    await this.wartet(420);
+    audio.sfx('clang');
+    this.cameras.main.shake(160, 0.004);
+    await this.wartet(300);
+    audio.sfx('rumble');
+    loch.setVisible(true);
+    await new Promise<void>((res) => this.tweens.add({ targets: d, x: d.x + 13, y: d.y + 3, angle: 18, duration: 750, ease: 'Quad.easeOut', onComplete: () => res() }));
+    const glow = this.addLight(loch.x, loch.y, 0.4, 0.5).setTint(0x6aff4a);
+    glow.setAlpha(0);
+    this.tweens.add({ targets: glow, alpha: 0.5, duration: 500 });
+    for (let i = 0; i < 3; i++) this.time.delayedCall(250 + i * 380, () => floatText(this, loch.x + (i - 1) * 8, loch.y - 6, 'quak', '#e8e0a0'));
+    state.flags.gullyOffen = true;
+    await this.wartet(900);
+    this.toast('Der Deckel ist ab. Von unten: Rauschen, Tropfen und ein sehr zufriedenes Quaken.');
+    this.frozen = false;
+  }
+
+  /** Nach der Ohnmacht im Kanal: der Wirt liegt grün im Gesicht neben dem Gully, Kevin weckt ihn */
+  private async aufwachen() {
+    kanalOhnmacht.aufwachen = false;
+    const p = this.player;
+    this.frozen = true;
+    p.setAngle(-90).setTint(0xa8ff8a);
+    await this.wartet(1500);
+    audio.sfx('retch');
+    this.tweens.add({ targets: p, angle: 0, duration: 380, ease: 'Back.easeOut' });
+    await this.wartet(600);
+    p.clearTint();
+    this.frozen = false;
+    if (janWeg(state.flags)) this.talk('kevinWach');
+    else this.toast('Du wachst neben dem Gully auf. Jemand hat dich rausgezogen. Du riechst nach Ente. Von innen.');
+  }
+
+  /** Abstieg: der Wirt stellt sich über das Loch und verschwindet nach unten */
+  private async abstieg(x: number, y: number) {
+    if (this.frozen || this.leaving) return;
+    this.frozen = true;
+    hud.prompt = '';
+    const p = this.player;
+    await new Promise<void>((res) => this.tweens.add({ targets: p, x: x * T + 8, y: y * T + 12, duration: 260, onComplete: () => res() }));
+    audio.sfx('step');
+    this.tweens.add({ targets: p, y: p.y + 10, alpha: 0, duration: 700, ease: 'Quad.easeIn' });
+    this.tweens.add({ targets: this.shadow, alpha: 0, duration: 400 });
+    await this.wartet(560);
+    audio.sfx('splash');
+    this.frozen = false;
+    if (wirtFigur() !== 'wirtKanal') this.toast('Ohne Wathose da runter? Mutig. Oder dumm. Unten entscheidet sich das schnell.');
+    this.go('Kanal', { spawn: KANAL_SPAWN });
+  }
+
   /** Masala Basar: offen, sobald die Baustellen weg sind (nur nicht mit Leiche) */
   private addBasar() {
     const [x, y] = this.at(BASAR_DOOR);
@@ -463,6 +590,24 @@ export class AlleyScene extends TopDown {
   }
 
   private tuncayDone(a?: DialogAction) {
+    if (a === 'rolexVerkauf') {
+      if (!state.inv.rolex) return;
+      state.inv.rolex = 0;
+      state.flags.rolexVerkauft = true;
+      state.money += 150;
+      audio.sfx('kaching');
+      return this.toast('Rolex weg, 150 € da. Tuncay trägt sie schon. Falschrum.');
+    }
+    if (a === 'kanalPaket') {
+      if (state.money < 80) return this.toast('Tuncay: „Achtzig, Bruder. Nicht siebzig. Nicht ‚morgen‘. Achtzig.“');
+      state.money -= 80;
+      state.inv.kanalpaket = 1;
+      state.flags.kanal = 'ausruestung';
+      audio.sfx('kaching');
+      this.toast('Kanal-Paket: Wathose, Stirnlampe, Gullyhaken. Ab zum Gully in der Hintergasse.');
+      hud.goal = this.goalText();
+      return;
+    }
     if (a !== 'tuncayQuiz') return;
     hud.prompt = '';
     this.scene.launch('Quiz', { resume: this.scene.key, onDone: (win: boolean) => this.quizDone(win) });
