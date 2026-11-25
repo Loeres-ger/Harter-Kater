@@ -11,13 +11,13 @@
     <main>
       <a class="back" href="./index.html">&larr; Zurück zum Spiel</a>
       <h1>Datenschutzerklärung</h1>
-      <p class="muted">Stand: Oktober 2026</p>
+      <p class="muted">Stand: November 2026</p>
 
       <div class="card">
         <strong>Kurz gesagt:</strong> Dieses Spiel setzt <strong>keine Cookies</strong>, nutzt <strong>kein Tracking</strong>,
-        <strong>keine Werbung</strong> und <strong>keine externen Dienste</strong>. Kapitel-Spielstände und
-        freigeschaltete Achievements speichert das Spiel ausschließlich lokal in deinem Browser (siehe Abschnitt 3);
-        sie werden nicht übertragen. Personenbezogene Daten fallen nur in den technisch notwendigen
+        <strong>keine Werbung</strong>, <strong>keine Konten</strong> und <strong>keine externen Dienste</strong>.
+        Spielstände und freigeschaltete Achievements speichert das Spiel ausschließlich lokal in deinem Browser (siehe
+        Abschnitt 3); sie werden nicht übertragen. Personenbezogene Daten fallen nur in den technisch notwendigen
         Server-Protokollen des Webhosters an.
       </div>
 
@@ -60,10 +60,20 @@
       </p>
       <ul>
         <li>
-          <code>harterkarter.saves.v1</code> – <strong>Kapitel-Spielstände</strong>: Sobald im Spiel eine
-          Kapitel-Einblendung erscheint, speichert das Spiel automatisch den Spielstand zu diesem Kapitel (z. B. Geld,
-          Inventar, Spielzeit, getroffene Entscheidungen der Nebenhandlungen) und den Zeitpunkt der Speicherung. Pro
-          Kapitel gibt es höchstens einen Stand; ein neuer Stand ersetzt den alten.
+          <code>harterkarter.saves.v1</code> – <strong>Spielstände</strong>, und zwar:
+          <ul>
+            <li>
+              <em>Kapitel-Stände:</em> Sobald im Spiel eine Kapitel-Einblendung erscheint, speichert das Spiel den Stand
+              zu diesem Kapitel. Pro Kapitel gibt es höchstens einen Stand; ein neuer ersetzt den alten.
+            </li>
+            <li>
+              <em>Zwischenstand:</em> Beim Wechsel zwischen Orten und an Kontrollpunkten der Bosskämpfe speichert das Spiel
+              automatisch einen Zwischenstand, mit dem du über <em>Fortsetzen</em> weiterspielst. Es gibt immer nur einen;
+              ein neuer ersetzt den alten.
+            </li>
+          </ul>
+          Gespeichert werden nur Spieldaten (z. B. Geld, Inventar, Spielzeit, Ort, Entscheidungen in den Nebenhandlungen)
+          und der Zeitpunkt der Speicherung.
         </li>
         <li>
           <code>koenigskatze.achievements.v1</code> – <strong>Achievements</strong>: welche Erfolge du freigeschaltet hast
@@ -73,19 +83,19 @@
       <p>
         Diese Daten verlassen dein Gerät nicht, werden nicht an mich oder Dritte übertragen und enthalten keine Angaben zu
         deiner Person, sondern nur Spieldaten. Die Speicherung dient ausschließlich den von dir genutzten Spielfunktionen
-        „Kapitel fortsetzen/laden“ und „Achievements“; ich stütze sie auf § 25 Abs. 2 Nr. 2 TDDDG (unbedingt erforderlich
+        „Fortsetzen“, „Kapitel laden“ und „Achievements“; ich stütze sie auf § 25 Abs. 2 Nr. 2 TDDDG (unbedingt erforderlich
         für einen von dir gewünschten Dienst). Deshalb gibt es kein Cookie-Banner.
       </p>
       <p>
-        Löschen kannst du die Kapitel-Spielstände jederzeit im Spiel über <em>Kapitel → Spielstand löschen</em>
+        Löschen kannst du die Spielstände jederzeit im Titelmenü über <em>Kapitel → Spielstand löschen</em>
         (die Achievements bleiben dabei erhalten). Beide Einträge entfernst du, indem du die Website-Daten dieser Seite in
         deinem Browser löschst. In einem privaten Fenster werden die Daten in der Regel beim Schließen verworfen.
       </p>
 
       <h2>4. Schriftarten und externe Dienste</h2>
       <p>
-        Die verwendete Pixel-Schrift „Press Start 2P“ und die Soundeffekte werden <strong>lokal von diesem Server</strong>
-        geladen. Es findet keine Verbindung zu Google Fonts oder anderen Drittanbietern statt. Es werden keine Analyse-Tools (z. B. Google Analytics),
+        Die verwendete Pixel-Schrift „Press Start 2P“, die Musik und die Soundeffekte werden <strong>lokal von diesem
+        Server</strong> geladen. Es findet keine Verbindung zu Google Fonts oder anderen Drittanbietern statt. Es werden keine Analyse-Tools (z. B. Google Analytics),
         keine Social-Media-Plugins und keine eingebetteten Inhalte Dritter verwendet.
       </p>
 
