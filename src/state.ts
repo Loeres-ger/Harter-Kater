@@ -2,7 +2,7 @@
 
 import type { StoryFlags } from './progress/flags';
 
-export type ItemId = 'bier' | 'kippe' | 'schnaps' | 'fusel' | 'pillen' | 'zeug' | 'wurst' | 'kaese' | 'curry' | 'lassi' | 'pflanze' | 'koks' | 'stinkekaese' | 'kanalpaket' | 'porsche' | 'rolex';
+export type ItemId = 'bier' | 'kippe' | 'schnaps' | 'fusel' | 'pillen' | 'zeug' | 'wurst' | 'kaese' | 'curry' | 'lassi' | 'pflanze' | 'koks' | 'stinkekaese' | 'kanalpaket' | 'porsche' | 'rolex' | 'lederhose';
 
 export interface ItemDef {
   id: ItemId;
@@ -60,7 +60,18 @@ export const QUEST_ITEMS: ItemDef[] = [
       verbAus: 'AUSZIEHEN',
       wechseln: () => {
         state.flags.wathoseAus = !state.flags.wathoseAus;
+        if (!state.flags.wathoseAus) state.flags.trachtAn = false;
         return state.flags.wathoseAus ? 'Wathose aus. Du fühlst dich leicht. Und sehr, sehr essbar.' : 'Wathose an, Lampe an, Haken in der Hand. Du riechst wie ein Gully. Perfekt.';
+      },
+    } },
+  { id: 'lederhose', name: 'Lederhose', price: 0, sucht: 0, minSucht: 0, shop: null, quest: true, max: 1, verb: 'ANZIEHEN', text: 'Mayas Geschenk: Lederhose, Trachtenhemd, Hut mit Gamsbart. Riecht nach Leberkäse und Lager.', wirkung: 'Bierresistenz: du verträgst viel mehr',
+    tragen: {
+      an: () => !!state.flags.trachtAn,
+      verbAus: 'AUSZIEHEN',
+      wechseln: () => {
+        state.flags.trachtAn = !state.flags.trachtAn;
+        if (state.flags.trachtAn && state.inv.kanalpaket > 0) state.flags.wathoseAus = true;
+        return state.flags.trachtAn ? 'Lederhose an, Hut auf. Fesch. Jetzt verträgst du was.' : 'Lederhose aus. Wieder Wirt. Ganz normaler, durstiger Wirt.';
       },
     } },
   { id: 'koks', name: 'Koks', price: 20, sucht: 0, minSucht: 0, shop: 'dealer', quest: true, max: 5, zeigen: () => state.flags.nick === 'koks', verb: 'FINGER WEG', text: 'Eine Ladung vom Dealer hinten. Für Nick. Nur für Nick.', wirkung: 'Nick will fünf Stück', nein: 'Das ist für Nick, Horst. Finger weg.' },
@@ -80,10 +91,10 @@ function freshState() {
     running: false,
     time: 0,
     money: 10,
-    inv: { bier: 1, kippe: 1, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0, stinkekaese: 0, kanalpaket: 0, porsche: 0, rolex: 0 } as Record<ItemId, number>,
-    uses: { bier: 0, kippe: 0, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0, stinkekaese: 0, kanalpaket: 0, porsche: 0, rolex: 0 } as Record<ItemId, number>,
+    inv: { bier: 1, kippe: 1, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0, stinkekaese: 0, kanalpaket: 0, porsche: 0, rolex: 0, lederhose: 0 } as Record<ItemId, number>,
+    uses: { bier: 0, kippe: 0, schnaps: 0, fusel: 0, pillen: 0, zeug: 0, wurst: 0, kaese: 0, curry: 0, lassi: 0, pflanze: 0, koks: 0, stinkekaese: 0, kanalpaket: 0, porsche: 0, rolex: 0, lederhose: 0 } as Record<ItemId, number>,
     /** was der Wirt selbst genommen hat: bis wann Rausch, Qualm und bunte Wände anhalten (Spielzeit) */
-    wirt: { rauschBis: 0, rauchBis: 0, tripBis: 0 },
+    wirt: { rauschBis: 0, rauchBis: 0, tripBis: 0, festRest: 0 },
     sucht: 0,
     misstrauen: 0,
     /** wie weit Glanz heruntergekommen ist (0..100, bei 100 stirbt er) */
@@ -159,7 +170,20 @@ export function loadState(data: Record<string, unknown>) {
 const RAUSCH_STUFE = 20;
 /** Rausch wie nach n Bier (vergeht genauso schnell) */
 export function anheitern(n: number) {
-  state.wirt.rauschBis = Math.max(state.wirt.rauschBis, state.time) + n * RAUSCH_STUFE;
+  rauschDazu(n, 0.2);
+}
+/** Mayas Lederhose an: der Wirt verträgt viel mehr (Bierresistenz, ein Vorteil für spätere Events) */
+export const bierfest = () => (state.inv.lederhose ?? 0) > 0 && !!state.flags.trachtAn;
+/** n Rauschstufen dazu; in Lederhose zählt nur der Anteil faktor, Reste sammeln sich, bis eine ganze Stufe voll ist */
+function rauschDazu(n: number, faktor: number) {
+  const w = state.wirt;
+  let stufen = n;
+  if (bierfest()) {
+    w.festRest = (w.festRest ?? 0) + n * faktor;
+    stufen = Math.floor(w.festRest);
+    w.festRest -= stufen;
+  }
+  if (stufen > 0) w.rauschBis = Math.max(w.rauschBis, state.time) + stufen * RAUSCH_STUFE;
 }
 /** Rausch des Wirts, 0 (nüchtern) bis 5 (sternhagelvoll) */
 export const rauschStufe = () => Math.max(0, Math.min(5, Math.ceil((state.wirt.rauschBis - state.time) / RAUSCH_STUFE)));
@@ -173,10 +197,9 @@ export function benutze(id: ItemId) {
   if (state.inv[id] <= 0 || item(id).quest) return false;
   state.inv[id]--;
   const w = state.wirt, now = state.time;
-  const rausch = (n: number) => { w.rauschBis = Math.max(w.rauschBis, now) + n * RAUSCH_STUFE; };
-  if (id === 'bier') rausch(1);
-  else if (id === 'schnaps') rausch(2);
-  else if (id === 'fusel') rausch(3);
+  if (id === 'bier') rauschDazu(1, 0.2);
+  else if (id === 'schnaps') rauschDazu(2, 0.3);
+  else if (id === 'fusel') rauschDazu(3, 0.3);
   else if (id === 'kippe') w.rauchBis = now + 9;
   else if (id === 'pillen') state.boost.speed = Math.max(state.boost.speed, now) + 30;
   else if (id === 'zeug') w.tripBis = Math.max(w.tripBis, now) + 25;

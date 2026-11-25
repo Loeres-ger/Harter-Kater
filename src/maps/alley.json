@@ -22,7 +22,7 @@
     "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,###########vvvvvv############.....ssssssssssssssssvvvvvvvffff",
     "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,w#L#g##w##Lvvvvvv##L#w##p#L##.....svvvvvvvvvvvvvvsvvvvvvvffff",
     "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,...m............GG.T.....bb.......svvvvvvvvvvvvvvsvvvvvvvffff",
-    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,.....Y....u....K.....x.o..........svvvvvvvvvvvvvvsvvvvvvvffff",
+    "EEEEEEEEEEEEEEEEEEEEEEE,,,_____,,.....Y....u....K.....x.........o..svvvvvvvvvvvvvvsvvvvvvvffff",
     "EEEEEEEEEEEEEEEEEEEEEEE,,,__=__,,.T......................X..m......svvvvvvvvvvvvvvsvvvvvvvffff",
     "NONNONNNONNONNaeeaaaeea,,,_____,,,,BBBBBBBBBBBBBQBBBB..EEEEEEEEEEEEsvvvvvvvvvvvvvvsvvvvvvvffff",
     "NONLONdNONLONNaeeadaeea,,,__=__,,,,RRRRRRRRRRRRRRRRRR..EEEEEEEEEEEEsvvvvvvvvvvvvvvsvvvvvvvffff",
@@ -830,9 +830,9 @@
     {
       "id": "bau-ost-gasse",
       "x": 62,
-      "y": 19,
-      "w": 2,
-      "h": 3,
+      "y": 18,
+      "w": 5,
+      "h": 1,
       "state": "baustelle",
       "label": "GLANZBAU"
     },

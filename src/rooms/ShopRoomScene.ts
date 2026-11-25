@@ -97,17 +97,30 @@ export class ShopRoomScene extends TopDown {
     this.interacts.push({ x, y: y + 18, r: 26, label: () => 'Mit Maya reden', act: () => this.talk('maya', (a) => this.mayaDone(a)) });
   }
 
+  /** Easter Egg: Maya schenkt dem Wirt eine Tracht (Lederhose mit Bierresistenz, im Inventar an- und ausziehen) */
+  private trachtGeben(nachDerSzene: boolean) {
+    if (state.flags.trachtBekommen) return;
+    state.flags.trachtBekommen = true;
+    state.inv.lederhose = 1;
+    audio.sfx('chime');
+    this.toast(nachDerSzene
+      ? 'Zum Abschied drückt Maya dir ein Bündel in die Hand: Lederhose, Trachtenhemd, Hut mit Gamsbart. „Wer so redet, soll auch so aussehen.“ (Inventar: ANZIEHEN)'
+      : 'Lederhose bekommen. Im Inventar anziehen. In der Hose verträgst du viel mehr.');
+  }
+
   private mayaDone(a?: DialogAction) {
     if (a === 'shop') {
       audio.sfx('click');
       this.scene.launch('Shop', { shop: 'laden', resume: 'Laden' });
       this.scene.bringToTop('Shop');
       this.scene.pause();
+    } else if (a === 'tracht') {
+      this.trachtGeben(false);
     } else if (a === 'mayaTraum' && !state.flags.mayaTraum) {
       // einmalig; das Achievement gibt es erst nach der Szene
       state.flags.mayaTraum = true;
       hud.prompt = '';
-      this.scene.launch('Cutscene', { script: 'deutscherTraum', resume: 'Laden', onDone: () => unlock('deutscherTraum') });
+      this.scene.launch('Cutscene', { script: 'deutscherTraum', resume: 'Laden', onDone: () => { unlock('deutscherTraum'); this.trachtGeben(true); } });
       this.scene.bringToTop('Cutscene');
       this.scene.pause();
     }

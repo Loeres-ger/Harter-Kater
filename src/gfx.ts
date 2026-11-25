@@ -754,8 +754,7 @@ function items(scene: Phaser.Scene) {
 const BW = 64, BH = 96;
 
 /** Brustbild des Schnösels, Stufe 0..4, Blick zum Betrachter. */
-function drawSchnoeselBust(c: Ctx, st: number) {
-  const pal = SCHNOESEL_PALS[st];
+function drawSchnoeselBust(c: Ctx, st: number, pal = SCHNOESEL_PALS[st]) {
   const rnd = rng(100 + st);
   const cx = 32;
   // Jackett / Schultern
@@ -1246,9 +1245,92 @@ function drawBulldozer(c: Ctx) {
   outline(c, 0, 0, 72, 44);
 }
 
+// ---------------------------------------------------------------- Easter Egg: Mayas Tracht für den Wirt
+
+const LEDER = '#6a4424', LEDER_D = '#4a2c16', LEDER_H = '#8e643a', STRUMPF = '#e4dccb', HUT = '#3a5a3a', HUT_D = '#263e26', STICK = '#d8c070';
+const WIRT_TRACHT: Pal = { ...WIRT_PAL, pants: LEDER, shoes: '#2a1a10' };
+
+/** Der Wirt in Lederhose (bis übers Knie), Wadlstrümpfen, Hosenträgern mit besticktem Steg und grünem Hut mit Gamsbart */
+function drawWirtTracht(c: Ctx, ox: number, dir: number, step: number) {
+  drawHuman(c, ox, dir, step, WIRT_TRACHT);
+  // Wadlstrümpfe: unterhalb des Knies wird das Leder zu Wolle
+  const img = c.getImageData(ox, 17, 16, 2);
+  const [lr, lg, lb] = [0x6a, 0x44, 0x24];
+  for (let i = 0; i < img.data.length; i += 4) {
+    if (img.data[i] === lr && img.data[i + 1] === lg && img.data[i + 2] === lb) { img.data[i] = 0xe4; img.data[i + 1] = 0xdc; img.data[i + 2] = 0xcb; }
+  }
+  c.putImageData(img, ox, 17);
+  // Bund der Lederhose
+  if (dir === 2) r(c, ox + 5, 14, 6, 2, LEDER);
+  else { r(c, ox + 4, 14, 8, 2, LEDER); r(c, ox + 10, 14, 2, 2, LEDER_D); }
+  // Hosenträger mit Steg
+  if (dir === 0) {
+    r(c, ox + 5, 9, 1, 5, LEDER_D); r(c, ox + 10, 9, 1, 5, LEDER_D);
+    r(c, ox + 5, 11, 6, 1, LEDER); p(c, ox + 7, 11, STICK); p(c, ox + 8, 11, STICK);
+    r(c, ox + 7, 15, 2, 1, LEDER_H); // Hosenlatz
+  } else if (dir === 1) {
+    for (let i = 0; i < 5; i++) { p(c, ox + 5 + i, 9 + i, LEDER_D); p(c, ox + 10 - i, 9 + i, LEDER_D); }
+  } else {
+    r(c, ox + 6, 9, 1, 5, LEDER_D);
+    p(c, ox + 6, 15, LEDER_H);
+  }
+  // Hut mit Gamsbart
+  r(c, ox + 5, 0, 6, 2, HUT); r(c, ox + 3, 2, 10, 1, HUT_D); r(c, ox + 5, 1, 6, 1, '#2a1a10');
+  if (dir === 2) { p(c, ox + 4, 0, '#c8b890'); p(c, ox + 4, 1, '#8a7a5a'); }
+  else { p(c, ox + 11, 0, '#d8c8a0'); p(c, ox + 12, 0, '#a89878'); p(c, ox + 11, 1, '#8a7a5a'); }
+}
+
+export function makeTrachtTextures(scene: Phaser.Scene) {
+  if (scene.textures.exists('wirtTracht')) return;
+  const t = tex2x(scene, 'wirtTracht', 16 * 9, 20, (c) => {
+    for (let d = 0; d < 3; d++) for (let s = 0; s < 3; s++) drawWirtTracht(c, (d * 3 + s) * 16, d, s);
+  }, { detail: (c) => { strands(c, WIRT_TRACHT.beard); folds(c, WIRT_TRACHT.coat); eyeShine(c, ['#1a1212']); } });
+  for (let i = 0; i < 9; i++) t.add(i, 0, i * 32, 0, 32, 40);
+  const a = scene.anims;
+  a.create({ key: 'wirtTracht_down', frames: [1, 0, 2, 0].map((f) => ({ key: 'wirtTracht', frame: f })), frameRate: 8, repeat: -1 });
+  a.create({ key: 'wirtTracht_up', frames: [4, 3, 5, 3].map((f) => ({ key: 'wirtTracht', frame: f })), frameRate: 8, repeat: -1 });
+  a.create({ key: 'wirtTracht_side', frames: [7, 6, 8, 6].map((f) => ({ key: 'wirtTracht', frame: f })), frameRate: 8, repeat: -1 });
+  // Inventar-Icon: Lederhose mit Hosenträgern
+  tex2x(scene, 'icon_lederhose', 16, 16, (c) => {
+    r(c, 3, 6, 10, 4, LEDER); r(c, 3, 10, 4, 5, LEDER); r(c, 9, 10, 4, 5, LEDER);
+    r(c, 3, 14, 4, 1, LEDER_D); r(c, 9, 14, 4, 1, LEDER_D); r(c, 7, 7, 2, 3, LEDER_H);
+    r(c, 4, 1, 1, 5, LEDER_D); r(c, 11, 1, 1, 5, LEDER_D); r(c, 4, 3, 8, 1, LEDER); p(c, 7, 3, STICK); p(c, 8, 3, STICK);
+    p(c, 5, 11, STICK); p(c, 10, 11, STICK);
+    outline(c, 0, 0, 16, 16);
+  });
+}
+
+// ---------------------------------------------------------------- Tresengäste (nach der Glanz-Mission)
+
+/** Zufallsgäste am Tresen: Aussehen (Figur und Brustbild in drei Verfallsstufen) */
+export const GAST_PALS: Pal[] = [
+  { skin: '#e8b890', hair: '#8a7a6a', coat: '#5a5e66', coat2: '#44474e', pants: '#3a3d44', shoes: '#111111', shirt: '#e8e8f0', tie: '#2a6a3a' },
+  { skin: '#c89068', hair: '#1a1410', coat: '#6a4a2a', coat2: '#52381e', pants: '#3a2a1a', shoes: '#2a1a10', shirt: '#e0d8c0', tie: '#d0a020' },
+  { skin: '#f0c8a8', hair: '#c8a050', coat: '#6a1a2a', coat2: '#50121e', pants: '#2a1a20', shoes: '#0b0b0b', shirt: '#f4f0e8', tie: '#101010' },
+];
+export const GAST_NAMEN = ['DER VERTRETER', 'DER FRÜHRENTNER', 'DER ERBE'];
+/** Brustbild-Stufe (0, 2, 4) aus dem Pegel eines Tresengasts */
+export const gastStufe = (pegel: number) => (pegel < 40 ? 0 : pegel < 75 ? 2 : 4);
+
+export function makeGastTextures(scene: Phaser.Scene) {
+  if (scene.textures.exists('gast0')) return;
+  GAST_PALS.forEach((pal, i) => {
+    const key = `gast${i}`;
+    humanSheet(scene, key, pal);
+    for (const s of [0, 2, 4]) {
+      tex2x(scene, `gbust${i}_${s}`, BW, BH, (c) => drawSchnoeselBust(c, s, { ...pal, beard: s >= 2 ? pal.hair : undefined, shirt: s >= 2 ? '#c8c0a0' : pal.shirt }));
+    }
+    const a = scene.anims;
+    a.create({ key: `${key}_down`, frames: [1, 0, 2, 0].map((f) => ({ key, frame: f })), frameRate: 8, repeat: -1 });
+    a.create({ key: `${key}_up`, frames: [4, 3, 5, 3].map((f) => ({ key, frame: f })), frameRate: 8, repeat: -1 });
+    a.create({ key: `${key}_side`, frames: [7, 6, 8, 6].map((f) => ({ key, frame: f })), frameRate: 8, repeat: -1 });
+  });
+}
+
 // ---------------------------------------------------------------- Einstieg
 
 export function makeAllTextures(scene: Phaser.Scene) {
+  makeTrachtTextures(scene);
   tiles(scene);
   items(scene);
   humanSheet(scene, 'penner', PLAYER_PAL);

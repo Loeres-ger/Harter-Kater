@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
 import { state } from '../state';
-import { Interact, T, TileInfo, TopDown } from '../scenes/TopDown';
+import { Interact, T, TileInfo, TopDown, WIRT_FIGUREN } from '../scenes/TopDown';
 import { hud } from '../scenes/HudScene';
 import { unlock } from '../progress/achievements';
 import { strangZiel } from '../progress/quests';
@@ -1661,7 +1661,7 @@ export class KanalScene extends TopDown {
     cam.zoomTo(2.6, 1000, 'Sine.easeInOut');
     // Wirt und Katze links
     k.modus = 'kino';
-    p.play(`${p.texture.key === 'wirtKanal' ? 'wirtKanal' : 'wirt'}_side`);
+    p.play(`${WIRT_FIGUREN.includes(p.texture.key) ? p.texture.key : 'wirt'}_side`);
     void this.tw({ targets: p, x: mx - 38, y: my - 6, duration: 800 }).then(() => { p.anims.stop(); p.setFlipX(false).setFrame(6); });
     k.s.play('katzeKanal_lauf');
     void this.tw({ targets: k.s, x: mx - 54, y: my + 6, duration: 800, onUpdate: () => k.s.setDepth(k.s.y) }).then(() => k.s.play('katzeKanal_sitz').setFlipX(false));
@@ -1755,7 +1755,7 @@ export class KanalScene extends TopDown {
     if (this.kinoAus) return;
 
     // ---- 4. Der Wirt schlägt zu, die anderen Arme kommen
-    p.play(`${p.texture.key === 'wirtKanal' ? 'wirtKanal' : 'wirt'}_side`);
+    p.play(`${WIRT_FIGUREN.includes(p.texture.key) ? p.texture.key : 'wirt'}_side`);
     await this.tw({ targets: p, x: felix.x - 14, y: felix.y - 8, duration: 450 });
     p.anims.stop();
     p.setFrame(6).setFlipX(false);

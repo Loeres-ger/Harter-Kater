@@ -26,7 +26,7 @@ export const ALLEY_SHISHA_SPAWN: [number, number] = [-11, 18];
 
 /** Kanalisation: unten an der Leiter, oben neben dem Gully (Koordinaten der ursprünglichen Gassenkarte) */
 export const KANAL_SPAWN: [number, number] = [1, 2];
-export const ALLEY_GULLY_SPAWN: [number, number] = [31, 3];
+export const ALLEY_GULLY_SPAWN: [number, number] = [38, 4];
 /** Klo-Abkürzung: im Kanal unter dem Rohr im Vorraum, in der Herrentoilette vor Kabine 1 */
 export const KANAL_ROHR_SPAWN: [number, number] = [58, 39];
 /** vor der Klärwerk-Tür im Vorraum (zurück aus dem Klärwerk) */

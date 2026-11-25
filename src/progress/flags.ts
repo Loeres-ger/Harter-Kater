@@ -78,6 +78,15 @@ export interface StoryFlags {
   /** Klärwerk-Endkampf: gefütterte Ratten (Phase 1) und ob der Kampf schon im Duell ist (Phase 2) */
   klaerwerkRatten?: number;
   klaerwerk?: 'duell' | 'ende';
+  /** Tresengast nach der Glanz-Mission: Aussehen, Pegel (100 = tot), Wunsch; tot = Leiche am Tresen */
+  tresengast?: { typ: number; pegel: number; wunsch: string | null; tot?: boolean; gepluendert?: boolean };
+  /** der Wirt trägt die Leiche eines Tresengasts (Aussehen) */
+  gastLeicheTyp?: number;
+  /** Spielzeit, ab der der nächste Tresengast kommt */
+  naechsterGast?: number;
+  /** Easter Egg: Mayas Tracht bekommen und gerade an (Bierresistenz) */
+  trachtBekommen?: boolean;
+  trachtAn?: boolean;
   /** Brenningers Akte „Projekt Achtarm“ (nach dem Klärwerk) */
   akte?: boolean;
 

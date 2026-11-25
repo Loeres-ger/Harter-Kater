@@ -18,7 +18,7 @@ export type DialogBg = 'bar' | 'street' | 'cat' | 'dach' | 'wc' | 'laden' | 'clu
 /** Was nach dem Gespräch passieren soll; wertet die aufrufende Szene aus. */
 export type DialogAction =
   | 'shop' | 'kill' | 'tresen' | 'speed' | 'bulk'
-  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum' | 'anneJagd' | 'shishaDuell' | 'xaviSuche' | 'tuncayQuiz' | 'emilianKampf'
+  | 'felixKnueppel' | 'lilyWeg' | 'lilyDach' | 'bornaGebrochen' | 'leniKotzt' | 'mayaTraum' | 'tracht' | 'anneJagd' | 'shishaDuell' | 'xaviSuche' | 'tuncayQuiz' | 'emilianKampf'
   | 'nickStart' | 'nickPflanze' | 'nickKeller' | 'gitarrenDuell' | 'nickKoks' | 'nickJam' | 'putzen'
   | 'kanalStart' | 'kaeseGeben' | 'probe' | 'kanalPaket' | 'rolexVerkauf' | 'curryKochen';
 

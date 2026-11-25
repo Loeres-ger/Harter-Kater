@@ -17,6 +17,16 @@ export function mayaTree(): Record<string, DialogNode> {
 }
 
 function mayaTreeBasis(): Record<string, DialogNode> {
+  if (state.flags.mayaTraum && !state.flags.trachtBekommen) {
+    // Stände von vor dem Easter Egg: Maya hat die Tracht noch für ihn aufgehoben
+    return {
+      start: {
+        portrait: 'nbust_mayaHappy',
+        lines: ['Da bist du ja. Ich hab was für dich. Aus dem Lager.', 'N:Maya legt ein Bündel auf die Theke: Lederhose, Trachtenhemd, ein Hut mit Gamsbart.', 'Wer so redet, soll auch so aussehen. Und in so einer Hose verträgt man mehr. Glaub mir.'],
+        choices: [{ text: '„Vergelt’s Gott, Madl!“', action: 'tracht' }],
+      },
+    };
+  }
   if (state.flags.mayaTraum) {
     return {
       start: {

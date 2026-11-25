@@ -20,7 +20,8 @@ export function janWeg(f: StoryFlags) {
 }
 
 /** Figur des Wirts: mit Tuncays Kanal-Paket in Wathose, Stirnlampe und Haken, bis Jan gerettet ist */
-export function wirtFigur(): 'wirt' | 'wirtKanal' {
+export function wirtFigur(): 'wirt' | 'wirtKanal' | 'wirtTracht' {
+  if ((state.inv.lederhose ?? 0) > 0 && state.flags.trachtAn) return 'wirtTracht';
   return (state.inv.kanalpaket ?? 0) > 0 && !state.flags.wathoseAus ? 'wirtKanal' : 'wirt';
 }
 

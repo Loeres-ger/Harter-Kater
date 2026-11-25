@@ -12,8 +12,11 @@ import { MapData, MapObject, MapZone, bedingungErfuellt, zoneGesperrt } from '..
 import { MAP_DEFS } from '../maps/palettes';
 import { LightHint, streetCell, streetLights } from '../maps/streetView';
 import { wirtFigur } from '../dialog/kanal';
+import { makeGastTextures } from '../gfx';
 
 export const T = 16;
+/** Texturen des Wirts (normal, Wathose, Tracht), zwischen denen beim Umziehen gewechselt wird */
+export const WIRT_FIGUREN = ['wirt', 'wirtKanal', 'wirtTracht'];
 const ZOOM = 2;
 /** Rand der Lichtkarte um den Bildausschnitt (Weltpixel), damit beim Laufen keine Kante sichtbar wird */
 const LIGHT_PAD = 40;
@@ -170,6 +173,7 @@ export abstract class TopDown extends Phaser.Scene {
     this.befreien();
 
     if (state.carrying) this.carried = this.add.sprite(0, 0, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5);
+    else if (state.flags.gastLeicheTyp !== undefined) this.leicheAufnehmen(state.flags.gastLeicheTyp);
     if (state.flags.curryTopf) this.topfAufnehmen();
 
     // Stimmung: Lichtkarte. Die Dunkelheit liegt über der Welt, jede Lichtquelle (addLight) radiert einen weichen Lichtkegel
@@ -218,6 +222,13 @@ export abstract class TopDown extends Phaser.Scene {
   private wirtAussehen() {
     const k = wirtFigur();
     return this.textures.exists(k) ? k : 'wirt';
+  }
+
+  /** Leiche eines Tresengasts auf der Schulter (langsam); die Gasse ersetzt das durch ihre Müll-Leiche */
+  protected leicheAufnehmen(typ: number) {
+    makeGastTextures(this);
+    this.carried = this.add.sprite(0, 0, `gast${typ}`, 0).setAngle(90).setScale(0.5).setTint(0xa8c8a0);
+    this.slow = true;
   }
 
   /** Curry-Topf auf den Kopf nehmen bzw. wieder weg */
@@ -827,12 +838,12 @@ export abstract class TopDown extends Phaser.Scene {
 
     // Kanal-Paket gekauft oder abgelegt: Figur wechseln (andere Verwandlungen nicht überschreiben)
     const fig = this.wirtAussehen();
-    if (p.texture.key !== fig && (p.texture.key === 'wirt' || p.texture.key === 'wirtKanal')) p.setTexture(fig, p.frame.name);
+    if (p.texture.key !== fig && WIRT_FIGUREN.includes(p.texture.key)) p.setTexture(fig, p.frame.name);
     if (vx || vy) {
       if (vx) this.facing = 'side';
       else this.facing = vy < 0 ? 'up' : 'down';
       if (this.facing === 'side') p.setFlipX(vx < 0);
-      p.anims.play(`${p.texture.key === 'wirtKanal' ? 'wirtKanal' : 'wirt'}_${this.facing}`, true);
+      p.anims.play(`${WIRT_FIGUREN.includes(p.texture.key) ? p.texture.key : 'wirt'}_${this.facing}`, true);
       this.stepT -= delta;
       if (this.stepT <= 0) {
         audio.sfx('step');

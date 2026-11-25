@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { Ctx, blob, makeGastTextures, outline, p, tex2x } from '../gfx';
+
 import { audio } from '../audio';
 import { bulky, item, lookStage, PILLS, state } from '../state';
 import { BAR_BACK_SPAWN, BAR_DOOR_SPAWN } from './BarScene';
@@ -55,8 +57,36 @@ const BASAR_DOOR: [number, number] = [-8, 6];
 /** Xavi-Strang: Tuncays Stand auf dem Parkplatz und der Platz von Leni und Xavi im Park (Grünstreifen) */
 const TUNCAY_TILE: [number, number] = [-16, -6];
 const PARK_TILE: [number, number] = [-12, -4];
-/** Nick-Strang: der Busch an der Rückwand der Bar, in dem Bornas Pflanze steckt */
-const BUSCH_TILE: [number, number] = [15, 4];
+/** Hanfbusch (Nick-Strang, Bornas Pflanze): niedriger Busch, darüber große Hanfblätter mit sieben getrennten Fingern */
+function drawHanfbusch(c: Ctx) {
+  const dunkel = '#1a4016', mittel = '#2a6020', hell = '#5cb03a', licht = '#9ade5a', stiel = '#3a5a1a';
+  blob(c, 15, 27, 11, 2.5, '#122c12');
+  blob(c, 15, 23, 11, 5, dunkel);
+  blob(c, 15, 20, 8, 4, mittel);
+  const blatt = (cx: number, cy: number, s: number, dreh: number) => {
+    const winkel = [-78, -50, -24, 0, 24, 50, 78], laenge = [0.42, 0.7, 0.9, 1, 0.9, 0.7, 0.42];
+    winkel.forEach((w, i) => {
+      const a = ((w + dreh) * Math.PI) / 180, l = s * laenge[i];
+      for (let t = 1; t <= l; t += 0.5) {
+        const x = cx + Math.sin(a) * t, y = cy - Math.cos(a) * t;
+        p(c, Math.round(x), Math.round(y), t > l * 0.7 ? licht : hell);
+        if (i >= 2 && i <= 4 && t > l * 0.3 && t < l * 0.65) p(c, Math.round(x + Math.cos(a)), Math.round(y + Math.sin(a)), hell);
+      }
+    });
+    p(c, cx, cy, stiel);
+    p(c, cx, cy + 1, stiel);
+  };
+  blatt(8, 21, 8, -42);
+  blatt(22, 21, 8, 42);
+  blatt(15, 15, 11, 0);
+  blatt(10, 25, 5, -72);
+  blatt(20, 25, 5, 72);
+  for (const [x, y] of [[15, 18], [11, 22], [19, 22]]) { blob(c, x, y, 1.2, 1.5, '#a8c860'); p(c, x, y - 1, '#e0a050'); }
+  outline(c, 0, 0, 30, 30);
+}
+
+/** Nick-Strang: der Hanfbusch auf dem Grasstreifen gegenüber der Bar-Rückwand, in dem Bornas Pflanze steckt */
+const BUSCH_TILE: [number, number] = [22, -4];
 export const ALLEY_FRONT_SPAWN: [number, number] = [17, 18];
 
 export class AlleyScene extends TopDown {
@@ -366,7 +396,9 @@ export class AlleyScene extends TopDown {
               }
               if (state.flags.kanal === 'entfuehrt') return this.toast('Der Deckel bewegt sich keinen Millimeter. Darunter: Quaken. Viel Quaken.');
               entdecke(state.flags, 'gully');
-              this.toast(state.flags.claudius === 'veroeffentlicht' ? 'Aus dem Gully: Gläserklirren und ein dreistimmiges „Prost!“. Die Kanalisation feiert die Pressefreiheit.' : 'Aus dem Gully: ein leises Quaken. Enten? Hier unten?');
+              if (state.flags.claudius === 'veroeffentlicht') return this.toast('Aus dem Gully: Gläserklirren und ein dreistimmiges „Prost!“. Die Kanalisation feiert die Pressefreiheit.');
+              this.toast('Aus dem Gully: Quak. Quak. Quak. Enten? Hier unten?');
+              for (let i = 0; i < 3; i++) this.time.delayedCall(i * 380, () => { floatText(this, x * T + 8 + (i - 1) * 16, y * T + 2 - i * 6, 'quak', '#e8e0a0'); audio.sfx('blip'); });
             },
           });
           // Dampf aus dem Gully
@@ -623,12 +655,14 @@ export class AlleyScene extends TopDown {
     this.scene.pause();
   }
 
-  /** Der Busch hinter der Bar. Im Nick-Strang gräbt der Wirt Bornas Pflanze aus (ein paar Mal wühlen). */
+  /** Der Hanfbusch auf dem Grasstreifen hinter der Gasse. Im Nick-Strang gräbt der Wirt Bornas Pflanze aus (ein paar Mal wühlen). */
   private addBusch() {
     const [tx, ty] = this.at(BUSCH_TILE);
     const x = tx * T + 8, y = ty * T + 14;
     const f = state.flags;
-    const bush = this.add.image(x, y, 'bush').setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+    if (!this.textures.exists('hanfbusch')) tex2x(this, 'hanfbusch', 30, 30, drawHanfbusch);
+    const bush = this.add.image(x, y, 'hanfbusch').setOrigin(0.5, 1).setScale(0.5).setDepth(y);
+    this.tweens.add({ targets: bush, scaleX: 0.51, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     if (this.solid[ty]) this.solid[ty][tx] = true;
     const loch = () => this.add.image(x - 9, y - 1, 'erdloch').setScale(0.5).setDepth(1.5);
     if ((f.nick && f.nick !== 'pflanze') || state.inv.pflanze > 0) loch();
@@ -898,6 +932,15 @@ export class AlleyScene extends TopDown {
     });
   }
 
+  /** Leiche eines Tresengasts aus der Kneipe: läuft über dieselbe Müll-Entsorgung wie die der Frauen */
+  protected leicheAufnehmen(typ: number) {
+    makeGastTextures(this);
+    this.corpse = this.add.sprite(this.player.x, this.player.y - 22, `gast${typ}`, 0).setAngle(90).setScale(0.5).setTint(0xa8c8a0);
+    this.corpseCarried = true;
+    this.corpseKey = '';
+    this.slow = true;
+  }
+
   private dispose(x: number, y: number) {
     const corpse = this.corpse;
     if (!corpse || !this.corpseCarried) return;
@@ -905,7 +948,12 @@ export class AlleyScene extends TopDown {
     this.slow = false;
     this.corpse = undefined;
     state.bodyDeadline = null;
-    dameReady.set(this.corpseKey, state.time + 60); // irgendwann steht eine Neue da
+    if (this.corpseKey) dameReady.set(this.corpseKey, state.time + 60); // irgendwann steht eine Neue da
+    else if (state.flags.gastLeicheTyp !== undefined) {
+      // ein Tresengast: danach kann der nächste kommen
+      state.flags.gastLeicheTyp = undefined;
+      state.flags.naechsterGast = state.time + 45;
+    }
     this.tweens.add({ targets: corpse, x, y, scale: 0.15, alpha: 0, duration: 350, ease: 'Quad.easeIn', onComplete: () => corpse.destroy() });
     this.cameras.main.shake(120, 0.005);
     this.float('ENTSORGT', '#9ae09a');

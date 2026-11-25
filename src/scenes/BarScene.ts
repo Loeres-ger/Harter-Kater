@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import { VICTIM, impatient, lookStage, state } from '../state';
+import { ItemId, VICTIM, impatient, item, lookStage, state } from '../state';
+import { makeGastTextures } from '../gfx';
 import { T, TileInfo, TopDown } from './TopDown';
 import { floatText } from '../ui';
 import { GuestDef, guestById } from '../guests/data';
@@ -62,6 +63,13 @@ export function resetBar() {
   resetRoster();
 }
 
+/** Tischbestellung eines Stammgasts (nach der Glanz-Mission), gilt pro Besuch in der Kneipe */
+let bestellung: { id: string; item: ItemId; bis: number } | null = null;
+let naechsteBestellung = 0;
+/** Weg eines neuen Tresengasts von der Tür zum Hocker (Kacheln) */
+const GAST_WEG: [number, number][] = [[4, 12], [7, 12], [7, 5], [4, 5], [4, 4]];
+const pick = <X>(a: X[]) => a[Math.floor(Math.random() * a.length)];
+
 const SCHLAGER = ['„Atemlos durch die Nacht“ läuft. Schon wieder.', '„Ein Bett im Kornfeld“. Kalle summt mit.', '„Griechischer Wein“. Irgendwer weint.', 'Die Jukebox frisst deine Münze nicht. Glück gehabt.'];
 
 export class BarScene extends TopDown {
@@ -70,6 +78,12 @@ export class BarScene extends TopDown {
   private wishIcon?: Phaser.GameObjects.Image;
   private body?: Phaser.GameObjects.Sprite;
   private guestViews = new Map<string, GuestView>();
+  private gast?: Phaser.GameObjects.Sprite;
+  private gastBlase?: Phaser.GameObjects.Container;
+  private gastIcon?: Phaser.GameObjects.Image;
+  private gastKommt = false;
+  private gastLeiche?: Phaser.GameObjects.Sprite;
+  private bestellBlase?: Phaser.GameObjects.Container;
 
   constructor() {
     super('Bar');
@@ -84,6 +98,8 @@ export class BarScene extends TopDown {
     this.anneEvent = undefined;
     this.victim = this.wishBubble = this.wishIcon = this.body = undefined;
     this.guestViews = new Map();
+    this.gast = this.gastBlase = this.gastIcon = this.gastLeiche = this.bestellBlase = undefined;
+    this.gastKommt = false;
   }
 
   protected mapRows() { return MAP; }
@@ -164,12 +180,14 @@ export class BarScene extends TopDown {
       this.body = this.add.sprite(vx * T + 8, (vy + 1) * T + 6, `schnoesel${lookStage()}`, 0).setAngle(90).setScale(0.5).setDepth((vy + 1) * T);
     }
 
-    // Bedienen: nur von hinter dem Tresen
+    // Bedienen: nur von hinter dem Tresen (Glanz, nach der Mission die Tresengäste)
     this.interacts.push({
       x: vx * T + 8, y: 2 * T + 10, r: 18,
-      label: () => (state.dead ? null : `${VICTIM} bedienen`),
-      act: () => this.go('Tresen'),
+      label: () => (!state.dead ? `${VICTIM} bedienen` : this.gastBereit() ? 'Gast bedienen' : null),
+      act: () => (state.dead ? this.go('Tresen', { gast: true }) : this.go('Tresen')),
     });
+    // Theke: hinter dem Tresen immer offen, auch nach der Glanz-Mission
+    this.interacts.push({ x: 2 * T + 8, y: 2 * T + 10, r: 16, label: () => 'Theke öffnen', act: () => this.thekeOeffnen() });
     this.interacts.push({
       x: vx * T + 8, y: vy * T + 10, r: 18,
       label: () => {
@@ -244,6 +262,7 @@ export class BarScene extends TopDown {
     }
 
     this.setupGuests();
+    if (state.flags.glanzErledigt) this.tresengastAufbauen();
     this.scheduleStory(() => !!this.anneEvent?.active);
 
     // warmes, gedämpftes Licht über Tresen und Tischen
@@ -285,7 +304,7 @@ export class BarScene extends TopDown {
       const [x, y] = this.find(ch);
       this.interacts.push({
         x: x * T + 8, y: (y + below) * T + 6, r: 14,
-        label: () => (state.carrying ? null : label),
+        label: () => (state.carrying || state.flags.gastLeicheTyp !== undefined ? null : label),
         act: () => this.go(scene, { spawn }),
       });
     }
@@ -314,8 +333,17 @@ export class BarScene extends TopDown {
     this.guestViews.set(g.id, view);
     this.interacts.push({
       x, y: y - 4, r: 18,
-      label: () => (sprite.active && !g.rowdy && roster.guests.includes(g) ? `Mit ${def.name.split(' ').pop()} reden` : null),
-      act: () => this.talk(g.id),
+      label: () => {
+        if (!sprite.active || g.rowdy || !roster.guests.includes(g)) return null;
+        const b = bestellung;
+        if (b?.id === g.id) return state.inv[b.item] > 0 ? `${item(b.item).name} servieren` : `Will ${item(b.item).name} (Theke)`;
+        return `Mit ${def.name.split(' ').pop()} reden`;
+      },
+      act: () => {
+        const b = bestellung;
+        if (b?.id === g.id) return state.inv[b.item] > 0 ? this.servieren(view) : this.toast(`Erst ${item(b.item).name} an der Theke holen. Hinter dem Tresen: „Theke öffnen“.`);
+        this.talk(g.id);
+      },
     });
     if (g.rowdy) this.setRowdy(view, true);
   }
@@ -411,10 +439,156 @@ export class BarScene extends TopDown {
     };
   }
 
+  // ---------------------------------------------------------------- Theke, Tresengäste, Tischbestellungen (nach Glanz)
+
+  private thekeOeffnen() {
+    audio.sfx('click');
+    this.scene.launch('Shop', { shop: 'wirt', resume: 'Bar' });
+    this.scene.bringToTop('Shop');
+    this.scene.pause();
+  }
+
+  private gastBereit() {
+    const g = state.flags.tresengast;
+    return !!g && !g.tot && !this.gastKommt && !!this.gast;
+  }
+
+  private tresengastAufbauen() {
+    makeGastTextures(this);
+    const f = state.flags;
+    const g = f.tresengast;
+    const [vx, vy] = VICTIM_TILE;
+    if (g && !g.tot) this.gastSetzen(g.typ, false);
+    else if (g?.tot) {
+      this.gastLeiche = this.add.sprite(vx * T + 8, (vy + 1) * T + 6, `gast${g.typ}`, 0).setAngle(90).setScale(0.5).setTint(0xa8c8a0).setDepth((vy + 1) * T);
+      if (!g.gepluendert) this.time.delayedCall(700, () => this.toast('Der ist hinüber. Erst die Taschen, dann raus in die Gasse und ab in den Müll.'));
+    }
+    this.interacts.push({
+      x: vx * T + 8, y: vy * T + 12, r: 18,
+      label: () => {
+        const t = state.flags.tresengast;
+        if (!t?.tot || !this.gastLeiche?.active) return null;
+        return t.gepluendert ? 'Leiche schultern' : 'Taschen durchsuchen';
+      },
+      act: () => this.leicheAnfassen(),
+    });
+    bestellung = null;
+    naechsteBestellung = this.time.now + Phaser.Math.Between(8000, 15000);
+  }
+
+  /** Gast am Tresenhocker; kommt er gerade erst, läuft er von der Tür her */
+  private gastSetzen(typ: number, kommt: boolean) {
+    const [vx, vy] = VICTIM_TILE;
+    const px = (tx: number) => tx * T + 8, py = (ty: number) => ty * T + 12;
+    const s = this.add.sprite(kommt ? px(GAST_WEG[0][0]) : px(vx), kommt ? py(GAST_WEG[0][1]) : py(vy), `gast${typ}`, 3).setOrigin(0.5, 1).setScale(0.5);
+    s.setDepth(s.y);
+    this.gast = s;
+    this.gastIcon = this.add.image(0, 0, 'icon_bier').setScale(0.3);
+    this.gastBlase = this.add.container(px(vx) + 9, py(vy) - 26, [this.add.image(0, 0, 'bubble').setScale(0.5), this.gastIcon]).setDepth(4000).setVisible(false);
+    this.tweens.add({ targets: this.gastBlase, y: this.gastBlase.y - 2, duration: 700, yoyo: true, repeat: -1 });
+    if (!kommt) return;
+    this.gastKommt = true;
+    void (async () => {
+      for (const [tx, ty] of GAST_WEG.slice(1)) {
+        const zx = px(tx), zy = py(ty);
+        const dx = zx - s.x, dy = zy - s.y;
+        if (Math.abs(dx) > Math.abs(dy)) s.play(`gast${typ}_side`, true).setFlipX(dx < 0);
+        else s.play(`gast${typ}_${dy < 0 ? 'up' : 'down'}`, true);
+        await new Promise<void>((res) => this.tweens.add({ targets: s, x: zx, y: zy, duration: (Math.hypot(dx, dy) / 34) * 1000, onUpdate: () => s.setDepth(s.y), onComplete: () => res() }));
+        if (!s.active) return;
+      }
+      s.anims.stop();
+      s.setFrame(3).setFlipX(false);
+      this.gastKommt = false;
+      this.toast('Ein Gast setzt sich an den Tresen. Bedienen von hinter dem Tresen.');
+    })();
+  }
+
+  private leicheAnfassen() {
+    const t = state.flags.tresengast, l = this.gastLeiche;
+    if (!t?.tot || !l) return;
+    if (!t.gepluendert) {
+      t.gepluendert = true;
+      const geld = Phaser.Math.Between(15, 45);
+      state.money += geld;
+      audio.sfx('coin');
+      floatText(this, l.x, l.y - 18, `+${geld}€`, '#f8e070');
+      this.toast(pick([`Brieftasche: ${geld} €. Und ein Foto von seiner Katze.`, `${geld} € und ein Lottoschein. Nichts gewonnen.`, `${geld} € und eine Visitenkarte: „Versicherungen aller Art“. Zu spät.`]));
+      return;
+    }
+    l.destroy();
+    this.gastLeiche = undefined;
+    state.flags.gastLeicheTyp = t.typ;
+    state.flags.tresengast = undefined;
+    this.leicheAufnehmen(t.typ);
+    audio.sfx('thud');
+    this.toast('Uff. Raus in die Gasse damit, in eine Mülltonne oder den Container.');
+  }
+
+  private tresengastUpdate() {
+    const f = state.flags, g = f.tresengast;
+    if (g && this.gast && this.gastBlase && this.gastIcon) {
+      this.gastBlase.setVisible(!!g.wunsch && !g.tot && !this.gastKommt);
+      if (g.wunsch) this.gastIcon.setTexture(`icon_${g.wunsch}`);
+      if (!this.gastKommt) this.gast.setTint(g.pegel > 70 ? 0xd8e8c0 : 0xffffff).setAngle(Math.sin(this.time.now / 500) * g.pegel * 0.06);
+    }
+    if (g || f.gastLeicheTyp !== undefined || this.leaving || this.anneEvent?.active || !state.running) return;
+    if (f.naechsterGast === undefined) f.naechsterGast = state.time + 20;
+    if (state.time < f.naechsterGast) return;
+    const typ = Phaser.Math.Between(0, 2);
+    f.tresengast = { typ, pegel: 0, wunsch: 'bier' };
+    f.naechsterGast = undefined;
+    this.gastSetzen(typ, true);
+  }
+
+  private bestellungUpdate() {
+    const now = this.time.now;
+    const b = bestellung;
+    if (b) {
+      const v = this.guestViews.get(b.id);
+      if (!v || !v.sprite.active || v.g.rowdy || !roster.guests.includes(v.g)) return this.bestellungWeg();
+      this.bestellBlase?.setPosition(v.sprite.x + 9, v.sprite.y - 26 + Math.sin(now / 300) * 1.5);
+      if (now > b.bis) {
+        floatText(this, v.sprite.x, v.sprite.y - 24, pick(['Dann eben nicht!', 'Lahmer Laden.', 'Vergiss es.']), '#e0a080');
+        this.bestellungWeg();
+      }
+      return;
+    }
+    if (now < naechsteBestellung || this.leaving || this.anneEvent?.active) return;
+    const views = [...this.guestViews.values()].filter((v) => v.sprite.active && !v.g.rowdy && roster.guests.includes(v.g));
+    if (!views.length) { naechsteBestellung = now + 5000; return; }
+    const v = pick(views);
+    const it = pick<ItemId>(['bier', 'bier', 'schnaps', 'fusel']);
+    bestellung = { id: v.g.id, item: it, bis: now + 45000 };
+    this.bestellBlase = this.add.container(v.sprite.x + 9, v.sprite.y - 26, [this.add.image(0, 0, 'bubble').setScale(0.5), this.add.image(0, 0, `icon_${it}`).setScale(0.3)]).setDepth(4000);
+    audio.sfx('blip');
+  }
+
+  private bestellungWeg() {
+    this.bestellBlase?.destroy();
+    this.bestellBlase = undefined;
+    bestellung = null;
+    naechsteBestellung = this.time.now + Phaser.Math.Between(15000, 30000);
+  }
+
+  /** Bestellung an den Tisch bringen: der Gast zahlt das Doppelte plus Trinkgeld */
+  private servieren(v: GuestView) {
+    const b = bestellung;
+    if (!b) return;
+    state.inv[b.item]--;
+    const geld = item(b.item).price * 2 + Phaser.Math.Between(0, 2);
+    state.money += geld;
+    audio.sfx('glug');
+    audio.sfx('coin');
+    floatText(this, v.sprite.x, v.sprite.y - 24, `+${geld}€`, '#f8e070');
+    this.bestellungWeg();
+  }
+
   update(t: number, d: number) {
     super.update(t, d);
     this.updateAnne(t, d);
     this.updateGuests();
+    if (state.flags.glanzErledigt) { this.tresengastUpdate(); this.bestellungUpdate(); }
     if (this.victim && this.wishBubble && this.wishIcon) {
       this.victim.setTexture(`schnoesel${lookStage()}`, 3);
       this.wishBubble.setVisible(!!state.wish);

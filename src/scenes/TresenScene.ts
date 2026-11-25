@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { unlock } from '../progress/achievements';
 import { audio } from '../audio';
+import { GAST_NAMEN, gastStufe, makeGastTextures } from '../gfx';
 import { ITEMS, ItemId, VICTIM, give, impatient, item, lookStage, state } from '../state';
 import { H, W, fadeTo, floatText, txt } from '../ui';
 import { BAR_TRESEN_SPAWN } from './BarScene';
@@ -11,6 +12,15 @@ const VX = 312; // Schnösel
 const PX = 112; // Wirt (Spieler)
 
 const CHEERS = ['Zum Wohl, Herr Doktor!', 'Geht aufs Haus.', 'Darf es noch eins sein?', 'Das entspannt, glauben Sie mir.', 'Hausspezialität!', 'Für meinen besten Gast.'];
+const GAST_CHEERS = ['Zum Wohl!', 'Einer geht noch.', 'Hausspezialität!', 'Für den Durst.', 'Na also.', 'Prost, der Herr.'];
+const GAST_HALLO = ['Ein Bier, Chef. Und dann noch eins.', 'N’Abend. Was Kühles, bitte.', 'Harter Tag. Machen Sie mal voll.'];
+/** Sprüche eines Tresengasts je Pegel (0, 2, 4) */
+const GAST_LINES: Record<number, string[]> = {
+  0: ['Ah. Das tut gut.', 'Schöne Kneipe haben Sie.', 'Noch eins, dann geh ich.'],
+  2: ['Wissen Sie was? Sie sind mein Freund.', 'Isch hab ... ich hab alles im Griff.', 'Die Wand dreht sich. Gut so.'],
+  4: ['Mir is ... so warm ...', 'Mama? ... Bist du das?', 'Nur noch ... ein ... kleines ...'],
+};
+const GAST_WUNSCH: ItemId[] = ['bier', 'bier', 'schnaps', 'fusel', 'kippe'];
 
 export class TresenScene extends Phaser.Scene {
   private victim!: Phaser.GameObjects.Image;
@@ -27,12 +37,14 @@ export class TresenScene extends Phaser.Scene {
   private busy = false;
   private leaving = false;
   private bubbles: Phaser.GameObjects.Container[] = [];
+  /** ein Tresengast nach der Glanz-Mission statt Glanz */
+  private gast = false;
 
   constructor() {
     super('Tresen');
   }
 
-  create() {
+  create(data: { gast?: boolean } = {}) {
     this.slots = [];
     this.pile = [];
     this.flies = [];
@@ -41,7 +53,10 @@ export class TresenScene extends Phaser.Scene {
     this.leaving = false;
     this.storyQueued = false;
     this.cameras.main.fadeIn(260);
-    if (state.dead) return this.leave();
+    const tg = state.flags.tresengast;
+    this.gast = !!data.gast && !!tg && !tg.tot;
+    if (state.dead && !this.gast) return this.leave();
+    if (this.gast) makeGastTextures(this);
 
     audio.music('tresen');
     this.add.image(0, 0, 'tresenBg').setOrigin(0);
@@ -74,8 +89,8 @@ export class TresenScene extends Phaser.Scene {
     const wirt = this.add.image(PX, COUNTER_Y + 36, 'bustWirt').setOrigin(0.5, 1).setScale(1);
     this.tweens.add({ targets: wirt, y: COUNTER_Y + 35, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    this.shownStage = lookStage();
-    this.victim = this.add.image(VX, COUNTER_Y + 64, `bust${this.shownStage}`).setOrigin(0.5, 1).setScale(1);
+    this.shownStage = this.gast ? gastStufe(tg!.pegel) : lookStage();
+    this.victim = this.add.image(VX, COUNTER_Y + 64, this.gast ? `gbust${tg!.typ}_${this.shownStage}` : `bust${this.shownStage}`).setOrigin(0.5, 1).setScale(1);
     this.tweens.add({ targets: this.victim, y: COUNTER_Y + 63, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // Fliegen ab Stufe 3
@@ -87,10 +102,10 @@ export class TresenScene extends Phaser.Scene {
     for (const x of [PX, VX]) this.add.image(x, 70, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(1.7).setAlpha(0.55).setDepth(40);
 
     this.add.image(0, COUNTER_Y - 6, 'counterFront').setOrigin(0).setDepth(60);
-    state.consumed.forEach((id) => this.addToPile(id, false));
+    if (!this.gast) state.consumed.forEach((id) => this.addToPile(id, false));
 
     // Name
-    txt(this, VX, COUNTER_Y - 2, VICTIM.toUpperCase(), '#f4ead0').setOrigin(0.5, 0).setDepth(62).setStroke('#120c0b', 3).setAlpha(0.85);
+    txt(this, VX, COUNTER_Y - 2, this.gast ? GAST_NAMEN[tg!.typ] : VICTIM.toUpperCase(), '#f4ead0').setOrigin(0.5, 0).setDepth(62).setStroke('#120c0b', 3).setAlpha(0.85);
 
     // Wunsch-Gedankenblase
     this.wishIcon = this.add.image(0, -2, 'icon_bier').setScale(0.5);
@@ -105,13 +120,14 @@ export class TresenScene extends Phaser.Scene {
     kb.on('keydown-ESC', () => this.leave());
     kb.on('keydown-E', () => this.leave());
 
-    if (state.consumed.length === 0) this.time.delayedCall(500, () => this.say(VX, 'Ein Glas Champagner. Aber zügig, mein Taxi kommt gleich.'));
+    if (this.gast) { if (tg!.pegel === 0) this.time.delayedCall(500, () => this.say(VX, Phaser.Utils.Array.GetRandom(GAST_HALLO))); }
+    else if (state.consumed.length === 0) this.time.delayedCall(500, () => this.say(VX, 'Ein Glas Champagner. Aber zügig, mein Taxi kommt gleich.'));
   }
 
   private buildUi() {
     // Werte-Panel
     this.add.rectangle(6, 4, 150, 46, 0x120c0b, 0.8).setOrigin(0).setDepth(80);
-    ['SUCHT', 'MISSTR'].forEach((l, i) => txt(this, 12, 23 + i * 12, l, '#c8b898').setDepth(81));
+    (this.gast ? ['PEGEL'] : ['SUCHT', 'MISSTR']).forEach((l, i) => txt(this, 12, 23 + i * 12, l, '#c8b898').setDepth(81));
     this.bars = this.add.graphics().setDepth(81);
 
     this.money = txt(this, 12, 9, '', '#f8e070').setDepth(81);
@@ -174,8 +190,57 @@ export class TresenScene extends Phaser.Scene {
     this.scene.pause();
   }
 
+  /** Tresengast: zahlt mit Aufschlag (Wunsch doppelt), wird mit jedem Glas voller, bei 100 ist Schluss */
+  private offerGast(id: ItemId) {
+    const g = state.flags.tresengast;
+    if (!g || g.tot) return;
+    if (state.inv[id] <= 0) return this.say(PX + 96, `Hab kein ${item(id).name} mehr.`);
+    const def = item(id);
+    const wished = g.wunsch === id;
+    state.inv[id]--;
+    const paid = Math.round(def.price * (wished ? 2 : 1.4));
+    state.money += paid;
+    g.pegel = Math.min(100, g.pegel + def.sucht * (wished ? 1.5 : 1.15) * 1.4);
+    g.wunsch = Math.random() < 0.8 ? Phaser.Utils.Array.GetRandom(GAST_WUNSCH) : null;
+    this.say(PX + 96, Phaser.Utils.Array.GetRandom(GAST_CHEERS));
+    audio.sfx(id === 'kippe' ? 'lighter' : 'glug');
+    this.addToPile(id);
+    const tot = g.pegel >= 100;
+    if (tot) { g.tot = true; g.wunsch = null; }
+    this.time.delayedCall(700, () => {
+      if (!this.scene.isActive()) return;
+      this.say(VX, tot ? '...urgh ...' : Phaser.Utils.Array.GetRandom(GAST_LINES[gastStufe(g.pegel)]));
+      floatText(this, VX, 130, `+${paid}€`, '#f8e070');
+      audio.sfx('coin');
+      if (wished) { audio.sfx('chime'); floatText(this, VX + 40, 110, 'GENAU DAS!', '#9ae09a'); }
+    });
+    if (tot) return this.dieGast();
+    const s = gastStufe(g.pegel);
+    if (s !== this.shownStage) {
+      this.shownStage = s;
+      this.cameras.main.flash(250, 255, 255, 255);
+      audio.sfx('sting');
+      this.victim.setTexture(`gbust${g.typ}_${s}`);
+      floatText(this, VX, 140, s === 2 ? 'ANGESCHICKERT!' : 'STERNHAGELVOLL!', '#e08080');
+    }
+  }
+
+  private dieGast() {
+    this.busy = true;
+    this.wishC.setVisible(false);
+    this.tweens.killTweensOf(this.victim);
+    this.tweens.add({ targets: this.victim, x: VX + 1, duration: 50, yoyo: true, repeat: 20 });
+    this.time.delayedCall(500, () => this.victim.setTint(0xc8e8a0));
+    this.time.delayedCall(1300, () => { this.tweens.add({ targets: this.victim, angle: 70, y: COUNTER_Y + 90, duration: 500, ease: 'Quad.easeIn' }); audio.sfx('thud'); });
+    this.time.delayedCall(2300, () => {
+      this.leaving = true;
+      fadeTo(this, 'Bar', { spawn: BAR_TRESEN_SPAWN });
+    });
+  }
+
   private offer(id: ItemId) {
     if (this.busy || this.leaving) return;
+    if (this.gast) return this.offerGast(id);
     if (state.inv[id] <= 0) return this.say(PX + 96, `Hab kein ${item(id).name} mehr.`);
     const res = give(id);
     if (!res) return;
@@ -271,6 +336,7 @@ export class TresenScene extends Phaser.Scene {
 
   update(time: number) {
     if (!this.bars) return;
+    if (this.gast) return this.updateGast(time);
     if (state.gameOver === 'flucht' && !this.busy) this.flee();
 
     // Regen im Fenster
@@ -317,6 +383,34 @@ export class TresenScene extends Phaser.Scene {
     const st = this.shownStage;
     this.flies.forEach((f, i) => {
       f.setVisible(st >= 3 && i < st - 1 && !this.busy);
+      const a = time / (180 + i * 40) + i * 2;
+      f.setPosition(VX + Math.cos(a) * (30 + i * 5), 104 + Math.sin(a * 1.3) * 14);
+    });
+  }
+
+  /** Tresengast: Regen, Pegel, Geld, Inventar, Wunsch und Wackeln (ohne Glanz-Geschichte) */
+  private updateGast(time: number) {
+    const g = state.flags.tresengast;
+    this.rain.clear().lineStyle(1, 0x6a80b0, 0.5);
+    for (let i = 0; i < 26; i++) {
+      const x = 28 + ((i * 37 + time * 0.02) % 96);
+      const y = 32 + ((i * 53 + time * 0.25) % 74);
+      this.rain.lineBetween(x, y, x - 1, y + 5);
+    }
+    const pegel = g?.pegel ?? 100;
+    this.bars.clear().fillStyle(0x2a2220).fillRect(76, 23, 74, 7).fillStyle(pegel > 75 ? 0xe05a4a : 0xe0b040).fillRect(76, 23, Math.round((74 * pegel) / 100), 7);
+    this.money.setText(`€${state.money}`);
+    for (const s of this.slots) {
+      const n = state.inv[s.id];
+      s.count.setText(n > 0 ? String(n) : '');
+      s.icon.setAlpha(n > 0 ? 1 : 0.25);
+      s.lock.setText('');
+    }
+    this.wishC.setVisible(!!g?.wunsch && !g.tot && !this.busy);
+    if (g?.wunsch) this.wishIcon.setTexture(`icon_${g.wunsch}`);
+    if (!this.busy) this.victim.setAngle(Math.sin(time / 600) * this.shownStage * 1.2);
+    this.flies.forEach((f, i) => {
+      f.setVisible(this.shownStage >= 4 && i < 2 && !this.busy);
       const a = time / (180 + i * 40) + i * 2;
       f.setPosition(VX + Math.cos(a) * (30 + i * 5), 104 + Math.sin(a * 1.3) * 14);
     });
