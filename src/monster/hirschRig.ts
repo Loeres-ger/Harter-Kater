@@ -1,154 +1,205 @@
 import Phaser from 'phaser';
 import { audio } from '../audio';
-import {
-  BAUCH, GLANZ, HAUT, HAUT_D, KNOCHEN, NAPF, NAPF_D, FLEISCH, OKTO_AUGEN, OKTO_GEWEIH_L, OKTO_GEWEIH_R, OKTO_HALS, OKTO_HERZ, OKTO_HOEHLE, OKTO_KIEFER,
-  OKTO_W, OKTO_WASSER, makeOktopushirschTextures,
-} from './oktopushirsch';
+import { KurvenPunkt, PixelLeinwand, Pt, band, dreh, glatt, kante, kurve, zufall } from './pixelMaler';
 
-// Der Oktopushirsch als bewegliche Figur. Ein Container mit Teilen: Leib, Herz, Kopf (mit Kiefer, Maulhöhle, Geweih
-// und acht Augen) und sechs Armen, die jedes Bild weich neu gezeichnet werden. Ursprung (0, 0) ist die Wasserlinie in
-// der Mitte; Leib, Kopf und ruhende Arme werden unter der Wasserlinie abgeschnitten (er steckt im Becken).
+// Der Oktopushirsch als lebendes Pixelbild (siehe pixelMaler.ts). Jedes Bild zeichnet die ganze Figur neu: Krakenleib
+// mit offenem Brustkorb und pochendem Herzen, ein halb skelettierter Hirschschädel (links blanker Knochen mit leerer,
+// glühender Augenhöhle, rechts verrottetes Fell mit Milchauge und Ohrmarke), Jägerhut mit Gamsbart, ein Knochengeweih
+// mit Fleischfetzen, umwundenen Tentakeln und Augen an den Enden, sechs Arme mit Saugnäpfen (zwei enden in Hufen).
+// Arme wachsen aus dem Leib, alles hat einen gemeinsamen Umriss. Der Ursprung ist die Wasserlinie in der Mitte; was
+// darunter liegt, ist im Becken (beim Auftauchen und Versinken wandert die Figur durch die Wasserlinie).
 //
-// Licht und Effekte leben als eigene Objekte in der Szene (additiv): grüner Schein aus dem Becken, rotes Herzlicht,
-// glühende Augen, Sabber, der ins Wasser tropft, Blasen und Dampf am Leib. Aktionen (Promise): auftauchen, roehren,
-// schlag(ziel), treffer, brunft(an), strahl(ziel), curryFressen, niederlage. Ereignisse: 'schlag' (Weltpunkt des
-// Aufpralls), 'strahl' (Zielpunkt), 'welle' (beim Röhren).
+// Ausgreifende Arme (Hufschlag, Feger) zeichnet eine zweite Leinwand, die über den Boden reicht.
+// Aktionen (Promise): auftauchen, roehren, schlag(ziel), fegen(von, bis), treffer, brunft(an), strahl(ziel),
+// curryFressen, niederlage. Ereignisse: 'schlag' (Weltpunkt des Aufpralls), 'strahl' (Zielpunkt), 'welle' (Röhren).
 
-type Pt = { x: number; y: number };
+/** Größe der Figur in Einheiten (Wasserlinie bei OY) */
+const CW = 380, CH = 268, OX = 190, OY = 256;
+/** Kopf und Geweih etwas größer als der Leib */
+const KOPF_S = 1.1, GEWEIH_S = 1.2;
+const STUFEN = 12;
 
+
+type ArmArt = 'hinten' | 'huf' | 'vorne';
 interface Arm {
-  b: Pt;
-  c: Pt;
-  e: Pt;
+  art: ArmArt;
+  seite: number;
+  wurzel: Pt;
+  c1: Pt;
+  c2: Pt;
+  spitze: Pt;
   dicke: number;
+  spitzeDicke: number;
   phase: number;
-  huf: boolean;
-  vorne: boolean;
-  /** Ziel einer Aktion und wie stark der Arm ihm folgt (0..1) */
+  /** Ziel einer Aktion (lokal) und wie stark der Arm ihm folgt (0..1) */
   ziel?: Pt;
   mix: number;
   zuck: number;
-  /** grünes Glühen der Spitze beim Ausholen */
   glut: number;
+  stoss: number;
+  haut: ArmHaut;
 }
+/** feste, unregelmäßige Haut eines Arms (jeder Arm anders) */
+interface ArmHaut {
+  knoten: [number, number, number][];
+  flecken: [number, number, number, string][];
+  naepfe: [number, number, boolean, number][];
+  adern: [number, number, number, number][];
+  schleim: [number, number, number][];
+  glanz: [number, number][];
+  warzen: [number, number][];
+}
+function armHaut(seed: number): ArmHaut {
+  const r = zufall(seed);
+  const farben = ['#3a2232', '#2e1a2a', '#4a2e3a', '#8a6878', '#a8889a', '#5a3a2a', '#4a4a2a', '#7a2a3a'];
+  const naepfe: [number, number, boolean, number][] = [];
+  for (let t = 0.09 + r() * 0.04; t < 0.95; t += 0.035 + r() * 0.05) naepfe.push([t, 0.17 + r() * 0.2, r() < 0.2, 0.6 + r() * 0.32]);
+  return {
+    knoten: Array.from({ length: 4 }, () => [0.12 + r() * 0.78, 0.1 + r() * 0.26, 0.035 + r() * 0.05] as [number, number, number]),
+    flecken: Array.from({ length: 18 }, () => [0.04 + r() * 0.92, -0.85 + r() * 1.5, 0.16 + r() * 0.42, farben[Math.floor(r() * farben.length)]] as [number, number, number, string]),
+    naepfe,
+    adern: Array.from({ length: 3 }, () => { const t0 = r() * 0.5; return [t0, t0 + 0.25 + r() * 0.4, -0.5 + r() * 0.7, 1 + r() * 2] as [number, number, number, number]; }),
+    schleim: Array.from({ length: 3 }, () => [0.18 + r() * 0.7, 5 + r() * 10, r() * 6] as [number, number, number]),
+    glanz: Array.from({ length: 4 }, () => { const t0 = r() * 0.85; return [t0, t0 + 0.05 + r() * 0.09] as [number, number]; }),
+    warzen: Array.from({ length: 8 }, () => [0.08 + r() * 0.84, 0.6 + r() * 1.2] as [number, number]),
+  };
+}
+/** Fläche entlang einer Mittellinie mit Rändern, die sich entlang des Arms ändern (wellige Grenzen) */
+function bandF(c: CanvasRenderingContext2D, pts: KurvenPunkt[], br: (t: number) => number, von: (t: number) => number, bis: (t: number) => number) {
+  c.beginPath();
+  pts.forEach((q, i) => { const w = br(q.t) * von(q.t); if (i) c.lineTo(q.x + q.nx * w, q.y + q.ny * w); else c.moveTo(q.x + q.nx * w, q.y + q.ny * w); });
+  for (let i = pts.length - 1; i >= 0; i--) { const q = pts[i], w = br(q.t) * bis(q.t); c.lineTo(q.x + q.nx * w, q.y + q.ny * w); }
+  c.closePath();
+}
+interface Auge { seite: number; nr: number; offen: number; aus: boolean; iris: string }
 
-const farbe = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
-const C = {
-  haut: farbe(HAUT), hautD: farbe(HAUT_D), bauch: farbe(BAUCH), glanz: farbe(GLANZ), napf: farbe(NAPF), napfD: farbe(NAPF_D),
-  knochen: farbe(KNOCHEN), fleisch: farbe(FLEISCH), eiter: 0xd8e050, huf: 0x2a1a12, hufS: 0x5a4a3a, mitte: 0x6a3460, licht: 0xc890c0,
-};
-/** Bildkoordinaten (Leinwand 160x96) → lokal (Ursprung Wasserlinie Mitte) */
-const L = ([bx, by]: [number, number]): Pt => ({ x: bx - OKTO_W / 2, y: by - OKTO_WASSER });
-const mix = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-const glatt = (t: number) => t * t * (3 - 2 * t);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const lp = (a: Pt, b: Pt, t: number): Pt => ({ x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) });
+
+/** Kopf: Drehpunkt am Hals (Leibkoordinaten) */
+const HALS: Pt = { x: 0, y: -106 };
+/** Geweih: Ansatz auf dem Schädel (Kopfkoordinaten) und Hauptstange */
+const geweihStange = (s: number) => ({ b: { x: 11 * s, y: -62 }, c1: { x: 27 * s, y: -77 }, c2: { x: 45 * s, y: -86 }, e: { x: 58 * s, y: -113 } });
+const ENDEN = [{ t: 0.2, d: { x: 2, y: -17 }, auge: false }, { t: 0.48, d: { x: 4, y: -22 }, auge: true }, { t: 0.72, d: { x: 10, y: -16 }, auge: true }, { t: 0.9, d: { x: 14, y: -6 }, auge: true }];
+
+/** feste Flecken auf dem Leib (Fäulnis, Schimmel, Maden, Geschwüre) */
+const FLECKEN = (() => {
+  const r = zufall(31), out: { x: number; y: number; rx: number; ry: number; art: number }[] = [];
+  while (out.length < 16) {
+    const x = -60 + r() * 120, y = -100 + r() * 100;
+    if (Math.abs(x) < 30 && y > -85 && y < -20) continue; // Brustkorb frei lassen
+    if ((x / 66) ** 2 + ((y + 48) / 58) ** 2 > 0.85) continue;
+    out.push({ x, y, rx: 3 + r() * 6, ry: 2 + r() * 4, art: Math.floor(r() * 4) });
+  }
+  return out;
+})();
+/** Leib: Umriss (asymmetrisch, knotig), Flecken, Häute mit Adernetz, Poren, nasse Glanzpunkte, Rippen */
+const LEIB_UMRISS: [number, number][] = [[-66, 12], [-77, -8], [-80, -32], [-73, -57], [-63, -79], [-46, -97], [-27, -108], [-8, -114], [11, -112], [31, -106], [48, -95], [61, -80], [73, -61], [79, -36], [75, -12], [66, 12], [42, 19], [16, 16], [-12, 19], [-40, 18]];
+const IM_LEIB = (x: number, y: number) => (x / 68) ** 2 + ((y + 48) / 60) ** 2 < 0.9;
+const LEIB_FLECKEN = (() => {
+  const r = zufall(52), farben = ['#3a2232', '#2e1a2a', '#4a2e3a', '#7a5a70', '#8a6878', '#4a3a2a', '#3e4a2a', '#5a3048'], out: [number, number, number, number, number, string][] = [];
+  while (out.length < 46) { const x = -70 + r() * 140, y = -110 + r() * 118; if (!IM_LEIB(x, y)) continue; out.push([x, y, 3 + r() * 10, 2 + r() * 6, r() * 3, farben[Math.floor(r() * farben.length)]]); }
+  return out;
+})();
+const LEIB_ADERN = (() => {
+  const r = zufall(61), out: [number, number][][] = [];
+  for (let k = 0; k < 9; k++) {
+    let x = -60 + r() * 120, y = -100 + r() * 30, w = Math.PI / 2 + (r() - 0.5) * 0.8;
+    const pfad: [number, number][] = [[x, y]];
+    for (let i = 0; i < 9; i++) { w += (r() - 0.5) * 0.9; x += Math.cos(w) * 7; y += Math.sin(w) * 7; if (!IM_LEIB(x, y)) break; pfad.push([x, y]); }
+    out.push(pfad);
+  }
+  return out;
+})();
+const LEIB_GLANZ = (() => { const r = zufall(73), out: [number, number][] = []; while (out.length < 16) { const x = -64 + r() * 70, y = -104 + r() * 70; if (IM_LEIB(x, y)) out.push([x, y]); } return out; })();
+const RIPPEN = (() => {
+  const r = zufall(88), out: { y: number; sd: number; ex: number; ey: number; w: number; bruch: boolean; fehlt: boolean }[] = [];
+  for (let i = 0; i < 5; i++) for (const sd of [-1, 1]) out.push({ y: -80 + i * 12 + (r() - 0.5) * 3, sd, ex: sd * (24 - i * 1.5 + (r() - 0.5) * 6), ey: -80 + i * 12 + 10 + r() * 5, w: 2.2 + r() * 1.4, bruch: r() < 0.25, fehlt: r() < 0.1 });
+  return out;
+})();
+const STRAEHNEN = (() => {
+  const r = zufall(77), out: [number, number, number, number][] = [];
+  for (let i = 0; i < 46; i++) { const x = 2 + r() * 24, y = -62 + r() * 62; out.push([x, y, (r() - 0.3) * 3, 2 + r() * 4]); }
+  return out;
+})();
 
 export class OktopusHirsch extends Phaser.GameObjects.Container {
-  private armeHinten!: Phaser.GameObjects.Graphics;
-  private armeVorne!: Phaser.GameObjects.Graphics;
-  /** ein zuschlagender Arm reicht übers Becken hinaus: ohne Wassermaske */
-  private schlagG!: Phaser.GameObjects.Graphics;
-  private unterWasser!: Phaser.GameObjects.Container;
-  private leib!: Phaser.GameObjects.Image;
-  private herz!: Phaser.GameObjects.Image;
-  private kopf!: Phaser.GameObjects.Container;
-  private kopfBild!: Phaser.GameObjects.Image;
-  private kiefer!: Phaser.GameObjects.Image;
-  private maul!: Phaser.GameObjects.Graphics;
-  private geweih: Phaser.GameObjects.Container[] = [];
-  private augen: { bild: Phaser.GameObjects.Image; glanz: Phaser.GameObjects.Image; aus: boolean; blinzelt: boolean }[] = [];
-  private hoehle!: Phaser.GameObjects.Image;
-  private arme!: Arm[];
-  private maske!: Phaser.GameObjects.Graphics;
-  private wasserWeltY!: number;
-  /** Lichter und Effekte in der Szene (additiv), werden mit der Figur zerstört */
-  private fxG?: Phaser.GameObjects.Graphics;
-  private schein!: Phaser.GameObjects.Image;
-  private herzLicht!: Phaser.GameObjects.Image;
-  private aura!: Phaser.GameObjects.Image;
-  private maulLicht!: Phaser.GameObjects.Image;
+  private s: number;
+  private leinwand: PixelLeinwand;
+  private reich: PixelLeinwand;
+  private bild: Phaser.GameObjects.Image;
+  private reichBild: Phaser.GameObjects.Image;
+  private reichPos = { x: 0, y: 0 };
+  private wasserWeltY: number;
+  private arme: Arm[];
+  private augen: Auge[] = [];
+  private augenGlanz: Phaser.GameObjects.Image[] = [];
+  private hoehle: Phaser.GameObjects.Image;
+  private schein: Phaser.GameObjects.Image;
+  private herzLicht: Phaser.GameObjects.Image;
+  private aura: Phaser.GameObjects.Image;
+  private maulLicht: Phaser.GameObjects.Image;
   private brunftDampf?: Phaser.Time.TimerEvent;
+  private sprudel?: Phaser.Time.TimerEvent;
+  private ruckX?: number;
+  private zuletzt = -1000;
   private tropfT = 0;
   private blasT = 0;
   private uhr = 0;
-  /** Tempo der Ruhe-Bewegungen (Brunft: schneller) */
   private tempo = 1;
-  /** Wut (Brunft): rot pulsierend, Augen grell */
   private wut = 0;
-  /** Curry im Bauch: orange-rot, zittert */
   private wuerg = 0;
   private kieferAuf = 0;
   private kopfNeigung = 0;
   private blitz = 0;
   private tot = false;
   private hufArm = 0;
-  /** 0..1: wie weit er aus dem Wasser ist (Lichter blenden mit) */
   private sichtbar = 1;
+  /** wie tief er eingetaucht ist (Einheiten; 0 = aufgetaucht) */
+  private tiefe = 0;
+  private puls = 0;
+  /** Augen laden sich für den Strahl auf (0..1) */
+  private ladung = 0;
+  private atem = 0;
+  private geweihAb = [false, false];
+  private geweihKipp = [0, 0];
+  /** wohin die Augen schauen (Welt) */
+  blick?: Pt;
+  /** wo die Spitze eines fegenden Arms gerade ist (Welt), solange er fegt */
+  fegerPunkt?: Pt;
 
   constructor(scene: Phaser.Scene, x: number, y: number, scale = 1) {
     super(scene, x, y);
-    makeOktopushirschTextures(scene);
+    this.s = scale;
     this.wasserWeltY = y;
-    this.setScale(scale);
-    const bild = (key: string, [ox, oy]: [number, number], pos: Pt) =>
-      new Phaser.GameObjects.Image(scene, pos.x, pos.y, key).setOrigin(ox / OKTO_W, oy / OKTO_WASSER).setScale(0.5);
+    const w = Math.ceil(CW * scale), h = Math.ceil(CH * scale);
+    this.leinwand = new PixelLeinwand(scene, w, h, STUFEN);
+    this.bild = new Phaser.GameObjects.Image(scene, 0, 0, this.leinwand.key).setOrigin((OX * scale) / w, (OY * scale) / h);
+    this.add(this.bild);
+    this.reich = new PixelLeinwand(scene, 600, 330, STUFEN);
+    this.reichBild = scene.add.image(0, 0, this.reich.key).setOrigin(0).setVisible(false);
 
-    this.armeHinten = new Phaser.GameObjects.Graphics(scene);
-    this.leib = bild('okto_leib', [OKTO_W / 2, OKTO_WASSER], { x: 0, y: 0 });
-    this.herz = new Phaser.GameObjects.Image(scene, L(OKTO_HERZ).x, L(OKTO_HERZ).y, 'okto_herz').setScale(0.5);
-    this.armeVorne = new Phaser.GameObjects.Graphics(scene);
-    // Kopf mit Geweih, Augen, Kiefer; Drehpunkt am Hals
-    const hals = L(OKTO_HALS);
-    this.kopf = new Phaser.GameObjects.Container(scene, hals.x, hals.y);
-    for (const [key, piv] of [['okto_geweihL', OKTO_GEWEIH_L], ['okto_geweihR', OKTO_GEWEIH_R]] as const) {
-      const g = new Phaser.GameObjects.Container(scene, piv[0] - OKTO_HALS[0], piv[1] - OKTO_HALS[1]);
-      g.add(bild(key, piv, { x: 0, y: 0 }));
-      this.geweih.push(g);
-      this.kopf.add(g);
-    }
-    OKTO_AUGEN.forEach(([ax, ay]) => {
-      const seite = ax < OKTO_W / 2 ? 0 : 1;
-      const piv = seite ? OKTO_GEWEIH_R : OKTO_GEWEIH_L;
-      const glanz = new Phaser.GameObjects.Image(scene, ax - piv[0], ay - piv[1], 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(0xb040ff).setScale(0.16).setAlpha(0.7);
-      const auge = new Phaser.GameObjects.Image(scene, ax - piv[0], ay - piv[1], 'okto_auge').setScale(0.5);
-      this.geweih[seite].add([glanz, auge]);
-      this.augen.push({ bild: auge, glanz, aus: false, blinzelt: false });
+    const arm = (art: ArmArt, seite: number, wurzel: [number, number], c1: [number, number], c2: [number, number], sp: [number, number], dicke: number, spitzeDicke: number, phase: number): Arm => ({
+      art, seite, wurzel: { x: wurzel[0] * seite, y: wurzel[1] }, c1: { x: c1[0] * seite, y: c1[1] }, c2: { x: c2[0] * seite, y: c2[1] }, spitze: { x: sp[0] * seite, y: sp[1] },
+      dicke, spitzeDicke, phase, mix: 0, zuck: 0, glut: 0, stoss: 0, haut: armHaut(Math.round(phase * 1000) + (art === 'huf' ? 7 : art === 'vorne' ? 13 : 3)),
     });
-    this.kopfBild = bild('okto_kopf', OKTO_HALS, { x: 0, y: 0 });
-    this.hoehle = new Phaser.GameObjects.Image(scene, OKTO_HOEHLE[0] - OKTO_HALS[0], OKTO_HOEHLE[1] - OKTO_HALS[1], 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(0xb040ff).setScale(0.1).setAlpha(0.8);
-    this.maul = new Phaser.GameObjects.Graphics(scene);
-    this.kiefer = bild('okto_kiefer', OKTO_KIEFER, { x: OKTO_KIEFER[0] - OKTO_HALS[0], y: OKTO_KIEFER[1] - OKTO_HALS[1] });
-    this.kopf.add([this.kopfBild, this.hoehle, this.maul, this.kiefer]);
-    this.schlagG = new Phaser.GameObjects.Graphics(scene);
-    // alles, was unter der Wasserlinie verschwinden soll, in einen eigenen Container: dessen Maske wirkt in WebGL
-    // und Canvas (Masken einzelner Kinder ignoriert der Canvas-Renderer bei gezeichneten Teilen)
-    this.unterWasser = new Phaser.GameObjects.Container(scene, 0, 0, [this.armeHinten, this.leib, this.herz, this.armeVorne, this.kopf]);
-    this.add([this.unterWasser, this.schlagG]);
+    this.arme = [];
+    for (const sd of [-1, 1]) {
+      this.arme.push(arm('hinten', sd, [40, -52], [104, -60], [134, -150], [94, -178], 15, 3, sd < 0 ? 0 : 2.2));
+    }
+    for (const sd of [-1, 1]) this.arme.push(arm('huf', sd, [32, -18], [86, -64], [132, -44], [148, -2], 16, 7, sd < 0 ? 1.1 : 3.3));
+    for (const sd of [-1, 1]) this.arme.push(arm('vorne', sd, [18, -26], [42, -6], [14, 14], [32, -10], 10.5, 2.5, sd < 0 ? 4 : 5.2));
 
-    // Arme (Ruhelage aus dem Entwurf): zwei hinten, zwei mit Hufen, zwei kurze, die sich vorn einrollen
-    const arm = (b: [number, number], c: [number, number], e: [number, number], dicke: number, phase: number, huf: boolean, vorne: boolean): Arm =>
-      ({ b: L(b), c: L(c), e: L(e), dicke, phase, huf, vorne, mix: 0, zuck: 0, glut: 0 });
-    const Y = OKTO_WASSER;
-    this.arme = [
-      arm([40, Y + 4], [12, 64], [28, 34], 4.4, 0, false, false),
-      arm([120, Y + 4], [150, 66], [132, 36], 4.4, 2, false, false),
-      arm([60, Y + 2], [36, 82], [16, 92], 4.6, 1, true, true),
-      arm([100, Y + 2], [126, 82], [144, 92], 4.6, 3, true, true),
-      arm([66, Y + 4], [52, 84], [62, 76], 4, 4, false, true),
-      arm([94, Y + 4], [108, 84], [98, 76], 4, 5, false, true),
-    ];
+    for (const sd of [-1, 1]) ENDEN.forEach((e, i) => { if (e.auge) this.augen.push({ seite: sd, nr: i, offen: 1, aus: false, iris: sd < 0 ? '#f0e040' : '#ff4020' }); });
+    for (const sd of [-1, 1]) this.augen.push({ seite: sd, nr: 9, offen: 1, aus: false, iris: sd < 0 ? '#f0e040' : '#ff4020' }); // Stangenende
 
-    // alles unter der Wasserlinie unsichtbar (nur Leib, Kopf und ruhende Arme; Schläge und Strahlen reichen darüber hinaus)
-    this.maske = scene.make.graphics({}, false);
-    this.maske.fillStyle(0xffffff).fillRect(x - 3000, y - 3000, 6000, 3000);
-    this.unterWasser.setMask(this.maske.createGeometryMask());
-
-    // Licht und Effekte (additiv, in der Szene)
-    const licht = (f: number, s: number, a: number) => scene.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(f).setScale(s).setAlpha(a);
-    this.aura = licht(0xff2a3a, 2.6 * scale, 0);
-    this.schein = licht(0x5aff3a, 2.2 * scale, 0.35);
-    this.herzLicht = licht(0xff3040, 0.55 * scale, 0.4);
+    const licht = (f: number, sc: number, a: number) => scene.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(f).setScale(sc).setAlpha(a);
+    this.aura = licht(0xff2a3a, 2.8 * scale, 0);
+    this.schein = licht(0x5aff3a, 2.4 * scale, 0.3);
+    this.herzLicht = licht(0xff3040, 0.5 * scale, 0.4);
     this.maulLicht = licht(0x8aff5a, 0.5 * scale, 0);
-    this.fxG = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    this.hoehle = licht(0xb040ff, 0.12 * scale, 0.8);
+    this.augenGlanz = this.augen.map((a) => licht(a.seite < 0 ? 0xf0e040 : 0xff5030, 0.09 * scale, 0.6));
 
     scene.add.existing(this);
     this.setDepth(this.depth);
@@ -156,41 +207,639 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
     this.once(Phaser.GameObjects.Events.DESTROY, () => {
       scene.events.off(Phaser.Scenes.Events.UPDATE, this.tick, this);
       this.brunftDampf?.remove();
-      for (const o of [this.maske, this.aura, this.schein, this.herzLicht, this.maulLicht, this.fxG]) o?.destroy();
+      this.sprudel?.remove();
+      for (const o of [this.aura, this.schein, this.herzLicht, this.maulLicht, this.hoehle, this.reichBild, ...this.augenGlanz]) o.destroy();
+      this.leinwand.zerstoeren();
+      this.reich.zerstoeren();
     });
+    this.malen(0);
   }
 
-  /** Tiefe der Figur; die Lichter liegen passend dahinter und davor */
+  /** Tiefe der Figur; Lichter und der ausgreifende Arm liegen passend dahinter und davor */
   setDepth(d: number) {
     super.setDepth(d);
-    if (this.fxG) {
+    if (this.hoehle) {
       this.aura.setDepth(d - 0.5);
       this.schein.setDepth(d + 0.2);
-      this.herzLicht.setDepth(d + 0.3);
-      this.maulLicht.setDepth(d + 0.3);
-      this.fxG.setDepth(d + 0.4);
+      for (const o of [this.herzLicht, this.maulLicht, this.hoehle, ...this.augenGlanz]) o.setDepth(d + 0.3);
+      this.reichBild.setDepth(d + 0.25);
     }
     return this;
   }
 
-  /** lokaler Punkt → Welt */
+  /** lokaler Punkt (Einheiten, Leib) → Welt */
   welt(p: Pt): Pt {
-    return { x: this.x + p.x * this.scaleX, y: this.y + p.y * this.scaleY };
+    return { x: this.x + p.x * this.s, y: this.y + (p.y + this.tiefe) * this.s };
   }
   /** Weltpunkt → lokal */
   lokal(p: Pt): Pt {
-    return { x: (p.x - this.x) / this.scaleX, y: (p.y - this.y) / this.scaleY };
+    return { x: (p.x - this.x) / this.s, y: (p.y - this.y) / this.s - this.tiefe };
   }
-  /** Weltposition eines Teils (Auge, Kiefer, Herz) */
-  private weltVon(o: Phaser.GameObjects.Image | Phaser.GameObjects.Container) {
-    const m = o.getWorldTransformMatrix();
-    return { x: m.tx, y: m.ty };
+
+  // ---------------------------------------------------------------- Geometrie (für Lichter und Strahlen)
+
+  private kopfBob() { return Math.sin(this.uhr / 1150) * 1.2 - this.atem * 1.4; }
+  private kopfWinkel() { return Math.sin(this.uhr / 1150) * 0.04 + Math.sin(this.uhr / 430) * 0.008 + this.kopfNeigung + (this.wuerg ? Math.sin(this.uhr / 22) * 0.025 * this.wuerg : 0); }
+  /** Kopfkoordinaten → Leib */
+  private kopf(p: Pt): Pt {
+    const r = dreh({ x: p.x * KOPF_S, y: p.y * KOPF_S }, this.kopfWinkel());
+    return { x: HALS.x + r.x, y: HALS.y + this.kopfBob() + r.y };
   }
-  /** Mitte des Mauls in der Welt */
-  maulWelt(): Pt {
-    const k = this.weltVon(this.kiefer);
-    return { x: k.x - 9 * this.scaleX, y: k.y + 2 * this.scaleY };
+  private geweihWinkel(seite: number) {
+    const i = seite < 0 ? 0 : 1;
+    return seite * (Math.sin(this.uhr / 1300 + i) * 0.035 - this.kopfNeigung * 0.25) + this.geweihKipp[i];
   }
+  /** Punkt am Geweih (Kopfkoordinaten nach Drehung um den Ansatz) */
+  private geweihPunkt(seite: number, t: number, d?: Pt): Pt {
+    const g = geweihStange(seite);
+    const k = kurve(g.b, g.c1, g.c2, g.e, 20)[Math.round(t * 20)];
+    const p = d ? { x: k.x + d.x * seite, y: k.y + d.y } : k;
+    const gross = { x: g.b.x + (p.x - g.b.x) * GEWEIH_S, y: g.b.y + (p.y - g.b.y) * GEWEIH_S };
+    return dreh(gross, this.geweihWinkel(seite), g.b);
+  }
+  private augePunkt(a: Auge): Pt {
+    if (a.nr === 9) return this.kopf(this.geweihPunkt(a.seite, 1));
+    const e = ENDEN[a.nr];
+    return this.kopf(this.geweihPunkt(a.seite, e.t, e.d));
+  }
+  maulWelt(): Pt { return this.welt(this.kopf({ x: 0, y: 8 + this.kieferAuf * 8 })); }
+  private herzPunkt(): Pt { return { x: 3, y: -50 }; }
+
+  // ---------------------------------------------------------------- Ruhe
+
+  private tick(_t: number, delta: number) {
+    if (!this.active) return;
+    this.uhr += delta * this.tempo;
+    const u = this.uhr, s = this.s;
+    this.atem = Math.sin(u / 760);
+    this.puls = this.tot ? 0 : Math.pow(Math.max(0, Math.sin(u / (this.wut || this.wuerg ? 130 : 260))), 5);
+    if (this.blitz > 0) this.blitz -= delta;
+    if (this.wuerg) this.x += Math.sin(u / 17) * 0.12 * this.wuerg;
+    for (const a of this.arme) { a.zuck = Math.max(0, a.zuck - delta); a.stoss = Math.max(0, a.stoss - delta / 250); }
+    // blinzeln
+    for (const a of this.augen) {
+      if (a.aus || a.offen < 1) continue;
+      if (Math.random() < 0.0006 * delta) this.scene.tweens.add({ targets: a, offen: 0, duration: 70, yoyo: true, hold: 50 });
+    }
+    // neu zeichnen (etwa 30 Bilder pro Sekunde reichen der Pixelkunst)
+    if (u - this.zuletzt >= 50 || (this.blitz > 0 && u - this.zuletzt >= 33)) { this.zuletzt = u; this.malen(u); }
+    // Tönung: Blitz, Würgen, Wut
+    const bilder = [this.bild, this.reichBild];
+    if (this.blitz > 0) bilder.forEach((b) => b.setTintFill(0xffffff));
+    else if (this.wuerg) bilder.forEach((b) => b.setTint(Phaser.Display.Color.GetColor(255, 170 + Math.round(Math.sin(u / 90) * 30), 130)));
+    else if (this.wut > 0.05) { const g = Math.round(255 - this.wut * (70 + Math.sin(u / 150) * 35)); bilder.forEach((b) => b.setTint(Phaser.Display.Color.GetColor(255, g, g))); }
+    else bilder.forEach((b) => b.clearTint());
+    this.bild.setAlpha(Math.min(1, this.sichtbar * 1.5));
+    // Lichter folgen der Figur
+    const sv = this.sichtbar;
+    this.schein.setPosition(this.x, this.wasserWeltY - 8 * s).setAlpha((0.28 + this.puls * 0.08 + this.wut * 0.1) * sv);
+    const h = this.welt(this.herzPunkt());
+    this.herzLicht.setPosition(h.x, h.y).setAlpha(this.tot ? 0 : (0.3 + this.puls * 0.6) * sv * (h.y < this.wasserWeltY ? 1 : 0)).setScale((0.4 + this.puls * 0.2) * s);
+    this.aura.setPosition(this.x, this.y - 110 * s).setAlpha(this.wut * (0.35 + Math.sin(u / 160) * 0.12) * sv);
+    const m = this.maulWelt();
+    this.maulLicht.setPosition(m.x, m.y);
+    const ho = this.welt(this.kopf({ x: -17, y: -38 }));
+    this.hoehle.setPosition(ho.x, ho.y).setAlpha(this.tot || ho.y > this.wasserWeltY ? 0 : 0.55 + Math.sin(u / 300) * 0.2 + this.wut * 0.3);
+    this.augen.forEach((a, i) => {
+      const p = this.welt(this.augePunkt(a));
+      const sichtbarAuge = !a.aus && !this.geweihAb[a.seite < 0 ? 0 : 1] && p.y < this.wasserWeltY;
+      const fl = 0.85 + Math.sin(u / 90 + i * 2.1) * 0.06 + (Math.random() < 0.02 ? 0.15 : 0);
+      this.augenGlanz[i].setPosition(p.x, p.y).setAlpha(sichtbarAuge ? (0.45 + this.wut * 0.35) * fl * a.offen : 0)
+        .setScale((0.09 + this.wut * 0.05 + this.ladung * 0.26) * s * fl).setTint(this.wut > 0.5 ? 0xff3080 : a.seite < 0 ? 0xf0e040 : 0xff5030);
+    });
+    // Sabber tropft ins Becken, Blasen an der Wasserlinie
+    this.tropfT -= delta;
+    if (this.tropfT <= 0 && !this.tot && sv > 0.8 && this.tiefe < 5) {
+      this.tropfT = 280 + Math.random() * 380;
+      this.tropfen({ x: m.x + Phaser.Math.FloatBetween(-5, 5) * s, y: m.y + 3 * s });
+    }
+    this.blasT -= delta;
+    if (this.blasT <= 0) {
+      this.blasT = 150 + Math.random() * 170;
+      this.blase(this.x + Phaser.Math.FloatBetween(-70, 70) * s, this.wasserWeltY + Phaser.Math.FloatBetween(0, 3));
+    }
+  }
+
+  // ---------------------------------------------------------------- Zeichnen
+
+  private malen(u: number) {
+    const L = this.leinwand, c = L.ctx, s = this.s;
+    L.leeren();
+    c.setTransform(s, 0, 0, s, OX * s, OY * s);
+    // alles unter der Wasserlinie liegt im Becken
+    c.save();
+    c.beginPath();
+    c.rect(-OX, -OY, CW, OY + 1);
+    c.clip();
+    c.save();
+    c.translate(0, this.tiefe);
+    for (const a of this.arme) if (a.art === 'hinten' && !(a.ziel && a.mix > 0)) this.armMalen(c, a, u, false);
+    this.leibMalen(c, u);
+    this.kopfMalen(c, u);
+    for (const a of this.arme) if (a.art !== 'hinten' && !(a.ziel && a.mix > 0)) this.armMalen(c, a, u, true);
+    this.lichtMalen(c, true);
+    c.restore();
+    this.lichtMalen(c, false);
+    c.restore();
+    // Schaum, wo der Leib das Wasser berührt
+    if (this.tiefe < 200) {
+      const r = zufall(Math.floor(u / 120));
+      for (let x = -70; x <= 70; x += 5) {
+        const yy = Math.sin(x / 9 + u / 260) * 1.2;
+        c.fillStyle = r() < 0.5 ? '#9ae05a' : '#d0ffa0';
+        c.beginPath();
+        c.ellipse(x + r() * 3, yy, 3.2 + r() * 2, 1.6, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+    L.fertig();
+    this.reichMalen(u);
+  }
+
+  /** Licht auf alles schon Gezeichnete: am Körper Schlaglicht und Schatten, an der Wasserlinie grünes Licht aus der Brühe */
+  private lichtMalen(c: CanvasRenderingContext2D, koerper: boolean) {
+    c.globalCompositeOperation = 'source-atop';
+    if (koerper) {
+      const sh = c.createRadialGradient(-60, -210, 10, -10, -100, 250);
+      sh.addColorStop(0, 'rgba(255,236,210,0.28)');
+      sh.addColorStop(0.35, 'rgba(255,236,210,0)');
+      sh.addColorStop(0.75, 'rgba(14,2,26,0.25)');
+      sh.addColorStop(1, 'rgba(8,0,16,0.7)');
+      c.fillStyle = sh;
+      c.fillRect(-OX, -OY, CW, CH);
+    } else {
+      const gr = c.createLinearGradient(0, 2, 0, -80);
+      gr.addColorStop(0, 'rgba(120,255,70,0.6)');
+      gr.addColorStop(0.4, 'rgba(90,220,60,0.22)');
+      gr.addColorStop(1, 'rgba(90,220,60,0)');
+      c.fillStyle = gr;
+      c.fillRect(-OX, -OY, CW, CH);
+      if (this.wut > 0.05) { c.fillStyle = 'rgba(255,40,40,' + (0.18 * this.wut).toFixed(3) + ')'; c.fillRect(-OX, -OY, CW, CH); }
+    }
+    c.globalCompositeOperation = 'source-over';
+  }
+
+  private leibMalen(c: CanvasRenderingContext2D, u: number) {
+    const atem = this.atem;
+    c.save();
+    // Umriss: knotig, asymmetrisch; unten hängt die Haut beim Atmen durch, jede Stelle wabert etwas für sich
+    const umriss = LEIB_UMRISS.map(([x, y], i) => [x * (1 + atem * 0.012) + Math.sin(u / 700 + i * 1.7) * 1.1, y + Math.cos(u / 820 + i * 2.3) * 0.9 + (y > -40 ? atem * 2.2 : y < -90 ? -atem * 1.2 : 0)] as [number, number]);
+    const g = c.createRadialGradient(-26, -76, 4, -6, -50, 100);
+    g.addColorStop(0, '#8e7290'); g.addColorStop(0.45, '#5a4058'); g.addColorStop(0.85, '#3a2438'); g.addColorStop(1, '#2a1628');
+    c.fillStyle = g;
+    glatt(c, umriss);
+    c.fill();
+    // Wucherungen am Rand
+    for (const [x, y, r] of [[-72, -44, 10], [64, -72, 8], [-50, -92, 7], [74, -20, 8], [-24, -108, 5], [40, 12, 7]] as [number, number, number][]) {
+      c.beginPath(); c.ellipse(x, y + (y > -40 ? atem * 2 : 0), r * (1 + Math.sin(u / 600 + x) * 0.06), r * 0.85, 0.3, 0, Math.PI * 2); c.fill();
+    }
+    // Hautlappen, die unten herunterhängen
+    for (const [x0, x1, l] of [[-70, -48, 16], [-30, -8, 11], [22, 46, 14], [52, 70, 12]] as [number, number, number][]) {
+      const mx = (x0 + x1) / 2, sw = Math.sin(u / 650 + x0) * 2;
+      c.fillStyle = '#3a2438';
+      c.beginPath(); c.moveTo(x0, 4); c.quadraticCurveTo(mx - 4 + sw, 4 + l * 1.2, mx + sw, 4 + l); c.quadraticCurveTo(mx + 4 + sw, 4 + l * 0.9, x1, 4); c.closePath(); c.fill();
+      c.strokeStyle = '#6a4a62'; c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(x0 + 2, 5); c.quadraticCurveTo(mx - 3 + sw, 4 + l * 0.9, mx + sw, 3 + l); c.stroke();
+    }
+    // fleckige, verweste Haut
+    for (const [x, y, rx, ry, w, f] of LEIB_FLECKEN) { c.fillStyle = f; c.beginPath(); c.ellipse(x, y + (y > -40 ? atem * 1.5 : 0), rx, ry, w, 0, Math.PI * 2); c.fill(); }
+    // dünne Häute mit durchscheinendem Adernetz
+    for (const [x, y, rx, ry] of [[-46, -56, 13, 10], [44, -36, 11, 9], [-20, -14, 9, 6]] as [number, number, number, number][]) {
+      c.fillStyle = '#a07888'; c.beginPath(); c.ellipse(x, y, rx, ry, 0.4, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#c098a8'; c.beginPath(); c.ellipse(x - 2, y - 2, rx * 0.6, ry * 0.5, 0.4, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#7a2228'; c.lineWidth = 0.7;
+      for (let k = 0; k < 5; k++) {
+        const w = k * 1.3 + Math.sin(u / 900) * 0.1;
+        c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(w) * rx * 0.5, y + Math.sin(w + 0.6) * ry * 0.4, x + Math.cos(w) * rx * 0.9, y + Math.sin(w) * ry * 0.9); c.stroke();
+      }
+    }
+    // Adern, pochend
+    c.strokeStyle = this.puls > 0.5 ? '#5a1428' : '#3a0e1e';
+    c.lineWidth = 1.1;
+    for (const pfad of LEIB_ADERN) { c.beginPath(); pfad.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke(); }
+    // Fäulnis, Schimmel, Geschwüre, Maden
+    for (const f of FLECKEN) {
+      if (f.art === 0) { c.fillStyle = '#2a1a12'; c.beginPath(); c.ellipse(f.x, f.y, f.rx, f.ry, 0.3, 0, Math.PI * 2); c.fill(); c.fillStyle = '#7a2228'; c.beginPath(); c.ellipse(f.x - 1, f.y - 1, f.rx * 0.5, f.ry * 0.5, 0.3, 0, Math.PI * 2); c.fill(); }
+      else if (f.art === 1) { c.fillStyle = '#6a7a3a'; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(f.x + Math.cos(i * 1.3) * f.rx * 0.6, f.y + Math.sin(i * 1.7) * f.ry * 0.6, 1 + (i % 2) * 0.6, 0, Math.PI * 2); c.fill(); } }
+      else if (f.art === 2) { c.fillStyle = '#9a3a3a'; c.beginPath(); c.arc(f.x, f.y, f.ry * 0.8, 0, Math.PI * 2); c.fill(); c.fillStyle = '#d8e050'; c.beginPath(); c.arc(f.x - 0.4, f.y - 0.6, f.ry * 0.38, 0, Math.PI * 2); c.fill(); }
+      else { c.strokeStyle = '#efe6cc'; c.lineWidth = 1.2; for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(f.x + k * 2.2, f.y + (k % 2), 1.4, 0.2 + Math.sin(u / 200 + f.x + k) * 0.5, 2.6); c.stroke(); } }
+    }
+    // Poren, aus denen Schleim sickert
+    for (const [x, y, ph] of [[-58, -36, 0], [-36, -78, 2], [52, -58, 4], [60, -20, 1], [-10, -98, 3], [30, -84, 5]] as [number, number, number][]) {
+      c.fillStyle = '#1a0a14'; c.beginPath(); c.ellipse(x, y, 1.6, 1.1, 0, 0, Math.PI * 2); c.fill();
+      const l = 3 + ((u / 40 + ph * 30) % 9);
+      c.strokeStyle = '#7ab83a'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(x, y + 1); c.lineTo(x + 0.4, y + l); c.stroke();
+      c.fillStyle = '#9ae05a'; c.beginPath(); c.arc(x + 0.4, y + l + 0.8, 1, 0, Math.PI * 2); c.fill();
+    }
+    // nasser Glanz oben links
+    c.strokeStyle = '#a888a0'; c.lineWidth = 2.2;
+    c.beginPath(); c.arc(-30, -60, 44, 3.6, 4.4); c.stroke();
+    c.strokeStyle = '#dcc4d6'; c.lineWidth = 0.9;
+    c.beginPath(); c.arc(-30, -60, 44, 3.75, 4.25); c.stroke();
+    c.fillStyle = '#f0e0ec';
+    for (const [x, y] of LEIB_GLANZ) c.fillRect(x, y + Math.sin(u / 500 + x) * 0.4, (x * 7) % 3 > 1 ? 2 : 1, 1);
+    // roher Halsstumpf, auf dem der Schädel sitzt
+    c.fillStyle = '#5a1418'; c.beginPath(); c.ellipse(0, -110, 25, 8, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#9a3a3a'; c.beginPath(); c.ellipse(-3, -112, 18, 4, 0, 0, Math.PI * 2); c.fill();
+    for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? '#7a2228' : '#c06060'; c.beginPath(); c.ellipse(-20 + i * 8, -104 + (i % 3), 2.5, 4 + (i % 2) * 2, 0.2 * (i - 3), 0, Math.PI * 2); c.fill(); }
+    // offener Brustkorb: zerrissener Rand, Höhle, Herz, ungleiche Rippen mit Fleischfasern
+    const loch: [number, number][] = [[0, -86], [-14, -83], [-25, -72], [-28, -56], [-24, -38], [-14, -24], [0, -20], [13, -25], [24, -36], [29, -55], [24, -73], [13, -84]];
+    c.fillStyle = '#9a3a3a';
+    glatt(c, loch.map(([x, y]) => [x * 1.12, -52 + (y + 52) * 1.1] as [number, number]));
+    c.fill();
+    const hg = c.createRadialGradient(0, -52, 2, 0, -52, 30);
+    hg.addColorStop(0, '#120406'); hg.addColorStop(0.6, '#3a0a0e'); hg.addColorStop(1, '#6a1a20');
+    c.fillStyle = hg;
+    glatt(c, loch);
+    c.fill();
+    for (let i = 0; i < 12; i++) { const [x, y] = loch[i]; c.fillStyle = i % 2 ? '#c06060' : '#7a2228'; c.beginPath(); c.ellipse(x * 1.06, -52 + (y + 52) * 1.05, 2.2, 1.4, Math.atan2(y + 52, x), 0, Math.PI * 2); c.fill(); }
+    const pf = 1 + this.puls * 0.24;
+    c.save();
+    c.translate(3, -50);
+    c.scale(pf, pf * (1 - this.puls * 0.05));
+    c.strokeStyle = '#5a1418'; c.lineWidth = 2.4;
+    c.beginPath(); c.moveTo(-3, -9); c.quadraticCurveTo(-6, -16, -11, -18); c.moveTo(4, -9); c.quadraticCurveTo(6, -17, 3, -22); c.moveTo(-6, 4); c.quadraticCurveTo(-14, 8, -16, 14); c.stroke();
+    const herz = c.createRadialGradient(-3, -4, 1, 0, 0, 13);
+    herz.addColorStop(0, '#d07070'); herz.addColorStop(0.55, '#9a3a3a'); herz.addColorStop(1, '#4a1014');
+    c.fillStyle = herz;
+    glatt(c, [[-9, -6], [-4, -11], [2, -8], [9, -12], [13, -4], [9, 7], [1, 13], [-7, 8]]);
+    c.fill();
+    c.strokeStyle = '#3a0a0e'; c.lineWidth = 0.9;
+    c.beginPath(); c.moveTo(-2, -6); c.quadraticCurveTo(2, 0, -1, 8); c.moveTo(4, -6); c.quadraticCurveTo(8, 0, 5, 5); c.moveTo(-5, 0); c.lineTo(-7, 4); c.stroke();
+    c.fillStyle = '#f0c0c0'; c.fillRect(-4, -6, 1.2, 1.2);
+    c.restore();
+    // Rippen: ungleich lang, teils gebrochen oder fehlend, Fleischfasern dazwischen
+    c.lineCap = 'round';
+    RIPPEN.forEach((rp, i) => {
+      if (rp.fehlt) return;
+      const ex = rp.bruch ? rp.ex * 0.6 : rp.ex, ey = rp.bruch ? lerp(rp.y, rp.ey, 0.6) : rp.ey;
+      const cx = rp.sd * 26, cy = rp.y - 4;
+      c.strokeStyle = '#5e5440'; c.lineWidth = rp.w + 1.6;
+      c.beginPath(); c.moveTo(rp.sd * 1, rp.y); c.quadraticCurveTo(cx, cy, ex, ey); c.stroke();
+      c.strokeStyle = '#b4a886'; c.lineWidth = rp.w;
+      c.beginPath(); c.moveTo(rp.sd * 1, rp.y); c.quadraticCurveTo(cx, cy, ex, ey); c.stroke();
+      c.strokeStyle = '#efe6cc'; c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(rp.sd * 3, rp.y - 1); c.quadraticCurveTo(cx * 0.9, cy - 1.5, ex - rp.sd, ey - 1.6); c.stroke();
+      if (rp.bruch) { c.fillStyle = '#d8ccaa'; c.beginPath(); c.moveTo(ex - 1.5, ey - 1.5); c.lineTo(ex + rp.sd * 3, ey + 0.5); c.lineTo(ex - 1, ey + 1.8); c.fill(); }
+      const nach = RIPPEN[i + 2];
+      if (nach && !nach.fehlt && i % 3 !== 2) {
+        const sw = Math.sin(u / 500 + i) * 1.5;
+        c.strokeStyle = '#7a2228'; c.lineWidth = 0.9;
+        c.beginPath(); c.moveTo(rp.sd * 14, rp.y + 3); c.quadraticCurveTo(rp.sd * (16 + sw), (rp.y + nach.y) / 2 + 6, rp.sd * 13, nach.y + 3); c.stroke();
+      }
+    });
+    c.strokeStyle = '#8a7e62'; c.lineWidth = 4;
+    c.beginPath(); c.moveTo(0, -86); c.quadraticCurveTo(-3, -56, 1, -22); c.stroke();
+    c.strokeStyle = '#d8ccaa'; c.lineWidth = 1.3;
+    c.beginPath(); c.moveTo(-0.8, -86); c.quadraticCurveTo(-3.8, -56, 0.2, -22); c.stroke();
+    c.strokeStyle = '#3a3226'; c.lineWidth = 0.8;
+    c.beginPath(); c.moveTo(-2, -64); c.lineTo(1, -61); c.lineTo(-1, -58); c.stroke();
+    // Schleimfäden vom Brustkorb
+    for (const [x, ph] of [[-10, 0], [8, 2], [16, 4]] as [number, number][]) {
+      const l = 6 + Math.sin(u / 450 + ph) * 3;
+      c.strokeStyle = '#7ab83a'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(x, -22); c.quadraticCurveTo(x + 1, -22 + l * 0.6, x, -22 + l); c.stroke();
+      c.fillStyle = '#9ae05a'; c.beginPath(); c.arc(x, -21 + l, 1.1, 0, Math.PI * 2); c.fill();
+    }
+    c.restore();
+  }
+
+  private kopfMalen(c: CanvasRenderingContext2D, u: number) {
+    // Hals mit verfilztem Fell
+    c.fillStyle = '#3e3020';
+    glatt(c, [[-22, -100], [-17, -124], [0, -128], [17, -124], [22, -100], [0, -96]]);
+    c.fill();
+    c.strokeStyle = '#2a2014'; c.lineWidth = 1;
+    for (let i = -16; i <= 16; i += 4) { c.beginPath(); c.moveTo(i, -122); c.lineTo(i + 1.5, -104); c.stroke(); }
+
+    c.save();
+    c.translate(HALS.x, HALS.y + this.kopfBob());
+    c.rotate(this.kopfWinkel());
+    c.scale(KOPF_S, KOPF_S);
+    for (const sd of [-1, 1]) if (!this.geweihAb[sd < 0 ? 0 : 1]) this.geweihMalen(c, sd, u);
+    // Ohren: links zerrissen, rechts mit Fell und Ohrmarke
+    for (const sd of [-1, 1]) {
+      c.fillStyle = sd < 0 ? '#6a5260' : '#5a4630';
+      glatt(c, [[sd * 22, -50], [sd * 36, -60], [sd * 50, -60], [sd * 44, -52], [sd * 30, -44]]);
+      c.fill();
+      c.fillStyle = sd < 0 ? '#3a0a0e' : '#7a2228';
+      c.beginPath(); c.ellipse(sd * 38, -55, 6, 2, sd * -0.2, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = '#120a10'; c.beginPath(); c.arc(-44, -57, 1.6, 0, Math.PI * 2); c.arc(-39, -59, 1.2, 0, Math.PI * 2); c.fill(); // Löcher im zerrissenen Ohr
+    c.fillStyle = '#e0c020'; c.fillRect(39, -56, 7, 5);
+    c.fillStyle = '#5a4a10'; for (let i = 0; i < 3; i++) c.fillRect(40 + i * 2, -54, 1, 1);
+    // Schädel: links Knochen, rechts verrottetes Fell
+    const schaedel: [number, number][] = [[0, -67], [-18, -64], [-26, -51], [-28, -37], [-25, -24], [-18, -12], [-12, -2], [-10, 6], [10, 6], [12, -2], [18, -12], [25, -24], [28, -37], [26, -51], [18, -64]];
+    const kg = c.createLinearGradient(-26, -66, 22, 8);
+    kg.addColorStop(0, '#efe6cc'); kg.addColorStop(0.45, '#d8ccaa'); kg.addColorStop(0.8, '#b4a886'); kg.addColorStop(1, '#8a7e62');
+    c.fillStyle = kg;
+    glatt(c, schaedel);
+    c.fill();
+    c.save();
+    glatt(c, schaedel);
+    c.clip();
+    // Fellseite (rechts), gezackte Grenze
+    c.beginPath();
+    c.moveTo(3, -70);
+    for (let y = -70; y <= 10; y += 5) c.lineTo(2 + ((y / 5) % 2 ? 4 : 0), y);
+    c.lineTo(40, 10); c.lineTo(40, -70); c.closePath();
+    const fg = c.createLinearGradient(4, -60, 30, 6);
+    fg.addColorStop(0, '#7a6244'); fg.addColorStop(0.6, '#5a4630'); fg.addColorStop(1, '#3e3020');
+    c.fillStyle = fg;
+    c.fill();
+    c.lineWidth = 1;
+    for (const [x, y, dx, len] of STRAEHNEN) { c.strokeStyle = dx > 0 ? '#3e3020' : '#7a6244'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + dx, y + len); c.stroke(); }
+    // offene Stellen im Fell
+    for (const [x, y, r] of [[18, -18, 4], [10, -48, 3]] as [number, number, number][]) {
+      c.fillStyle = '#7a2228'; c.beginPath(); c.ellipse(x, y, r + 1.5, r, 0.4, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#d8ccaa'; c.beginPath(); c.ellipse(x, y, r * 0.6, r * 0.45, 0.4, 0, Math.PI * 2); c.fill();
+    }
+    // Risse im Knochen (links)
+    c.strokeStyle = '#5e5440'; c.lineWidth = 0.9;
+    c.beginPath(); c.moveTo(-10, -64); c.lineTo(-13, -56); c.lineTo(-9, -50); c.lineTo(-14, -42); c.moveTo(-22, -30); c.lineTo(-17, -26); c.lineTo(-19, -18); c.stroke();
+    c.restore();
+    // Augenhöhle links (leer, glüht), Milchauge rechts mit Maden
+    const sh = c.createRadialGradient(-17, -38, 0.5, -17, -38, 8);
+    sh.addColorStop(0, '#a040e0'); sh.addColorStop(0.35, '#3a1060'); sh.addColorStop(1, '#0a0406');
+    c.fillStyle = sh; c.beginPath(); c.ellipse(-17, -38, 7.5, 6.5, -0.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#c8b0b4'; c.beginPath(); c.ellipse(17, -38, 6, 5, 0.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#efe6cc'; c.beginPath(); c.ellipse(16, -39, 4.4, 3.4, 0.2, 0, Math.PI * 2); c.fill();
+    const bl = this.blickLokal({ x: 17, y: -38 });
+    c.fillStyle = '#8a7e62'; c.beginPath(); c.arc(17 + bl.x * 1.2, -38 + bl.y, 1.8, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#efe6cc'; c.lineWidth = 1;
+    for (let i = 0; i < 3; i++) { const a = u / 300 + i * 2.1; c.beginPath(); c.arc(22 + Math.cos(a) * 3, -33 + Math.sin(a) * 2, 1.2, 0, 2.2); c.stroke(); }
+    // Nasenlöcher, Oberkiefer mit Menschenzähnen
+    c.fillStyle = '#0a0406';
+    for (const sd of [-1, 1]) { c.beginPath(); c.ellipse(sd * 4.5, -2, 2.2, 3.4, sd * 0.3, 0, Math.PI * 2); c.fill(); }
+    const auf = this.kieferAuf;
+    const mahl = Math.sin(u / 240) * (auf < 0.1 ? 0.8 : 0.3);
+    // Maul: Rachen, Zunge, Schleimfäden
+    if (auf > 0.04) {
+      c.fillStyle = '#3a0a0e';
+      c.beginPath(); c.moveTo(-10, 6); c.lineTo(10, 6); c.lineTo(9 + mahl, 7 + auf * 15); c.lineTo(-9 + mahl, 7 + auf * 15); c.closePath(); c.fill();
+      c.fillStyle = '#7a2228'; c.beginPath(); c.ellipse(mahl, 8 + auf * 11, 6, 2.4 + auf * 2, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#9a3a3a'; c.beginPath(); c.ellipse(mahl + 1, 8 + auf * 10, 3.5, 1.4 + auf, 0, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#6ab83a'; c.lineWidth = 0.8;
+      for (const x of [-6, 1, 6]) { c.beginPath(); c.moveTo(x, 8); c.quadraticCurveTo(x + 1, 8 + auf * 9, x + mahl, 6 + auf * 15); c.stroke(); }
+    }
+    c.fillStyle = '#7a2228'; c.fillRect(-10, 3, 20, 2.4);
+    for (let i = 0; i < 8; i++) { c.fillStyle = i % 3 ? '#d8ccaa' : '#b4a886'; c.fillRect(-9.5 + i * 2.45, 4.6, 2, 3.4 - (i % 2) * 0.8); }
+    // Unterkiefer
+    c.save();
+    c.translate(mahl, auf * 15);
+    const jg = c.createLinearGradient(-10, 6, 10, 18);
+    jg.addColorStop(0, '#d8ccaa'); jg.addColorStop(1, '#8a7e62');
+    c.fillStyle = jg;
+    glatt(c, [[-10.5, 5], [10.5, 5], [10, 11], [5, 16.5], [-5, 16.5], [-10, 11]]);
+    c.fill();
+    c.fillStyle = '#5a4630'; c.fillRect(3, 8, 6, 6); // Fellrest
+    for (let i = 0; i < 7; i++) { c.fillStyle = i % 2 ? '#efe6cc' : '#d8ccaa'; c.fillRect(-8.5 + i * 2.5, 3.2, 2, 2.6); }
+    c.fillStyle = '#6ab83a'; c.fillRect(-4, 15.5, 1, 3 + auf * 3); c.fillRect(5, 15, 1, 2 + auf * 2);
+    c.restore();
+    // Jägerhut mit Gamsbart, schief auf der Stirn
+    c.save();
+    c.translate(-2, -63);
+    c.rotate(-0.14);
+    c.fillStyle = '#2e4028'; c.beginPath(); c.ellipse(0, 1, 17, 3.6, 0, 0, Math.PI * 2); c.fill();
+    const hg = c.createLinearGradient(-10, -14, 10, 0);
+    hg.addColorStop(0, '#3e5636'); hg.addColorStop(1, '#1e2a1a');
+    c.fillStyle = hg;
+    glatt(c, [[-11, 0], [-10, -9], [-5, -14], [5, -14], [10, -9], [11, 0]]);
+    c.fill();
+    c.fillStyle = '#1e2a1a'; c.fillRect(-11, -3.5, 22, 2.5);
+    c.strokeStyle = '#d8ccaa'; c.lineWidth = 1;
+    for (let i = 0; i < 6; i++) { const w = -1.4 + i * 0.22 + Math.sin(u / 400 + i) * 0.05; c.beginPath(); c.moveTo(9, -3); c.lineTo(9 + Math.cos(w) * 11, -3 + Math.sin(w) * 11); c.stroke(); }
+    c.strokeStyle = '#8a7e62';
+    c.beginPath(); c.moveTo(9, -3); c.lineTo(14, -12); c.stroke();
+    c.restore();
+    c.restore();
+  }
+
+  private blickLokal(von: Pt): Pt {
+    if (!this.blick) return { x: Math.sin(this.uhr / 1700) * 0.6, y: 0.3 };
+    const w = this.welt(this.kopf(von));
+    const dx = this.blick.x - w.x, dy = this.blick.y - w.y, l = Math.hypot(dx, dy) || 1;
+    return { x: dx / l, y: dy / l };
+  }
+
+  private geweihMalen(c: CanvasRenderingContext2D, sd: number, u: number) {
+    const g = geweihStange(sd);
+    c.save();
+    c.translate(g.b.x, g.b.y);
+    c.rotate(this.geweihWinkel(sd));
+    c.scale(GEWEIH_S, GEWEIH_S);
+    c.translate(-g.b.x, -g.b.y);
+    const stange = kurve(g.b, g.c1, g.c2, g.e, 20);
+    const bs = (t: number) => lerp(5.6, 2.2, t);
+    const knochen = (pts: KurvenPunkt[], br: (t: number) => number) => {
+      c.fillStyle = '#8a7e62'; band(c, pts, br); c.fill();
+      c.fillStyle = '#d8ccaa'; band(c, pts, br, -0.9, 0.2); c.fill();
+      c.fillStyle = '#efe6cc'; band(c, pts, br, -0.75, -0.35); c.fill();
+      c.fillStyle = '#5e5440'; band(c, pts, br, 0.55, 1); c.fill();
+    };
+    // Enden
+    ENDEN.forEach((e, i) => {
+      const p = stange[Math.round(e.t * 20)];
+      const ende = { x: p.x + e.d.x * sd, y: p.y + e.d.y };
+      const gebrochen = sd < 0 && i === 2;
+      const ziel = gebrochen ? lp(p, ende, 0.55) : ende;
+      const pts = kurve(p, lp(p, ziel, 0.35), { x: lerp(p.x, ziel.x, 0.7) - sd * 2, y: lerp(p.y, ziel.y, 0.7) }, ziel, 8);
+      knochen(pts, (t) => lerp(3.3, 1.3, t));
+      if (gebrochen) { c.fillStyle = '#efe6cc'; c.beginPath(); c.moveTo(ziel.x - 2, ziel.y + 1); c.lineTo(ziel.x, ziel.y - 3); c.lineTo(ziel.x + 2, ziel.y); c.fill(); }
+    });
+    knochen(stange, bs);
+    // Risse, Moos
+    c.strokeStyle = '#3a3226'; c.lineWidth = 0.8;
+    for (const t of [0.3, 0.62]) { const p = stange[Math.round(t * 20)]; c.beginPath(); c.moveTo(p.x - 1.5, p.y - 1); c.lineTo(p.x + 1, p.y + 1.5); c.lineTo(p.x - 0.5, p.y + 3); c.stroke(); }
+    // Tentakel, die sich um die Stange winden
+    c.strokeStyle = '#5e4660'; c.lineWidth = 1.7;
+    c.beginPath();
+    stange.forEach((q, i) => {
+      const off = Math.sin(q.t * 14 - u / 300 + sd) * bs(q.t) * 1.05;
+      const x = q.x + q.nx * off, y = q.y + q.ny * off;
+      if (i) c.lineTo(x, y); else c.moveTo(x, y);
+    });
+    c.stroke();
+    c.strokeStyle = '#9a849a'; c.lineWidth = 0.7; c.stroke();
+    // Fleischfetzen hängen herunter und schwingen nach
+    for (const t of [0.3, 0.58]) {
+      const p = stange[Math.round(t * 20)];
+      const sw = Math.sin(u / 380 + t * 9 + sd) * 2.5 - this.kopfNeigung * 20;
+      c.strokeStyle = '#5a1418'; c.lineWidth = 2.6;
+      c.beginPath(); c.moveTo(p.x, p.y + 2); c.quadraticCurveTo(p.x + sw * 0.5, p.y + 7, p.x + sw, p.y + 13); c.stroke();
+      c.strokeStyle = '#9a3a3a'; c.lineWidth = 1.1;
+      c.beginPath(); c.moveTo(p.x - 0.5, p.y + 2); c.quadraticCurveTo(p.x + sw * 0.5 - 0.5, p.y + 7, p.x + sw - 0.5, p.y + 12); c.stroke();
+    }
+    // Augen an den Enden
+    for (const a of this.augen) {
+      if (a.seite !== sd) continue;
+      const pt = a.nr === 9 ? stange[20] : (() => { const e = ENDEN[a.nr], p = stange[Math.round(e.t * 20)]; return { x: p.x + e.d.x * sd, y: p.y + e.d.y }; })();
+      this.augeMalen(c, pt, a);
+    }
+    c.restore();
+  }
+
+  private augeMalen(c: CanvasRenderingContext2D, p: Pt, a: Auge) {
+    if (a.aus) {
+      c.fillStyle = '#3a0a0e'; c.beginPath(); c.arc(p.x, p.y, 3, 0, Math.PI * 2); c.fill();
+      return;
+    }
+    c.fillStyle = '#7a2228'; c.beginPath(); c.arc(p.x, p.y, 4.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#efe6cc'; c.beginPath(); c.arc(p.x, p.y, 3.4, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#c06060'; c.lineWidth = 0.6;
+    c.beginPath(); c.moveTo(p.x - 3, p.y); c.lineTo(p.x - 1.5, p.y + 0.6); c.moveTo(p.x + 3, p.y - 1); c.lineTo(p.x + 1.4, p.y - 0.4); c.stroke();
+    const b = this.blickLokal(p);
+    const ix = p.x + b.x * 1.1, iy = p.y + b.y * 1.1;
+    c.fillStyle = this.wut > 0.5 ? '#ff4020' : a.iris; c.beginPath(); c.arc(ix, iy, 2.1, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#0a0406'; c.fillRect(ix - 0.5, iy - 1.6, 1, 3.2);
+    if (a.offen < 1) {
+      c.fillStyle = '#5e4660';
+      c.beginPath(); c.arc(p.x, p.y, 4.3, Math.PI, 0); c.lineTo(p.x + 4.3, p.y - 4.3 + (1 - a.offen) * 8.6); c.lineTo(p.x - 4.3, p.y - 4.3 + (1 - a.offen) * 8.6); c.fill();
+    }
+  }
+
+  /** Mittellinie eines Arms in diesem Bild (Ruhe mit Wogen, bzw. Richtung Ziel) */
+  private armLinie(a: Arm, u: number): KurvenPunkt[] {
+    const amp = this.tempo * (1 + this.wut * 0.7), ph = a.phase;
+    const c1 = { x: a.c1.x + Math.sin(u / 900 + ph) * 4 * amp, y: a.c1.y + Math.cos(u / 800 + ph) * 3 * amp };
+    const c2 = { x: a.c2.x + Math.sin(u / 700 + ph) * 6 * amp, y: a.c2.y + Math.cos(u / 650 + ph) * 4.5 * amp };
+    let sp = { x: a.spitze.x + Math.sin(u / 600 + ph) * 7 * amp, y: a.spitze.y + Math.cos(u / 560 + ph) * 5 * amp };
+    let k1 = c1, k2 = c2;
+    if (a.ziel && a.mix > 0) {
+      const z = a.ziel;
+      const hoch = Math.min(a.wurzel.y, z.y) - 70;
+      k1 = lp(c1, { x: a.wurzel.x + a.seite * 26, y: a.wurzel.y - 60 }, a.mix);
+      k2 = lp(c2, { x: lerp(a.wurzel.x, z.x, 0.8), y: hoch }, a.mix);
+      sp = lp(sp, z, a.mix);
+    }
+    const pts = kurve(a.wurzel, k1, k2, sp, 22);
+    for (const q of pts) {
+      const welle = Math.sin(q.t * 5.5 - u / 260 + ph) * 2.2 * Math.sin(Math.PI * q.t) * amp * (1 - a.mix * 0.7)
+        + (a.zuck > 0 ? Math.sin(q.t * 14 + u / 30) * 3 * (a.zuck / 400) : 0);
+      q.x += q.nx * welle;
+      q.y += q.ny * welle;
+    }
+    return pts;
+  }
+
+  private armMalen(c: CanvasRenderingContext2D, a: Arm, u: number, vorne: boolean) {
+    const pts = this.armLinie(a, u), H = a.haut, ph = a.phase, n = pts.length - 1;
+    const knoten = (t: number) => H.knoten.reduce((sum, [kt, ka, kb]) => sum + ka * Math.exp(-(((t - kt) / kb) ** 2)), 0);
+    // ungleich dick: Wülste, wandernde Muskelwellen, beim Aufprall staucht die Spitze
+    const br = (t: number) => lerp(a.dicke, a.spitzeDicke, Math.pow(t, 0.85)) * (1 + knoten(t) + Math.sin(t * 16 - u / 220 + ph) * 0.06) * (1 + (t > 0.75 ? a.stoss * 0.5 : 0));
+    const mittel = pts[Math.floor(pts.length / 2)];
+    const unten = mittel.ny >= 0 ? 1 : -1;
+    const at = (t: number) => pts[Math.max(0, Math.min(n, Math.round(t * n)))];
+    // Haut: Grundton, Schattenseite mit welliger Grenze, blasse, schwammige Unterseite
+    c.fillStyle = '#5a4058'; band(c, pts, br); c.fill();
+    c.fillStyle = '#3a2438'; bandF(c, pts, br, (t) => unten * (0.04 + Math.sin(t * 23 + ph) * 0.13), () => unten); c.fill();
+    c.fillStyle = '#9a7a8c'; bandF(c, pts, br, (t) => unten * (0.5 + Math.sin(t * 17 + ph) * 0.1), () => unten * 0.97); c.fill();
+    // Flecken
+    for (const [t, q, r, f] of H.flecken) {
+      const p = at(t), w = br(p.t);
+      c.fillStyle = f; c.beginPath(); c.ellipse(p.x + p.nx * q * w, p.y + p.ny * q * w, r * w * 1.4, r * w * 0.8, Math.atan2(p.ny, p.nx) + Math.PI / 2, 0, Math.PI * 2); c.fill();
+    }
+    // Adern, die sich am Arm entlangschlängeln
+    c.lineWidth = 0.8;
+    c.strokeStyle = '#3a0e1e';
+    for (const [t0, t1, q, f] of H.adern) {
+      c.beginPath();
+      let start = true;
+      for (const p of pts) {
+        if (p.t < t0 || p.t > t1) continue;
+        const off = (q + Math.sin(p.t * f * 25) * 0.14) * br(p.t), x = p.x + p.nx * off, y = p.y + p.ny * off;
+        if (start) { c.moveTo(x, y); start = false; } else c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+    // nasser Glanz: einzelne Streifen und Lichtpunkte auf der Oberseite
+    for (const [t0, t1] of H.glanz) {
+      const sub = pts.filter((p) => p.t >= t0 && p.t <= t1);
+      if (sub.length < 2) continue;
+      c.fillStyle = '#b898b0'; bandF(c, sub, br, () => -unten * 0.74, () => -unten * 0.5); c.fill();
+      const m = sub[Math.floor(sub.length / 2)], w = br(m.t);
+      c.fillStyle = '#f4e4f0'; c.fillRect(m.x - m.nx * w * 0.63 * unten - 0.6, m.y - m.ny * w * 0.63 * unten - 0.6, 1.3, 1.2);
+    }
+    // Warzen, die über den Rand stehen
+    for (const [t, r] of H.warzen) {
+      const p = at(t), w = br(p.t), x = p.x - p.nx * w * 0.9 * unten, y = p.y - p.ny * w * 0.9 * unten;
+      c.fillStyle = '#5a4058'; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#8a6a80'; c.fillRect(x - r * 0.5, y - r * 0.5, 1, 1);
+    }
+    // Saugnäpfe: ungleich groß und verteilt, oval, sie pulsieren; manche roh und eitrig
+    for (const [t, r, roh, q] of H.naepfe) {
+      const p = at(t), w = br(p.t), x = p.x + p.nx * w * q * unten, y = p.y + p.ny * w * q * unten;
+      const rr = Math.max(0.9, r * w), wink = Math.atan2(p.ny, p.nx) + Math.PI / 2, pu = 1 + Math.sin(u / 300 + t * 20) * 0.1;
+      c.fillStyle = '#4a2e40'; c.beginPath(); c.ellipse(x, y, rr * 1.25 * pu + 0.5, rr * 0.95 + 0.5, wink, 0, Math.PI * 2); c.fill();
+      c.fillStyle = roh ? '#b86868' : '#d2b8c4'; c.beginPath(); c.ellipse(x, y, rr * 1.25 * pu, rr * 0.95, wink, 0, Math.PI * 2); c.fill();
+      c.fillStyle = roh ? '#7a1a22' : '#2e1626'; c.beginPath(); c.ellipse(x + 0.3, y + 0.3, rr * 0.62 * pu, rr * 0.45, wink, 0, Math.PI * 2); c.fill();
+      if (roh) { c.fillStyle = '#d8e050'; c.fillRect(x - 0.5, y - 0.5, 1, 1); }
+    }
+    // Schleimfäden hängen herunter, dehnen sich, tropfen
+    for (const [t, l, sp] of H.schleim) {
+      const p = at(t), w = br(p.t), x = p.x + p.nx * w * 0.9 * unten, y = p.y + p.ny * w * 0.9 * unten;
+      const len = l * (0.55 + 0.45 * Math.sin(u / 520 + sp)), sx = Math.sin(u / 300 + sp) * 1.6;
+      c.strokeStyle = '#7ab83a'; c.lineWidth = 0.9;
+      c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.sin(u / 400 + sp) * 2, y + len * 0.6, x + sx, y + len); c.stroke();
+      c.fillStyle = '#9ae05a'; c.beginPath(); c.arc(x + sx, y + len + 0.7, 1.2, 0, Math.PI * 2); c.fill();
+    }
+    // Geschwür mit Eiter und ein Knochensporn
+    const g = at(0.4), gw = br(g.t);
+    c.fillStyle = '#9a3a3a'; c.beginPath(); c.arc(g.x - g.nx * gw * 0.35 * unten, g.y - g.ny * gw * 0.35 * unten, gw * 0.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#d8e050'; c.beginPath(); c.arc(g.x - g.nx * gw * 0.35 * unten - 0.4, g.y - g.ny * gw * 0.35 * unten - 0.4, gw * 0.13, 0, Math.PI * 2); c.fill();
+    const k = at(0.6), kw = br(k.t), ox = -k.nx * unten, oy = -k.ny * unten;
+    c.fillStyle = '#d8ccaa';
+    c.beginPath(); c.moveTo(k.x + ox * kw - k.ny * 1.5, k.y + oy * kw + k.nx * 1.5); c.lineTo(k.x + ox * (kw + 4.5), k.y + oy * (kw + 4.5)); c.lineTo(k.x + ox * kw + k.ny * 1.5, k.y + oy * kw - k.nx * 1.5); c.fill();
+    // vor dem Leib: feine dunkle Kante und eine Hautfalte, wo der Arm aus dem Leib wächst
+    if (vorne) {
+      c.strokeStyle = '#2a1426'; c.lineWidth = 0.8;
+      kante(c, pts, br, 1, 0.12);
+      kante(c, pts, br, -1, 0.12);
+      const r0 = at(0.1), rw = br(r0.t);
+      c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(r0.x + r0.nx * rw, r0.y + r0.ny * rw); c.quadraticCurveTo(pts[1].x, pts[1].y, r0.x - r0.nx * rw, r0.y - r0.ny * rw); c.stroke();
+      c.strokeStyle = '#7a5a70'; c.lineWidth = 0.8;
+      const r1 = at(0.13), rw1 = br(r1.t);
+      c.beginPath(); c.moveTo(r1.x + r1.nx * rw1 * 0.8, r1.y + r1.ny * rw1 * 0.8); c.quadraticCurveTo(at(0.06).x, at(0.06).y, r1.x - r1.nx * rw1 * 0.8, r1.y - r1.ny * rw1 * 0.8); c.stroke();
+    }
+    const e = pts[n];
+    // glühende Spitze beim Ausholen
+    if (a.glut > 0) { c.fillStyle = '#9ae05a'; c.beginPath(); c.arc(e.x, e.y, 3 + a.glut * 2, 0, Math.PI * 2); c.fill(); }
+    if (a.art === 'huf') {
+      const d = pts[pts.length - 2], w = Math.atan2(e.y - d.y, e.x - d.x);
+      c.save();
+      c.translate(e.x, e.y);
+      c.rotate(w + Math.PI / 2);
+      const st = 1 + a.stoss * 0.3;
+      c.scale(st, 1 / st);
+      c.fillStyle = '#2e2016';
+      c.beginPath(); c.ellipse(-2.4, 2, 3, 4.6, 0.15, 0, Math.PI * 2); c.ellipse(2.4, 2, 3, 4.6, -0.15, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#4a3626'; c.beginPath(); c.ellipse(-3.2, 0.5, 1.2, 2.4, 0.15, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#1a120c'; c.fillRect(-0.4, -1, 0.8, 7);
+      c.restore();
+    }
+  }
+
+  /** ausgreifende Arme auf der zweiten Leinwand (reicht über den Beckenrand hinaus) */
+  private reichMalen(u: number) {
+    const aktiv = this.arme.filter((a) => a.ziel && a.mix > 0);
+    if (!aktiv.length) { this.reichBild.setVisible(false); return; }
+    const linien = aktiv.map((a) => this.armLinie(a, u));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const l of linien) for (const q of l) { const w = this.welt(q); x0 = Math.min(x0, w.x); y0 = Math.min(y0, w.y); x1 = Math.max(x1, w.x); y1 = Math.max(y1, w.y); }
+    const rand = 20 * this.s;
+    const R = this.reich;
+    const left = Math.round(Math.max(x0 - rand, x1 + rand - R.w)), top = Math.round(Math.max(y0 - rand, y1 + rand - R.h));
+    this.reichPos = { x: left, y: top };
+    R.leeren();
+    const c = R.ctx, s = this.s;
+    c.setTransform(s, 0, 0, s, this.x - left, this.y + this.tiefe * s - top);
+    aktiv.forEach((a) => this.armMalen(c, a, u, true));
+    const wurzeln = aktiv.map((a) => this.welt(a.wurzel));
+    R.fertig((x, y) => wurzeln.some((w) => Math.hypot(x + left - w.x, y + top - w.y) < 18 * s));
+    this.reichBild.setPosition(left, top).setVisible(true);
+  }
+
+  // ---------------------------------------------------------------- Effekte (Weltkoordinaten)
 
   private tw(cfg: Phaser.Types.Tweens.TweenBuilderConfig) {
     return new Promise<void>((done) => this.scene.tweens.add({ ...cfg, onComplete: () => done() }));
@@ -199,175 +848,18 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
     return new Promise<void>((done) => this.scene.time.delayedCall(ms, done));
   }
 
-  // ---------------------------------------------------------------- Ruhe
-
-  private tick(_time: number, delta: number) {
-    if (!this.active) return;
-    this.uhr += delta * this.tempo;
-    const u = this.uhr, s = this.scaleX;
-    const atem = Math.sin(u / 760);
-    this.leib.setScale(0.5 + atem * 0.005, 0.5 + atem * 0.012);
-    this.leib.setRotation(Math.sin(u / 1900) * 0.012);
-    const puls = this.tot ? 0 : Math.pow(Math.max(0, Math.sin(u / (this.wut || this.wuerg ? 130 : 260))), 5);
-    this.herz.setScale(0.5 * (1 + puls * 0.3)).setY(L(OKTO_HERZ).y - atem * 0.7);
-    const zitter = this.wuerg ? Math.sin(u / 22) * 0.025 * this.wuerg : 0;
-    this.kopf.setRotation(Math.sin(u / 1150) * 0.045 + Math.sin(u / 430) * 0.008 + this.kopfNeigung + zitter);
-    this.kopf.y = L(OKTO_HALS).y - atem * 1.1;
-    this.kiefer.setRotation(0.03 + glatt(Math.max(0, Math.sin(u / 900))) * 0.08 + this.kieferAuf);
-    if (!this.tot) {
-      this.geweih[0].setRotation(Math.sin(u / 1300) * 0.04);
-      this.geweih[1].setRotation(-Math.sin(u / 1250 + 1) * 0.04);
-    }
-    this.augen.forEach((a, i) => {
-      if (a.aus) return;
-      const flacker = 0.85 + Math.sin(u / 90 + i * 2.1) * 0.05 + (Math.random() < 0.02 ? 0.15 : 0);
-      a.glanz.setAlpha((0.55 + Math.sin(u / 380 + i) * 0.15 + this.wut * 0.3) * flacker).setScale((0.16 + this.wut * 0.08) * flacker);
-      a.glanz.setTint(this.wut > 0.5 ? 0xff3080 : 0xb040ff);
-      if (!a.blinzelt && Math.random() < 0.0007 * delta) {
-        a.blinzelt = true;
-        this.scene.tweens.add({ targets: a.bild, scaleY: 0.05, duration: 70, yoyo: true, hold: 60, onComplete: () => { a.blinzelt = false; } });
-      }
-    });
-    this.hoehle.setAlpha(this.tot ? 0 : 0.6 + Math.sin(u / 300) * 0.25 + this.wut * 0.3);
-    if (this.blitz > 0) this.blitz -= delta;
-    const teile = [this.leib, this.kopfBild, this.kiefer, this.herz];
-    if (this.blitz > 0) teile.forEach((t) => t.setTintFill(0xffffff));
-    else if (this.wuerg) teile.forEach((t) => t.setTint(Phaser.Display.Color.GetColor(255, 150 + Math.round(Math.sin(u / 90) * 30), 110)));
-    else if (this.wut > 0.05) { const g = Math.round(255 - this.wut * (80 + Math.sin(u / 150) * 40)); teile.forEach((t) => t.setTint(Phaser.Display.Color.GetColor(255, g, g))); }
-    else teile.forEach((t) => t.clearTint());
-    if (this.wuerg) this.x += Math.sin(u / 17) * 0.12 * this.wuerg;
-    this.maulZeichnen();
-    this.armeZeichnen(u, delta);
-    // Lichter folgen
-    const sv = this.sichtbar;
-    this.schein.setPosition(this.x, Math.min(this.wasserWeltY, this.y) - 6 * s).setAlpha((0.3 + puls * 0.08 + this.wut * 0.1) * sv);
-    const h = this.weltVon(this.herz);
-    this.herzLicht.setPosition(h.x, h.y).setAlpha(this.tot ? 0 : (0.25 + puls * 0.55) * sv).setScale((0.45 + puls * 0.2) * s);
-    this.aura.setPosition(this.x, this.y - 50 * s).setAlpha(this.wut * (0.35 + Math.sin(u / 160) * 0.12) * sv);
-    const mund = this.maulWelt();
-    this.maulLicht.setPosition(mund.x, mund.y);
-    // Sabber tropft ins Becken, Blasen und Dampf an der Wasserlinie
-    this.tropfT -= delta;
-    if (this.tropfT <= 0 && !this.tot && sv > 0.8) {
-      this.tropfT = 260 + Math.random() * 380;
-      this.tropfen({ x: mund.x + Phaser.Math.FloatBetween(-6, 4) * s, y: mund.y + 4 * s });
-    }
-    this.blasT -= delta;
-    if (this.blasT <= 0) {
-      this.blasT = 140 + Math.random() * 160;
-      this.blase(this.x + Phaser.Math.FloatBetween(-55, 55) * s, this.wasserWeltY + Phaser.Math.FloatBetween(0, 3));
-    }
-  }
-
-  /** Maulhöhle zwischen Oberkiefer und Unterkiefer, folgt dem Kiefer; offen mit Rachen, Zunge und Schleimfaden */
-  private maulZeichnen() {
-    const g = this.maul, w = this.kiefer.rotation, [hx, hy] = OKTO_KIEFER, [kx, ky] = OKTO_HALS;
-    const cos = Math.cos(w), sin = Math.sin(w);
-    const oben: Pt[] = [], unten: Pt[] = [];
-    for (let x = 64; x <= 88; x += 2) {
-      oben.push({ x: x - kx, y: 64.5 + (x - 72) * 0.1 - ky });
-      const ux = x - hx, uy = 69 + (86 - x) * 0.35 - hy;
-      unten.push({ x: hx + ux * cos - uy * sin - kx, y: hy + ux * sin + uy * cos - ky + 0.5 });
-    }
-    g.clear();
-    g.fillStyle(0x1a0404, 1).fillPoints([...oben, ...[...unten].reverse()], true);
-    if (w > 0.15) {
-      const a = oben[4], b = unten[unten.length - 5];
-      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      g.fillStyle(0x4a0a0a, 0.95).fillEllipse(mx, my, 9, Math.min(8, w * 13));
-      g.fillStyle(0x7a1a1a, 0.9).fillEllipse(mx, my + 0.5, 6, Math.min(5, w * 8));
-      g.fillStyle(0xa83a3a, 0.9).fillEllipse(mx + 1, my + 1.5, 4, Math.min(3, w * 5));
-      // Schleimfäden zwischen den Kiefern
-      g.lineStyle(0.35, 0x8ac83a, 0.8);
-      for (const k of [2, 6, 9]) { const o = oben[k], un = unten[unten.length - 1 - k]; g.lineBetween(o.x, o.y + 0.3, un.x + 0.4, un.y - 0.3); }
-    }
-  }
-
-  private armeZeichnen(u: number, delta: number) {
-    this.armeHinten.clear();
-    this.armeVorne.clear();
-    this.schlagG.clear();
-    this.fxG?.clear();
-    for (const a of this.arme) {
-      a.zuck = Math.max(0, a.zuck - delta);
-      const amp = this.tempo * (1 + this.wut * 0.7);
-      let e: Pt = { x: a.e.x + Math.sin(u / 720 + a.phase) * 4.5 * amp + Math.sin(u / 310 + a.phase * 2) * 1.2, y: a.e.y + Math.cos(u / 610 + a.phase) * 3.2 * amp };
-      let c: Pt = { x: a.c.x + Math.sin(u / 930 + a.phase) * 3.2 * amp, y: a.c.y + Math.cos(u / 820 + a.phase) * 2.4 * amp };
-      if (a.ziel && a.mix > 0) {
-        e = mix(e, a.ziel, a.mix);
-        c = mix(c, { x: (a.b.x + a.ziel.x) / 2 + (a.ziel.x > a.b.x ? -14 : 14), y: Math.min(a.b.y, a.ziel.y) - 34 }, a.mix);
-      }
-      this.armMalen(a.ziel && a.mix > 0 ? this.schlagG : a.vorne ? this.armeVorne : this.armeHinten, a, c, e, u);
-    }
-  }
-
-  /** ein Arm, weich: viele Stützpunkte, wellig, zur Spitze dünn; Kante, Haut, Schattenkern, Unterseite, Glanzlicht,
-   *  Saugnäpfe, Geschwüre und Knochensporne */
-  private armMalen(g: Phaser.GameObjects.Graphics, a: Arm, c: Pt, e: Pt, u: number) {
-    const n = 40, b = a.b, weiss = this.blitz > 0;
-    const pts: { x: number; y: number; r: number; nx: number; ny: number }[] = [];
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      let x = (1 - t) * (1 - t) * b.x + 2 * (1 - t) * t * c.x + t * t * e.x;
-      let y = (1 - t) * (1 - t) * b.y + 2 * (1 - t) * t * c.y + t * t * e.y;
-      const tx = 2 * (1 - t) * (c.x - b.x) + 2 * t * (e.x - c.x), ty = 2 * (1 - t) * (c.y - b.y) + 2 * t * (e.y - c.y);
-      const tl = Math.hypot(tx, ty) || 1;
-      let nx = -ty / tl, ny = tx / tl;
-      if (e.x < b.x) { nx = -nx; ny = -ny; }
-      const welle = Math.sin(t * 6 - u / 160 + a.phase) * 1.3 * Math.sin(t * Math.PI) + (a.zuck > 0 ? Math.sin(t * 14 + u / 30) * 2.8 * (a.zuck / 400) : 0);
-      x += nx * welle;
-      y += ny * welle;
-      // die Spitze rollt sich ein
-      if (!a.huf && t > 0.82 && a.mix < 0.5) { const k = (t - 0.82) / 0.18; x += Math.cos(u / 400 + a.phase) * k * k * 3; y -= k * k * 2.5; }
-      pts.push({ x, y, r: a.dicke + ((a.huf ? 2.3 : 0.9) - a.dicke) * Math.pow(t, 0.9), nx, ny });
-    }
-    const f = (col: number) => (weiss ? 0xffffff : col);
-    for (const q of pts) g.fillStyle(f(C.hautD), 1).fillCircle(q.x, q.y, q.r + 0.85);
-    for (const q of pts) g.fillStyle(f(C.haut), 1).fillCircle(q.x, q.y, q.r);
-    for (const q of pts) g.fillStyle(f(C.mitte), 1).fillCircle(q.x - q.nx * q.r * 0.25, q.y - q.ny * q.r * 0.25, q.r * 0.62);
-    for (const q of pts) g.fillStyle(f(C.bauch), 1).fillCircle(q.x + q.nx * q.r * 0.48, q.y + q.ny * q.r * 0.48, q.r * 0.48);
-    for (const q of pts) g.fillStyle(f(C.glanz), 1).fillCircle(q.x - q.nx * q.r * 0.48, q.y - q.ny * q.r * 0.48, q.r * 0.22);
-    pts.forEach((q, i) => {
-      if (i % 4 === 2 && q.r > 1.1) {
-        const sx = q.x + q.nx * q.r * 0.74, sy = q.y + q.ny * q.r * 0.74;
-        g.fillStyle(f(C.napf), 1).fillCircle(sx, sy, Math.max(0.55, q.r * 0.27));
-        g.fillStyle(f(C.napfD), 1).fillCircle(sx, sy, Math.max(0.3, q.r * 0.12));
-      }
-      if (i % 6 === 3) g.fillStyle(f(C.licht), 0.7).fillCircle(q.x - q.nx * q.r * 0.55, q.y - q.ny * q.r * 0.55, Math.max(0.3, q.r * 0.1));
-      if (i % 15 === 8 && q.r > 1.8) {
-        g.fillStyle(f(C.fleisch), 1).fillCircle(q.x - q.nx * q.r * 0.3, q.y - q.ny * q.r * 0.3, 1.3);
-        g.fillStyle(f(C.eiter), 1).fillCircle(q.x - q.nx * q.r * 0.3, q.y - q.ny * q.r * 0.3, 0.5);
-      }
-      if (i % 17 === 11 && q.r > 2) g.fillStyle(f(C.knochen), 1).fillTriangle(q.x - q.nx * q.r, q.y - q.ny * q.r, q.x - q.nx * (q.r + 2.4) + q.ny, q.y - q.ny * (q.r + 2.4) - q.nx, q.x - q.nx * q.r + q.ny * 1.4, q.y - q.ny * q.r - q.nx * 1.4);
-    });
-    const s = pts[pts.length - 1];
-    if (a.huf) {
-      g.fillStyle(f(C.hautD), 1).fillEllipse(s.x, s.y, 8, 6.6);
-      g.fillStyle(f(C.huf), 1).fillEllipse(s.x, s.y, 7, 5.6);
-      g.fillStyle(f(C.hufS), 1).fillRect(s.x - 0.5, s.y - 2.5, 1, 5);
-      g.fillStyle(0x6a5a4a, 1).fillEllipse(s.x - 1.5, s.y - 1.5, 2, 1);
-    }
-    if (a.glut > 0 && this.fxG) {
-      const w = this.welt(s);
-      this.fxG.fillStyle(0x8aff5a, 0.18 * a.glut).fillCircle(w.x, w.y, 9 * this.scaleX * a.glut);
-      this.fxG.fillStyle(0xd8ffb0, 0.35 * a.glut).fillCircle(w.x, w.y, 3.5 * this.scaleX * a.glut);
-    }
-  }
-
-  // ---------------------------------------------------------------- Effekte (Weltkoordinaten)
-
   private tropfen(p: Pt) {
-    const s = this.scaleX;
-    const d = this.scene.add.ellipse(p.x, p.y, 1.1 * s, 1.9 * s, 0x8ac83a, 0.95).setDepth(this.depth + 0.6);
+    const s = this.s;
+    const d = this.scene.add.ellipse(p.x, p.y, 1.4 * s, 2.4 * s, 0x8ac83a, 0.95).setDepth(this.depth + 0.6);
     this.scene.tweens.add({
-      targets: d, y: this.wasserWeltY, scaleY: 1.6, duration: Math.max(140, (this.wasserWeltY - p.y) * 7), ease: 'Quad.easeIn',
+      targets: d, y: this.wasserWeltY, scaleY: 1.6, duration: Math.max(140, (this.wasserWeltY - p.y) * 6), ease: 'Quad.easeIn',
       onComplete: () => { d.destroy(); this.ring(p.x, this.wasserWeltY, 0x8ac83a, 0.6); },
     });
   }
 
   private blase(x: number, y: number) {
-    const s = this.scaleX;
-    const b = this.scene.add.circle(x, y, Phaser.Math.FloatBetween(0.6, 1.6) * s, 0x6aff4a, 0.55).setStrokeStyle(0.4 * s, 0xd8ffd0, 0.9).setDepth(this.depth + 0.6);
+    const s = this.s;
+    const b = this.scene.add.circle(x, y, Phaser.Math.FloatBetween(0.8, 2) * s, 0x6aff4a, 0.55).setStrokeStyle(0.6 * s, 0xd8ffd0, 0.9).setDepth(this.depth + 0.6);
     this.scene.tweens.add({
       targets: b, y: y - Phaser.Math.FloatBetween(1, 4) * s, scale: 1.6, duration: Phaser.Math.Between(260, 520),
       onComplete: () => { b.destroy(); if (Math.random() < 0.3) this.dampf(x, y - 3 * s, 0x6aff4a); },
@@ -375,22 +867,22 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
   }
 
   private ring(x: number, y: number, f: number, groesse = 1) {
-    const s = this.scaleX;
-    const r = this.scene.add.ellipse(x, y, 4 * s * groesse, 1.6 * s * groesse).setStrokeStyle(0.6 * s, f, 0.9).setDepth(this.depth + 0.6);
+    const s = this.s;
+    const r = this.scene.add.ellipse(x, y, 5 * s * groesse, 2 * s * groesse).setStrokeStyle(0.8 * s, f, 0.9).setDepth(this.depth + 0.6);
     this.scene.tweens.add({ targets: r, scaleX: 3, scaleY: 2.4, alpha: 0, duration: 520, onComplete: () => r.destroy() });
   }
 
   private dampf(x: number, y: number, f: number) {
-    const s = this.scaleX;
-    const d = this.scene.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(f).setScale(0.05 * s).setAlpha(0.45).setDepth(this.depth + 0.7);
-    this.scene.tweens.add({ targets: d, y: y - 14 * s, x: x + Phaser.Math.FloatBetween(-4, 4) * s, scale: 0.16 * s, alpha: 0, duration: 1100, onComplete: () => d.destroy() });
+    const s = this.s;
+    const d = this.scene.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(f).setScale(0.06 * s).setAlpha(0.45).setDepth(this.depth + 0.7);
+    this.scene.tweens.add({ targets: d, y: y - 16 * s, x: x + Phaser.Math.FloatBetween(-5, 5) * s, scale: 0.2 * s, alpha: 0, duration: 1100, onComplete: () => d.destroy() });
   }
 
   /** Partikel mit Schwerkraft (Spritzer, Splitter) */
   spritzer(x: number, y: number, n: number, kraft: number, farben = [0x8ab878, 0xd8f0d0, 0x6aff4a], boden = y) {
-    const s = this.scaleX, sc = this.scene;
+    const s = this.s, sc = this.scene;
     for (let i = 0; i < n; i++) {
-      const o = sc.add.circle(x + Phaser.Math.Between(-6, 6) * s, y, Phaser.Math.FloatBetween(0.6, 1.8) * s, farben[i % farben.length], 0.95).setDepth(this.depth + 2);
+      const o = sc.add.rectangle(x + Phaser.Math.Between(-8, 8) * s, y, 2, 2, farben[i % farben.length]).setDepth(this.depth + 2);
       const w = Phaser.Math.FloatBetween(-Math.PI * 0.92, -Math.PI * 0.08), v = kraft * Phaser.Math.FloatBetween(0.35, 1) * s;
       const vx = Math.cos(w) * v * 0.6;
       let vy = Math.sin(w) * v;
@@ -408,15 +900,15 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
 
   /** Lichtblitz an einer Stelle */
   aufleuchten(x: number, y: number, f: number, gr = 1, ms = 260) {
-    const l = this.scene.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(f).setScale(0.2 * gr * this.scaleX).setAlpha(0.95).setDepth(this.depth + 3);
-    this.scene.tweens.add({ targets: l, scale: 0.9 * gr * this.scaleX, alpha: 0, duration: ms, ease: 'Quad.easeOut', onComplete: () => l.destroy() });
+    const l = this.scene.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(f).setScale(0.2 * gr * this.s).setAlpha(0.95).setDepth(this.depth + 3);
+    this.scene.tweens.add({ targets: l, scale: 0.9 * gr * this.s, alpha: 0, duration: ms, ease: 'Quad.easeOut', onComplete: () => l.destroy() });
   }
 
   /** Druckwelle als Ringe (Röhren, Aufprall) */
   druckwelle(x: number, y: number, f: number, flach = false) {
-    const s = this.scaleX;
+    const s = this.s;
     for (let i = 0; i < 3; i++) {
-      const r = this.scene.add.ellipse(x, y, 10 * s, (flach ? 3.5 : 10) * s).setStrokeStyle(2 * s, f, 0.8).setBlendMode(Phaser.BlendModes.ADD).setDepth(this.depth + 3);
+      const r = this.scene.add.ellipse(x, y, 12 * s, (flach ? 4 : 12) * s).setStrokeStyle(2, f, 0.8).setBlendMode(Phaser.BlendModes.ADD).setDepth(this.depth + 3);
       this.scene.tweens.add({ targets: r, scaleX: 14 - i * 3, scaleY: 14 - i * 3, alpha: 0, duration: 650 + i * 120, delay: i * 90, ease: 'Quad.easeOut', onComplete: () => r.destroy() });
     }
   }
@@ -426,7 +918,7 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
   /** unter Wasser verstecken (vor dem Auftauchen) */
   versteckt() {
     this.scene.tweens.killTweensOf(this);
-    this.y = this.wasserWeltY + 125 * this.scaleY;
+    this.tiefe = 260;
     this.sichtbar = 0;
     return this;
   }
@@ -434,86 +926,85 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
   bereit() {
     this.scene.tweens.killTweensOf(this);
     this.sprudel?.remove();
-    this.y = this.wasserWeltY;
+    this.tiefe = 0;
     this.sichtbar = 1;
     this.wut = 0; this.kopfNeigung = 0; this.kieferAuf = 0;
     return this;
   }
-  /** x, um das er gerade ruckt (Treffer), damit sich schnelle Treffer nicht aufaddieren */
-  private ruckX?: number;
-  private sprudel?: Phaser.Time.TimerEvent;
 
-  /** steigt aus der Brühe: Fontäne, grünes Aufleuchten, Sprudeln, Kamera bebt */
-  async auftauchen(ms = 2600) {
-    this.y = this.wasserWeltY + 125 * this.scaleY;
+  /** steigt aus der Brühe: Fontäne, grünes Aufleuchten, Sprudeln, Kamera bebt; der Kopf kommt zuerst, die Arme ziehen nach */
+  async auftauchen(ms = 2800) {
+    this.tiefe = 260;
     this.sichtbar = 0;
-    this.scene.tweens.add({ targets: this, sichtbar: 1, duration: ms * 0.6 });
-    this.spritzer(this.x, this.wasserWeltY, 46, 240);
+    this.kopfNeigung = 0.25;
+    this.scene.tweens.add({ targets: this, sichtbar: 1, duration: ms * 0.3 });
+    this.scene.tweens.add({ targets: this, kopfNeigung: 0, duration: ms, ease: 'Sine.easeInOut' });
+    this.spritzer(this.x, this.wasserWeltY, 50, 260);
     this.druckwelle(this.x, this.wasserWeltY, 0x6aff4a, true);
     this.aufleuchten(this.x, this.wasserWeltY, 0x6aff4a, 3, 900);
     audio.sfx('splash');
     audio.sfx('rumble');
     this.scene.cameras.main.shake(ms, 0.005);
     this.sprudel?.remove();
-    this.sprudel = this.scene.time.addEvent({ delay: 70, loop: true, callback: () => this.spritzer(this.x + Phaser.Math.Between(-60, 60) * this.scaleX, this.wasserWeltY, 2, 120) });
-    await this.tw({ targets: this, y: this.wasserWeltY, duration: ms, ease: 'Cubic.easeOut' });
+    this.sprudel = this.scene.time.addEvent({ delay: 60, loop: true, callback: () => this.spritzer(this.x + Phaser.Math.Between(-80, 80) * this.s, this.wasserWeltY, 2, 140) });
+    await this.tw({ targets: this, tiefe: 0, duration: ms, ease: 'Cubic.easeOut' });
     this.sprudel?.remove();
   }
 
-  /** Röhren: Kopf in den Nacken, Kiefer weit auf, Maul glüht, Druckwellen, Augen gleißen, Dreck rieselt; Ereignis 'welle' */
+  /** Röhren: erst duckt er sich (Ausholen), dann Kopf in den Nacken, Kiefer weit auf, Arme spreizen sich, Druckwellen */
   async roehren() {
+    const arme = this.arme.filter((a) => !a.ziel);
+    await this.tw({ targets: this, kopfNeigung: 0.14, kieferAuf: 0.15, duration: 260, ease: 'Sine.easeOut' });
     audio.sfx('roar');
     this.scene.cameras.main.shake(1200, 0.009);
     const vorher = this.wut;
     this.scene.tweens.add({ targets: this, wut: 1, duration: 220, yoyo: true, hold: 900, onComplete: () => { this.wut = vorher; } });
-    this.scene.tweens.add({ targets: this.maulLicht, alpha: 0.9, scale: 1.1 * this.scaleX, duration: 260, yoyo: true, hold: 760 });
-    await this.tw({ targets: this, kopfNeigung: -0.18, kieferAuf: 0.62, duration: 280, ease: 'Back.easeOut' });
+    this.scene.tweens.add({ targets: this.maulLicht, alpha: 0.9, scale: 1.1 * this.s, duration: 260, yoyo: true, hold: 760 });
+    for (const a of arme) a.zuck = 1200;
+    await this.tw({ targets: this, kopfNeigung: -0.2, kieferAuf: 1, duration: 220, ease: 'Back.easeOut' });
     const m = this.maulWelt();
     this.druckwelle(m.x, m.y, 0x8aff5a);
     this.scene.cameras.main.flash(120, 90, 255, 90);
-    for (let i = 0; i < 4; i++) this.scene.time.delayedCall(i * 160, () => this.spritzer(m.x, m.y, 9, 110, [0x8ac83a, 0xb8f060], this.wasserWeltY));
-    // von der Decke rieselt Dreck
+    for (let i = 0; i < 4; i++) this.scene.time.delayedCall(i * 160, () => this.spritzer(m.x, m.y, 9, 120, [0x8ac83a, 0xb8f060], this.wasserWeltY));
     const cam = this.scene.cameras.main.worldView;
     for (let i = 0; i < 18; i++) {
-      const d = this.scene.add.rectangle(cam.x + Math.random() * cam.width, cam.y - 4, 1.5, 1.5, 0x5a5048).setDepth(this.depth + 4);
+      const d = this.scene.add.rectangle(cam.x + Math.random() * cam.width, cam.y - 4, 2, 2, 0x5a5048).setDepth(this.depth + 4);
       this.scene.tweens.add({ targets: d, y: cam.y + cam.height * (0.4 + Math.random() * 0.5), angle: 360, delay: Math.random() * 500, duration: 700 + Math.random() * 500, ease: 'Quad.easeIn', onComplete: () => d.destroy() });
     }
     this.emit('welle');
     await this.warte(850);
-    await this.tw({ targets: this, kopfNeigung: 0, kieferAuf: 0, duration: 460, ease: 'Sine.easeInOut' });
+    await this.tw({ targets: this, kopfNeigung: 0, kieferAuf: 0, duration: 480, ease: 'Sine.easeInOut' });
   }
 
-  /** ein Huf-Arm holt glühend aus und kracht auf einen Weltpunkt; Ereignis 'schlag' beim Aufprall */
+  /** ein Hufarm holt glühend hoch aus, hält kurz (Ankündigung) und kracht auf einen Weltpunkt; Ereignis 'schlag' */
   async schlag(zielWelt: Pt) {
-    const a = this.arme[2 + (this.hufArm++ % 2)];
+    const a = this.arme.filter((x) => x.art === 'huf')[this.hufArm++ % 2];
     const ziel = this.lokal(zielWelt);
-    a.ziel = { x: ziel.x * 0.4, y: -90 };
+    a.ziel = { x: lerp(a.wurzel.x, ziel.x, 0.45), y: -175 };
     this.scene.tweens.add({ targets: a, glut: 1, duration: 300 });
+    this.scene.tweens.add({ targets: this, kopfNeigung: -0.06 * a.seite, duration: 300, yoyo: true, hold: 200 });
     await this.tw({ targets: a, mix: 1, duration: 340, ease: 'Sine.easeOut' });
     audio.sfx('whoosh');
-    await this.tw({ targets: a.ziel, x: ziel.x, y: ziel.y, duration: 140, ease: 'Quad.easeIn' });
+    await this.tw({ targets: a.ziel, x: ziel.x, y: ziel.y, duration: 150, ease: 'Cubic.easeIn' });
     audio.sfx('thud');
     a.zuck = 300;
-    const cam = this.scene.cameras.main;
-    cam.shake(280, 0.013);
+    a.stoss = 1;
+    this.scene.cameras.main.shake(280, 0.013);
     this.druckwelle(zielWelt.x, zielWelt.y, 0x9aff6a, true);
     this.aufleuchten(zielWelt.x, zielWelt.y, 0x9aff6a, 1.4, 300);
     this.spritzer(zielWelt.x, zielWelt.y, 18, 150, [0x8ab878, 0x5a5048, 0xd8f0d0], zielWelt.y);
     this.emit('schlag', zielWelt);
     this.scene.tweens.add({ targets: a, glut: 0, duration: 400 });
     await this.warte(420);
-    await this.tw({ targets: a, mix: 0, duration: 560, ease: 'Sine.easeInOut' });
+    await this.tw({ targets: a, mix: 0, duration: 600, ease: 'Sine.easeInOut' });
     a.ziel = undefined;
   }
 
-  /** wo die Spitze eines fegenden Arms gerade ist (Welt), solange er fegt */
-  fegerPunkt?: Pt;
-
-  /** ein Hufarm holt glühend aus und fegt flach über den Boden, von einem Weltpunkt zum anderen */
+  /** ein Hufarm holt aus und fegt flach über den Boden, von einem Weltpunkt zum anderen */
   async fegen(vonWelt: Pt, bisWelt: Pt, ms = 520) {
-    const a = this.arme[2 + (this.hufArm++ % 2)];
+    const a = this.arme.filter((x) => x.art === 'huf')[this.hufArm++ % 2];
     const von = this.lokal(vonWelt), bis = this.lokal(bisWelt);
-    a.ziel = { x: von.x * 0.5, y: von.y - 40 };
+    a.ziel = { x: von.x * 0.6, y: von.y - 50 };
     this.scene.tweens.add({ targets: a, glut: 1, duration: 300 });
     await this.tw({ targets: a, mix: 1, duration: 320, ease: 'Sine.easeOut' });
     await this.tw({ targets: a.ziel, x: von.x, y: von.y, duration: 110, ease: 'Quad.easeIn' });
@@ -533,16 +1024,16 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
 
   /** getroffen: weißer Blitz, Schleim spritzt, Kopf und Arme zucken, Körper staucht */
   async treffer(stelle?: Pt) {
-    this.blitz = 120;
+    this.blitz = 110;
     for (const a of this.arme) a.zuck = 420;
-    const p = stelle ?? this.welt({ x: Phaser.Math.Between(-20, 20), y: Phaser.Math.Between(-60, -20) });
+    const p = stelle ?? this.welt({ x: Phaser.Math.Between(-30, 30), y: Phaser.Math.Between(-90, -30) });
     this.spritzer(p.x, p.y, 12, 130, [0x8ac83a, 0x6a2a5a, 0xd8e050], this.wasserWeltY);
     this.aufleuchten(p.x, p.y, 0xffffff, 0.8, 160);
     this.scene.tweens.add({ targets: this, kopfNeigung: 0.16, duration: 90, yoyo: true });
     if (this.ruckX !== undefined) return;
-    const s0 = Math.abs(this.scaleY), x0 = this.x;
+    const x0 = this.x;
     this.ruckX = x0;
-    this.scene.tweens.add({ targets: this, scaleX: Math.sign(this.scaleX) * s0 * 1.035, scaleY: s0 * 0.97, duration: 70, yoyo: true });
+    this.scene.tweens.add({ targets: this.bild, scaleX: 1.03, scaleY: 0.97, duration: 70, yoyo: true });
     await this.tw({ targets: this, x: x0 + 2.5, duration: 40, yoyo: true, repeat: 3 });
     this.x = x0;
     this.ruckX = undefined;
@@ -554,23 +1045,24 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
     if (an && !this.brunftDampf) {
       this.brunftDampf = this.scene.time.addEvent({
         delay: 180, loop: true, callback: () => {
-          const n = this.weltVon(this.kopfBild);
-          for (const dx of [-3, 4]) this.dampf(n.x + dx * this.scaleX, n.y + 3 * this.scaleY, 0xff5a3a);
+          for (const dx of [-4.5, 4.5]) { const n = this.welt(this.kopf({ x: dx, y: 0 })); this.dampf(n.x, n.y, 0xff5a3a); }
         },
       });
     } else if (!an) { this.brunftDampf?.remove(); this.brunftDampf = undefined; }
   }
 
-  /** die Geweih-Augen laden sich auf (Funken fliegen hinein) und schießen gleißende, wabernde Strahlen; Ereignis 'strahl' */
+  /** die Geweih-Augen laden sich auf (Funken fliegen hinein) und schießen gleißende Strahlen; Ereignis 'strahl' */
   async strahl(zielWelt: Pt) {
-    for (const a of this.augen) if (!a.aus) this.scene.tweens.add({ targets: a.glanz, scale: 0.4, alpha: 1, duration: 560 });
+    this.blick = zielWelt;
+    const sichtbare = () => this.augen.filter((a) => !a.aus && !this.geweihAb[a.seite < 0 ? 0 : 1]);
+    this.scene.tweens.add({ targets: this, ladung: 1, duration: 560 });
     audio.sfx('zisch');
     const lade = this.scene.time.addEvent({
       delay: 40, repeat: 13, callback: () => {
-        for (const a of this.augen) {
-          if (a.aus || Math.random() < 0.5) continue;
-          const z = this.weltVon(a.bild), w = Math.random() * Math.PI * 2, r = 14 * this.scaleX;
-          const f = this.scene.add.circle(z.x + Math.cos(w) * r, z.y + Math.sin(w) * r, 0.7 * this.scaleX, 0xe0b0ff).setBlendMode(Phaser.BlendModes.ADD).setDepth(this.depth + 3);
+        for (const a of sichtbare()) {
+          if (Math.random() < 0.5) continue;
+          const z = this.welt(this.augePunkt(a)), w = Math.random() * Math.PI * 2, r = 16 * this.s;
+          const f = this.scene.add.rectangle(z.x + Math.cos(w) * r, z.y + Math.sin(w) * r, 2, 2, 0xe0b0ff).setBlendMode(Phaser.BlendModes.ADD).setDepth(this.depth + 3);
           this.scene.tweens.add({ targets: f, x: z.x, y: z.y, alpha: 0.2, duration: 260, ease: 'Quad.easeIn', onComplete: () => f.destroy() });
         }
       },
@@ -589,55 +1081,54 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
         g.clear();
         if (!this.active || this.scene.time.now > ende) { this.scene.events.off(Phaser.Scenes.Events.UPDATE, zeichne); done(); return; }
         const t = this.scene.time.now;
-        for (const a of this.augen) {
-          if (a.aus) continue;
-          const von = this.weltVon(a.bild);
+        for (const a of sichtbare()) {
+          const von = this.welt(this.augePunkt(a));
           const fl = 0.75 + Math.random() * 0.25;
           const pts: Pt[] = [];
-          for (let i = 0; i <= 8; i++) {
-            const k = i / 8, x = von.x + (zielWelt.x - von.x) * k, y = von.y + (zielWelt.y - von.y) * k;
-            const j = Math.sin(k * 9 + t / 30) * 1.2 * Math.sin(k * Math.PI);
+          for (let i = 0; i <= 10; i++) {
+            const k = i / 10, x = von.x + (zielWelt.x - von.x) * k, y = von.y + (zielWelt.y - von.y) * k;
+            const j = Math.sin(k * 9 + t / 30) * 1.4 * Math.sin(k * Math.PI);
             pts.push({ x: x + j, y: y + j * 0.5 });
           }
-          for (const [w, f, al] of [[7, 0x5a1aaa, 0.22], [3.6, 0x9a4aff, 0.5], [1.4, 0xffffff, 0.95]] as [number, number, number][]) {
-            g.lineStyle(w * this.scaleX * 0.5, f, al * fl);
+          for (const [w, f, al] of [[6, 0x5a1aaa, 0.22], [3, 0x9a4aff, 0.5], [1.2, 0xffffff, 0.95]] as [number, number, number][]) {
+            g.lineStyle(w, f, al * fl);
             g.strokePoints(pts, false);
           }
-          g.fillStyle(0xe0b0ff, 0.6 * fl).fillCircle(von.x, von.y, 2.4 * this.scaleX);
+          g.fillStyle(0xe0b0ff, 0.6 * fl).fillCircle(von.x, von.y, 3 * this.s);
         }
-        g.fillStyle(0xffffff, 0.9).fillCircle(zielWelt.x, zielWelt.y, (3 + Math.random() * 2.5) * this.scaleX);
-        g.fillStyle(0xb040ff, 0.4).fillCircle(zielWelt.x, zielWelt.y, (8 + Math.random() * 3) * this.scaleX);
+        g.fillStyle(0xffffff, 0.9).fillCircle(zielWelt.x, zielWelt.y, (3 + Math.random() * 2.5) * this.s);
+        g.fillStyle(0xb040ff, 0.4).fillCircle(zielWelt.x, zielWelt.y, (9 + Math.random() * 3) * this.s);
       };
       this.scene.events.on(Phaser.Scenes.Events.UPDATE, zeichne);
     });
     funken.remove();
     g.destroy();
-    // Brandfleck
-    const fleck = this.scene.add.ellipse(zielWelt.x, zielWelt.y, 14 * this.scaleX, 5 * this.scaleX, 0x1a0a1a, 0.7).setDepth(this.depth - 1);
+    const fleck = this.scene.add.ellipse(zielWelt.x, zielWelt.y, 16 * this.s, 6 * this.s, 0x1a0a1a, 0.7).setDepth(this.depth - 1);
     this.scene.tweens.add({ targets: fleck, alpha: 0, duration: 2400, delay: 600, onComplete: () => fleck.destroy() });
-    for (const a of this.augen) if (!a.aus) this.scene.tweens.add({ targets: a.glanz, scale: 0.16, alpha: 0.7, duration: 320 });
+    this.scene.tweens.add({ targets: this, ladung: 0, duration: 320 });
+    this.blick = undefined;
   }
 
   /** frisst etwas: Kiefer schnappt, dann würgt er, wird rot, zittert, dampft */
   async curryFressen() {
     for (let i = 0; i < 4; i++) {
-      await this.tw({ targets: this, kieferAuf: 0.55, duration: 110 });
+      await this.tw({ targets: this, kieferAuf: 0.8, kopfNeigung: 0.08, duration: 110 });
       audio.sfx('chomp');
-      await this.tw({ targets: this, kieferAuf: 0, duration: 110 });
+      await this.tw({ targets: this, kieferAuf: 0, kopfNeigung: 0, duration: 110 });
     }
     await this.warte(300);
     audio.sfx('retch');
     this.scene.tweens.add({ targets: this, wuerg: 1, tempo: 2.4, duration: 600 });
     const dampf = this.scene.time.addEvent({
       delay: 110, loop: true, callback: () => {
-        for (const p of [[64, 34], [100, 33], [80, 62]] as [number, number][]) { const w = this.welt(L(p)); this.dampf(w.x, w.y, 0xff8a3a); }
+        for (const p of [{ x: -20, y: -60 }, { x: 20, y: -60 }, { x: 0, y: 6 }]) { const w = this.welt(this.kopf(p)); this.dampf(w.x, w.y, 0xff8a3a); }
       },
     });
-    await this.tw({ targets: this, kopfNeigung: 0.1, kieferAuf: 0.35, duration: 500, yoyo: true, repeat: 2 });
+    await this.tw({ targets: this, kopfNeigung: 0.1, kieferAuf: 0.5, duration: 500, yoyo: true, repeat: 2 });
     dampf.remove();
   }
 
-  /** das Ende: das Geweih bricht in Splittern, die Augen platzen eins nach dem anderen, er versinkt mit einer Fontäne */
+  /** das Ende: das Geweih bricht in Splittern ab, die Augen platzen eins nach dem anderen, er versinkt mit einer Fontäne */
   async niederlage() {
     this.tot = true;
     this.brunft(false);
@@ -645,30 +1136,30 @@ export class OktopusHirsch extends Phaser.GameObjects.Container {
     const cam = this.scene.cameras.main;
     cam.shake(500, 0.012);
     cam.flash(160, 255, 255, 255);
-    this.geweih.forEach((g, i) => {
-      const w = this.weltVon(g);
-      for (let k = 0; k < 10; k++) {
-        const sp = this.scene.add.rectangle(w.x, w.y, Phaser.Math.FloatBetween(1, 3) * this.scaleX, 0.8 * this.scaleX, k % 3 ? 0xd8cca8 : 0x7a2a2a).setDepth(this.depth + 3);
-        const vx = (i ? 1 : -1) * Phaser.Math.FloatBetween(10, 50) * this.scaleX;
-        this.scene.tweens.add({ targets: sp, x: sp.x + vx, angle: Phaser.Math.Between(-540, 540), duration: 900, ease: 'Linear' });
-        this.scene.tweens.add({ targets: sp, y: this.wasserWeltY, duration: 900, ease: 'Quad.easeIn', onComplete: () => { this.ring(sp.x, this.wasserWeltY, 0xd8f0d0, 0.6); sp.destroy(); } });
-      }
-      this.scene.tweens.add({ targets: g, rotation: i ? 1.3 : -1.3, y: g.y + 50, alpha: 0, duration: 1500, ease: 'Quad.easeIn' });
-    });
     for (const a of this.augen) {
-      await this.warte(140);
+      await this.warte(120);
       a.aus = true;
-      const w = this.weltVon(a.bild);
+      const w = this.welt(this.augePunkt(a));
       this.aufleuchten(w.x, w.y, 0xb040ff, 0.7, 300);
       this.spritzer(w.x, w.y, 5, 90, [0xe0b0ff, 0xffffff], this.wasserWeltY);
-      this.scene.tweens.add({ targets: [a.glanz, a.bild], alpha: 0, scale: 0.02, duration: 220 });
       audio.sfx('blip');
     }
-    await this.tw({ targets: this, kopfNeigung: 0.36, kieferAuf: 0.55, wuerg: 0, tempo: 0.4, duration: 700 });
+    for (const [i, sd] of [[0, -1], [1, 1]] as [number, number][]) {
+      const basis = this.welt(this.kopf(geweihStange(sd).b));
+      for (let k = 0; k < 14; k++) {
+        const sp = this.scene.add.rectangle(basis.x + sd * k * 2.5 * this.s, basis.y - k * 3 * this.s, Phaser.Math.Between(2, 5), 2, k % 3 ? 0xd8ccaa : 0x7a2228).setDepth(this.depth + 3);
+        this.scene.tweens.add({ targets: sp, x: sp.x + sd * Phaser.Math.FloatBetween(10, 60) * this.s, angle: Phaser.Math.Between(-540, 540), duration: 950, ease: 'Linear' });
+        this.scene.tweens.add({ targets: sp, y: this.wasserWeltY, duration: 950, ease: 'Quad.easeIn', onComplete: () => { this.ring(sp.x, this.wasserWeltY, 0xd8f0d0, 0.6); sp.destroy(); } });
+      }
+      this.geweihAb[i] = true;
+      audio.sfx('crack');
+      await this.warte(200);
+    }
+    await this.tw({ targets: this, kopfNeigung: 0.4, kieferAuf: 0.7, wuerg: 0, tempo: 0.4, duration: 700 });
     audio.sfx('rumble');
-    this.scene.tweens.add({ targets: this, sichtbar: 0, duration: 2600 });
-    const blasen = this.scene.time.addEvent({ delay: 60, loop: true, callback: () => this.blase(this.x + Phaser.Math.Between(-50, 50) * this.scaleX, this.wasserWeltY) });
-    await this.tw({ targets: this, y: this.wasserWeltY + 130 * this.scaleY, duration: 2800, ease: 'Sine.easeIn' });
+    const blasen = this.scene.time.addEvent({ delay: 60, loop: true, callback: () => this.blase(this.x + Phaser.Math.Between(-60, 60) * this.s, this.wasserWeltY) });
+    await this.tw({ targets: this, tiefe: 270, duration: 2800, ease: 'Sine.easeIn' });
+    this.sichtbar = 0;
     blasen.remove();
     this.spritzer(this.x, this.wasserWeltY, 50, 260);
     this.druckwelle(this.x, this.wasserWeltY, 0x6aff4a, true);

@@ -17,9 +17,9 @@ import { H, W, fadeTo, txt } from '../ui';
 //  - Niederlage: nochmal (jedes Mal etwas leichter). Sieg: Zeitlupe, K.O., er versinkt, weiter ins Klärwerk (Ende).
 
 const SW = 640, GY = 236, WASSER = 240;
-const KATZE_S = 1.3, HIRSCH_S = 1.25;
+const KATZE_S = 1, HIRSCH_S = 0.78;
 /** kleinster Abstand Katze–Hirsch (Mitte zu Mitte) */
-const NAH = 108;
+const NAH = 150;
 const GELB = '#f8e070', GRUEN = '#b8f060', ROT = '#ff5a4a';
 
 interface Gefahr { art: 'welle' | 'flut'; x: number; v: number; h: number; g: Phaser.GameObjects.Graphics; getroffen: boolean }
@@ -130,7 +130,7 @@ export class HirschduellScene extends Phaser.Scene {
     this.hirsch = new OktopusHirsch(this, 500, WASSER, HIRSCH_S).setDepth(100);
     this.hirsch.bereit();
     this.hirsch.on('schlag', (z: { x: number; y: number }) => {
-      if (Math.abs(this.kx + 8 - z.x) < 46 && this.ky > GY - 34) this.schadenKatze(14, z.x);
+      if (Math.abs(this.kx + 10 - z.x) < 58 && this.ky > GY - 40) this.schadenKatze(14, z.x);
     });
     this.hirsch.on('strahl', (z: { x: number; y: number }) => { this.strahl = { x: z.x, y: z.y, bis: this.time.now + 720, getroffen: false }; });
     this.katze = new MutantKatze(this, this.kx, this.ky, KATZE_S).setDepth(200);
@@ -225,16 +225,17 @@ export class HirschduellScene extends Phaser.Scene {
     cam.scrollX += (ziel - cam.scrollX) * 0.08;
     if (!this.laeuft || this.vorbei) { this.katze.setPosition(this.kx, this.ky); return; }
     if (this.time.now < this.stopBis) return;
+    this.hirsch.blick = { x: this.kx + 40, y: this.ky - 50 };
     this.katzeUpdate(dt);
     this.hirschUpdate(dt);
     this.gefahrenUpdate(dt);
-    const k = { x: this.kx + 10, y: this.ky - 34 };
-    if (this.strahl && !this.strahl.getroffen && this.time.now < this.strahl.bis && Phaser.Math.Distance.Between(k.x, k.y, this.strahl.x, this.strahl.y) < 38) {
+    const k = { x: this.kx + 10, y: this.ky - 45 };
+    if (this.strahl && !this.strahl.getroffen && this.time.now < this.strahl.bis && Phaser.Math.Distance.Between(k.x, k.y, this.strahl.x, this.strahl.y) < 46) {
       this.strahl.getroffen = true;
       this.schadenKatze(16, this.strahl.x);
     }
     const fp = this.hirsch.fegerPunkt;
-    if (fp && !this.fegerGetroffen && this.ky > GY - 22 && Math.abs(fp.x - (this.kx + 10)) < 46) {
+    if (fp && !this.fegerGetroffen && this.ky > GY - 22 && Math.abs(fp.x - (this.kx + 10)) < 60) {
       this.fegerGetroffen = true;
       this.schadenKatze(12, fp.x);
     }
@@ -320,14 +321,14 @@ export class HirschduellScene extends Phaser.Scene {
   private treffen(art: 'kralle' | 'haken' | 'luft' | 'biss') {
     if (this.vorbei) return;
     const abstand = this.hirsch.x - this.kx;
-    const reichweite = { kralle: 140, haken: 140, luft: 152, biss: 150 }[art];
+    const reichweite = { kralle: 178, haken: 178, luft: 188, biss: 192 }[art];
     if (abstand > reichweite) return;
     const kopf = art === 'luft' && this.ky < GY - 24;
     let dmg = { kralle: 4, haken: 7, luft: 5, biss: 9 }[art];
-    let pt = { x: this.hirsch.x - 54 + Phaser.Math.Between(-6, 6), y: art === 'haken' ? GY - 74 : GY - 30 - Phaser.Math.Between(0, 30) };
+    let pt = { x: this.hirsch.x - 58 + Phaser.Math.Between(-6, 6), y: art === 'haken' ? GY - 90 : GY - 34 - Phaser.Math.Between(0, 40) };
     if (kopf) {
       dmg = 8;
-      pt = this.hirsch.welt({ x: Phaser.Math.Between(-14, 4), y: -66 });
+      pt = this.hirsch.welt({ x: Phaser.Math.Between(-14, 4), y: -150 });
       this.kurzText(pt.x, pt.y - 18, 'KOPFTREFFER!', GELB);
     }
     this.schadenHirsch(dmg, pt, art === 'biss' || art === 'haken' || kopf);
@@ -399,7 +400,7 @@ export class HirschduellScene extends Phaser.Scene {
     for (let i = 0; i < 5 && !this.vorbei; i++) {
       const nach = this.time.addEvent({ delay: 24, loop: true, callback: () => mk.nachbild() });
       await this.tw({ targets: this, kx: this.hirsch.x - NAH + 14, duration: 90, ease: 'Quad.easeIn', onUpdate: () => mk.setPosition(this.kx, this.ky) });
-      void mk.kralle((i % 2) as 0 | 1, () => this.schadenHirsch(4, { x: this.hirsch.x - 50, y: GY - 20 - i * 12 }, false));
+      void mk.kralle((i % 2) as 0 | 1, () => this.schadenHirsch(4, { x: this.hirsch.x - 58, y: GY - 24 - i * 14 }, false));
       await this.warte(170);
       nach.remove();
       await this.tw({ targets: this, kx: this.kx - 46, duration: 110, ease: 'Quad.easeOut', onUpdate: () => mk.setPosition(this.kx, this.ky) });
@@ -410,7 +411,7 @@ export class HirschduellScene extends Phaser.Scene {
       const nach = this.time.addEvent({ delay: 24, loop: true, callback: () => mk.nachbild(0xffffff) });
       await this.tw({ targets: this, kx: this.hirsch.x - NAH + 18, ky: GY - 70, duration: 220, ease: 'Quad.easeOut', onUpdate: () => mk.setPosition(this.kx, this.ky) });
       await mk.biss(() => {
-        const kp = this.hirsch.welt({ x: -6, y: -70 });
+        const kp = this.hirsch.welt({ x: -6, y: -150 });
         this.cameras.main.flash(160, 255, 255, 200);
         this.cameras.main.shake(300, 0.02);
         this.schadenHirsch(12, kp, true);
@@ -432,7 +433,7 @@ export class HirschduellScene extends Phaser.Scene {
   private hirschUpdate(dt: number) {
     if (this.hirschBusy || this.aktion === 'super') return;
     const h = this.hirsch;
-    const wunsch = Phaser.Math.Clamp(this.kx + 290, 440, 560);
+    const wunsch = Phaser.Math.Clamp(this.kx + 300, 450, 560);
     const d = wunsch - h.x;
     h.x += Math.sign(d) * Math.min(Math.abs(d), (30 * dt) / 1000);
     this.hirschCd -= dt;
@@ -487,13 +488,13 @@ export class HirschduellScene extends Phaser.Scene {
   }
 
   private async augenstrahl() {
-    const z = { x: this.kx + 10, y: GY - 34 };
+    const z = { x: this.kx + 10, y: GY - 45 };
     const g = this.add.graphics().setDepth(195).setBlendMode(Phaser.BlendModes.ADD);
     const ende = this.time.now + 600;
     const zeichne = () => {
       g.clear();
       if (this.time.now > ende || this.vorbei) { this.events.off(Phaser.Scenes.Events.UPDATE, zeichne); g.destroy(); return; }
-      const von = this.hirsch.welt({ x: 0, y: -84 });
+      const von = this.hirsch.welt({ x: 0, y: -180 });
       g.lineStyle(1, 0xb040ff, 0.25 + Math.random() * 0.4).lineBetween(von.x, von.y, z.x, z.y);
       g.lineStyle(1.5, 0xff40c0, 0.8).strokeCircle(z.x, z.y, 16 + Math.sin(this.time.now / 40) * 3);
     };
@@ -544,7 +545,7 @@ export class HirschduellScene extends Phaser.Scene {
         if (Math.random() < 0.7) this.platsch(g.x + Phaser.Math.Between(0, 20), 3, GY - g.h + 6);
       }
       const front = g.x;
-      if (!g.getroffen && front < this.kx + 50 && front > this.kx - 40 && this.ky > GY - g.h + 6) {
+      if (!g.getroffen && front < this.kx + 70 && front > this.kx - 60 && this.ky > GY - g.h + 6) {
         g.getroffen = true;
         this.schadenKatze(g.art === 'flut' ? 18 : 10, front + 30);
       }

@@ -3,85 +3,38 @@ import '@fontsource/press-start-2p/latin-400.css';
 import { makeAllTextures } from '../gfx';
 import { audio } from '../audio';
 import { makeKanalTiles } from '../world/kanalTiles';
-import { OKTO_WASSER, makeOktopushirschTextures } from './oktopushirsch';
 import { OktopusHirsch } from './hirschRig';
+import { MutantKatze } from './mutantKatze';
 
-// Vorschau-Seite (nur Entwicklung, monster.html): der Oktopushirsch im Klärwerk, mit dem Wirt und der Katze zum
-// Größenvergleich, bewegt (monster/hirschRig.ts). Die Knöpfe unter dem Bild spielen die Animationen ab.
+// Vorschau-Seite (nur Entwicklung, monster.html): der Oktopushirsch im Klärwerk in echter Spielauflösung (480x270,
+// WebGL wie im Spiel), mit dem Wirt zum Größenvergleich. Die Knöpfe unter dem Bild spielen die Animationen ab.
 
-const W = 400, H = 270;
-const BECKEN = 196;
+const W = 480, H = 270;
+const WASSER = 206, S = 0.82;
 
 class Vorschau extends Phaser.Scene {
   create() {
     makeAllTextures(this);
     makeKanalTiles(this);
-    makeOktopushirschTextures(this);
-    // doppelte Auflösung wie im Spiel: Welt 400x270, Leinwand 800x540
-    this.cameras.main.setZoom(2).centerOn(W / 2, H / 2);
     const g = this.add.graphics();
-    // Klärwerk: Backsteinwand im grünen Dämmer, Rohre, Becken, Steg vorn
-    g.fillStyle(0x0e1416).fillRect(0, 0, W, BECKEN);
-    for (let y = 0; y < BECKEN; y += 8) {
-      g.fillStyle(0x1a2226).fillRect(0, y, W, 7);
-      for (let x = (y / 8) % 2 ? 0 : 8; x < W; x += 16) g.fillStyle(0x0e1416).fillRect(x, y, 1, 7);
+    g.fillStyle(0x0e1416).fillRect(0, 0, W, WASSER);
+    for (let y = 0; y < WASSER; y += 6) {
+      g.fillStyle(0x161e20).fillRect(0, y, W, 5);
+      for (let x = (y / 6) % 2 ? 0 : 8; x < W; x += 16) g.fillStyle(0x0a1010).fillRect(x, y, 1, 5);
     }
-    for (const [x, w] of [[24, 6], [356, 6]] as const) { g.fillStyle(0x4a3a2a).fillRect(x, 0, w, BECKEN); g.fillStyle(0x7a6a4a).fillRect(x, 0, 1, BECKEN); }
-    g.fillStyle(0x4a3a2a).fillRect(0, 40, W, 5).fillStyle(0x7a6a4a).fillRect(0, 40, W, 1);
-    g.fillStyle(0x1c2a1c).fillRect(0, BECKEN, W, H - BECKEN);
-    for (let i = 0; i < 60; i++) g.fillStyle(i % 4 ? 0x2e4a2c : 0x4a6a48).fillRect(Phaser.Math.Between(0, W - 8), Phaser.Math.Between(BECKEN + 2, 236), Phaser.Math.Between(3, 9), 1);
-    g.fillStyle(0x4a5052).fillRect(0, 240, W, 30).fillStyle(0x6a7072).fillRect(0, 240, W, 1).fillStyle(0x2a3032).fillRect(0, 269, W, 1);
-    for (let x = 4; x < W; x += 22) g.fillStyle(0x8a8a92).fillRect(x, 230, 1, 10);
-    g.fillStyle(0x8a8a92).fillRect(0, 230, W, 1);
+    for (const x of [30, 446]) { g.fillStyle(0x3a3a34).fillRect(x, 0, 6, WASSER); g.fillStyle(0x5a5a50).fillRect(x, 0, 1, WASSER); }
+    g.fillStyle(0x1c3a14).fillRect(0, WASSER, W, 34).fillStyle(0x5a9a3a).fillRect(0, WASSER, W, 1);
+    g.fillStyle(0x3a423a).fillRect(0, 240, W, 30).fillStyle(0x6a726a).fillRect(0, 240, W, 1);
+    this.add.image(W / 2, WASSER, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(4, 1).setTint(0x3aa02a).setAlpha(0.3);
 
-    // Leuchten: grünes Wasser, violette Geweihaugen
-    const licht = (x: number, y: number, s: number, farbe: number, a: number) =>
-      this.add.image(x, y, 'light').setBlendMode(Phaser.BlendModes.ADD).setScale(s).setTint(farbe).setAlpha(a);
-    licht(W / 2, BECKEN + 10, 3.4, 0x3aa02a, 0.35);
-    // der Hirsch, bewegt: Ursprung auf der Wasserlinie
-    const mx = W / 2, my = BECKEN + 1, S = 1.25;
-    let hirsch = new OktopusHirsch(this, mx, my, S).setDepth(10);
-    const oy = my - OKTO_WASSER * S;
-    // Schaum am Leib, wo er aus dem Wasser steigt
-    for (let i = 0; i < 26; i++) this.add.ellipse(mx + Phaser.Math.Between(-70, 70), BECKEN + Phaser.Math.Between(1, 5), Phaser.Math.Between(4, 10), 2, 0x8aa080, 0.8);
-    // Nahansicht des Kopfs (Knopf unter dem Bild)
-    let nah = false;
-    document.getElementById('nah')!.onclick = () => {
-      nah = !nah;
-      const cam = this.cameras.main;
-      cam.zoomTo(nah ? 5 : 2, 500, 'Sine.easeInOut');
-      cam.pan(nah ? mx : W / 2, nah ? oy + 60 : H / 2, 500, 'Sine.easeInOut');
-    };
+    let hirsch = new OktopusHirsch(this, W / 2, WASSER, S).setDepth(10);
+    const wirt = this.add.sprite(36, 252, 'wirtKanal', 6).setOrigin(0.5, 1).setDepth(20);
+    const katze = new MutantKatze(this, 120, 250, 1).setDepth(21);
+    this.time.addEvent({ delay: 2600, loop: true, callback: () => { katze.gang = katze.gang ? 0 : 0.8; } });
+    this.input.keyboard?.on('keydown-K', () => void katze.kralle(0, () => {}));
+    this.input.keyboard?.on('keydown-B', () => void katze.biss(() => {}));
+    hirsch.blick = { x: wirt.x, y: wirt.y - 20 };
 
-    // Größenvergleich: der Wirt und die Katze auf dem Steg
-    this.add.image(118, 254, 'shadow').setScale(1.2, 1);
-    const wirt = this.add.sprite(118, 256, 'wirtKanal', 3).setOrigin(0.5, 1).setScale(0.5).setDepth(20);
-    this.add.sprite(96, 257, 'katzeKanal', 4).setOrigin(0.5, 1).setScale(0.5);
-
-    // Beschriftung
-    const t = (x: number, y: number, s: string, farbe = '#f4ead0', groesse = 8) =>
-      this.add.text(x, y, s, { fontFamily: '"Press Start 2P", monospace', fontSize: `${groesse * 2}px`, color: farbe, lineSpacing: 6 }).setScale(0.5);
-    t(8, 6, 'OKTOPUSHIRSCH', '#b8f060', 9);
-    t(8, 52, [
-      'Zombie-Hirschschädel: halb',
-      'Knochen, halb Fäulnis, Maden,',
-      'Kiefer voller Menschenzähne',
-      '',
-      'Gebrochenes Knochengeweih,',
-      'Tentakel winden sich darum,',
-      'Augen wachsen aus den Enden',
-      '',
-      'Verwester Krakenleib, offener',
-      'Brustkorb, pochendes Herz,',
-      'acht Arme, zwei mit Hufen',
-      '',
-      'Jägerhut mit Gamsbart,',
-      'Ohrmarke:',
-      '„EIGENTUM DER STADT“',
-    ].join('\n'), '#c8bca8', 5);
-    t(132, 246, 'Wirt und Katze zum Vergleich', '#8a8070', 5);
-
-    // Knöpfe: Animationen abspielen (eine nach der anderen)
     let laeuft = false, wut = false;
     const knopf = (id: string, fn: () => Promise<void> | void) => {
       const el = document.getElementById(id);
@@ -94,22 +47,25 @@ class Vorschau extends Phaser.Scene {
     };
     knopf('auftauchen', () => hirsch.auftauchen());
     knopf('roehren', () => hirsch.roehren());
-    knopf('schlag', () => hirsch.schlag({ x: wirt.x + 24, y: 244 }));
+    knopf('schlag', () => hirsch.schlag({ x: wirt.x + 30, y: 252 }));
     knopf('treffer', () => hirsch.treffer());
     knopf('brunft', () => { wut = !wut; hirsch.brunft(wut); });
-    knopf('strahl', () => hirsch.strahl({ x: wirt.x + 30, y: 250 }));
+    knopf('strahl', () => hirsch.strahl({ x: wirt.x + 20, y: 240 }));
     knopf('curry', () => hirsch.curryFressen());
     knopf('niederlage', () => hirsch.niederlage());
-    knopf('neu', () => { hirsch.destroy(); hirsch = new OktopusHirsch(this, mx, my, S).setDepth(10); wut = false; });
+    knopf('neu', () => { hirsch.destroy(); hirsch = new OktopusHirsch(this, W / 2, WASSER, S).setDepth(10); hirsch.blick = { x: wirt.x, y: wirt.y - 20 }; wut = false; });
+    let nah = false;
+    knopf('nah', () => { nah = !nah; this.cameras.main.zoomTo(nah ? 2.5 : 1, 400).pan(nah ? W / 2 : W / 2, nah ? 120 : H / 2, 400); });
   }
 }
 
 const spiel = new Phaser.Game({
-  type: Phaser.CANVAS,
-  width: W * 2,
-  height: H * 2,
-  zoom: 1.5,
+  type: Phaser.AUTO,
+  width: W,
+  height: H,
+  zoom: 2,
   pixelArt: true,
+  roundPixels: true,
   parent: 'buehne',
   backgroundColor: '#0a0608',
   banner: false,
@@ -122,8 +78,10 @@ const spiel = new Phaser.Game({
 });
 
 document.getElementById('png')!.onclick = () => {
-  const a = document.createElement('a');
-  a.download = 'oktopushirsch.png';
-  a.href = spiel.canvas.toDataURL('image/png');
-  a.click();
+  spiel.renderer.snapshot((bild) => {
+    const a = document.createElement('a');
+    a.download = 'oktopushirsch.png';
+    a.href = (bild as HTMLImageElement).src;
+    a.click();
+  });
 };

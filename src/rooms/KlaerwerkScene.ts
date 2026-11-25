@@ -185,13 +185,13 @@ export class KlaerwerkScene extends Phaser.Scene {
       this.scene.stop('WandlungUI');
     });
 
-    this.wirt = this.add.sprite(TUER.x + 14, TUER.y + 8, 'wirtKanal', 6).setOrigin(0.5, 1).setScale(0.75);
+    this.wirt = this.add.sprite(TUER.x + 14, TUER.y + 8, 'wirtKanal', 6).setOrigin(0.5, 1);
     this.uiAufbauen();
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     if (data.ende || f.klaerwerk === 'ende') { void this.ende(); return; }
     if (f.kanal === 'gerettet') { this.frei(); return; }
-    this.hirsch = new OktopusHirsch(this, 240, WY, 1.35).setDepth(300);
+    this.hirsch = new OktopusHirsch(this, 240, WY, 0.58).setDepth(300);
     this.hirsch.on('schlag', (pt: Pt) => this.aufprall(pt));
     this.hirsch.on('strahl', (pt: Pt) => { this.strahl = { x: pt.x, y: pt.y, bis: this.time.now + 720, getroffen: false }; });
     if (f.klaerwerk === 'duell') { this.hirsch.bereit(); this.katzeSetzen(true); void this.verwandlung(true); return; }
@@ -263,7 +263,7 @@ export class KlaerwerkScene extends Phaser.Scene {
 
   private katzeSetzen(amPlatz: boolean) {
     const pos = amPlatz ? KATZE_P : { x: TUER.x + 2, y: TUER.y + 12 };
-    this.katze = this.add.sprite(pos.x, pos.y, 'katzeKanal', 4).setOrigin(0.5, 1).setScale(0.75).setDepth(pos.y);
+    this.katze = this.add.sprite(pos.x, pos.y, 'katzeKanal', 4).setOrigin(0.5, 1).setDepth(pos.y);
     if (amPlatz) this.katze.play('katzeKanal_sitz');
     this.katzeLicht = this.add.image(pos.x, pos.y - 6, 'light').setBlendMode(Phaser.BlendModes.ADD).setTint(0x6aff4a).setScale(0.3).setAlpha(0.2).setDepth(9);
     this.katzeWachsen(false);
@@ -273,7 +273,7 @@ export class KlaerwerkScene extends Phaser.Scene {
   private katzeWachsen(animiert: boolean) {
     const n = state.flags.klaerwerkRatten ?? 0, k = this.katze;
     if (!k) return;
-    const s = 0.75 * (1 + n * 0.05);
+    const s = 1 + n * 0.05;
     const g = Math.round(255 - n * 9);
     if (animiert) {
       this.tweens.add({ targets: k, scaleX: s * 1.25, scaleY: s * 0.8, duration: 90, yoyo: true, onComplete: () => k.setScale(s) });
@@ -347,6 +347,7 @@ export class KlaerwerkScene extends Phaser.Scene {
   update(_t: number, delta: number) {
     const dt = Math.min(delta, 50);
     this.brueheMalen();
+    if (this.hirsch) this.hirsch.blick = { x: this.wirt.x, y: this.wirt.y - 24 };
     if (this.modus === 'kino') return;
     this.bewegen(dt);
     if (this.modus === 'frei') return;
@@ -499,7 +500,7 @@ export class KlaerwerkScene extends Phaser.Scene {
 
   private ratteNeu() {
     const [x, y] = Phaser.Utils.Array.GetRandom(ROHRE);
-    const s = this.add.sprite(x, y, 'kanalRatte', 0).setOrigin(0.5, 0.8).setScale(0.6).setDepth(y);
+    const s = this.add.sprite(x, y, 'kanalRatte', 0).setOrigin(0.5, 0.8).setDepth(y);
     const ziel = { x: x + (x < 240 ? 26 : x > 400 ? -26 : 0), y: y + (y < 120 ? 18 : 0) };
     if (y < 120) ziel.x = x;
     const rt: Ratte = { s, modus: 'raus', zx: ziel.x, zy: ziel.y, t: 0, seed: Math.random() * 10 };
@@ -629,7 +630,7 @@ export class KlaerwerkScene extends Phaser.Scene {
     if (!h) return;
     const z = { x: this.wirt.x, y: this.wirt.y - 4 };
     const g = this.add.graphics().setDepth(299).setBlendMode(Phaser.BlendModes.ADD);
-    const kopf = h.welt({ x: 0, y: -80 });
+    const kopf = h.welt({ x: 0, y: -180 });
     const ende = this.time.now + 600;
     const zeichne = () => {
       g.clear();
@@ -781,10 +782,10 @@ export class KlaerwerkScene extends Phaser.Scene {
     this.katze = undefined;
     this.katzeLicht?.destroy();
     licht.destroy();
-    const mk = new MutantKatze(this, x0 + 8, KATZE_P.y + 4, 0.2).setDepth(KATZE_P.y + 4);
+    const mk = new MutantKatze(this, x0 + 8, KATZE_P.y + 4, 0.85).setDepth(KATZE_P.y + 4).setScale(0.2);
     this.mk = mk;
-    mk.reiter?.setVisible(false);
-    await this.tw({ targets: mk, scaleX: 1.2, scaleY: 1.2, duration: 500, ease: 'Back.easeOut' });
+    mk.reiterZeigen(false);
+    await this.tw({ targets: mk, scaleX: 1, scaleY: 1, duration: 500, ease: 'Back.easeOut' });
     if (this.kinoAus) return;
     await mk.fauchen();
     await this.sagK('DIE KATZE', GRUEN, 'Da ist sie wieder. Die Form von damals.');
@@ -792,13 +793,13 @@ export class KlaerwerkScene extends Phaser.Scene {
     if (this.kinoAus) return;
     this.ui?.leer();
     // der Wirt springt auf den Rücken
-    const ziel = mk.welt({ x: -6, y: -32 });
+    const ziel = mk.reiterWelt();
     audio.sfx('whoosh');
     this.tweens.add({ targets: w, x: ziel.x, duration: 520, ease: 'Linear' });
     await this.tw({ targets: w, y: ziel.y - 30, duration: 260, ease: 'Quad.easeOut' });
     await this.tw({ targets: w, y: ziel.y, duration: 260, ease: 'Quad.easeIn' });
     w.setVisible(false);
-    mk.reiter?.setVisible(true);
+    mk.reiterZeigen(true);
     mk.treffer();
     audio.sfx('thud');
     unlock('zweiSeelen');
@@ -826,7 +827,7 @@ export class KlaerwerkScene extends Phaser.Scene {
     this.uiZeigen(false);
     this.wirt.setVisible(false);
     audio.music('kanal');
-    const mk = new MutantKatze(this, 196, 222, 1.2).setDepth(222);
+    const mk = new MutantKatze(this, 196, 228, 0.85).setDepth(228);
     this.mk = mk;
     this.kinoStart(() => this.endeFertig());
     await this.warte(1200);
@@ -837,11 +838,11 @@ export class KlaerwerkScene extends Phaser.Scene {
     const m = await mk.wuergen();
     if (this.kinoAus) return;
     // Jan fliegt in hohem Bogen heraus, voller Schleim
-    const jan = this.add.sprite(m.x, m.y, 'cd_jan', 0).setOrigin(0.5, 0.6).setScale(0.3).setTint(0x9adf7a).setDepth(400);
+    const jan = this.add.sprite(m.x, m.y, 'cd_jan', 0).setOrigin(0.5, 0.6).setScale(0.4).setTint(0x9adf7a).setDepth(400);
     audio.sfx('puke');
     this.funken(m.x, m.y, 0x8ac83a, 14);
     this.tweens.add({ targets: jan, x: 300, duration: 900, ease: 'Linear' });
-    this.tweens.add({ targets: jan, rotation: Math.PI * 3.5, scale: 0.9, duration: 900 });
+    this.tweens.add({ targets: jan, rotation: Math.PI * 3.5, scale: 1.2, duration: 900 });
     await this.tw({ targets: jan, y: 150, duration: 420, ease: 'Quad.easeOut' });
     await this.tw({ targets: jan, y: 236, duration: 480, ease: 'Quad.easeIn' });
     jan.setDepth(236);
@@ -867,16 +868,16 @@ export class KlaerwerkScene extends Phaser.Scene {
     audio.sfx('chime');
     await this.warte(500);
     this.cameras.main.flash(200, 160, 255, 160);
-    const wp = mk.welt({ x: -6, y: -32 });
+    const wp = mk.reiterWelt();
     this.wirt.setVisible(true).setPosition(wp.x, wp.y).setFrame(6).setFlipX(false).setDepth(400);
-    mk.reiter?.setVisible(false);
+    mk.reiterZeigen(false);
     this.tweens.add({ targets: this.wirt, x: 168, y: 226, duration: 420, ease: 'Quad.easeIn', onComplete: () => this.wirt.setDepth(226) });
     this.funken(mk.x, mk.y - 40, 0x8aff5a, 20);
     await this.tw({ targets: mk, scaleX: 0.25, scaleY: 0.25, alpha: 0, duration: 600, ease: 'Quad.easeIn' });
     mk.destroy();
     this.mk = undefined;
     const k = this.add.sprite(206, 226, 'katzeKanal', 4).setOrigin(0.5, 1).setScale(0.2).setDepth(226);
-    await this.tw({ targets: k, scale: 0.75, duration: 300, ease: 'Back.easeOut' });
+    await this.tw({ targets: k, scale: 1, duration: 300, ease: 'Back.easeOut' });
     k.play('katzeKanal_sitz');
     await this.sagK('DIE KATZE', GRUEN, 'Das bleibt unter uns, Wirt.');
     if (this.kinoAus) return;
@@ -939,7 +940,7 @@ export class KlaerwerkScene extends Phaser.Scene {
   private frei() {
     this.modus = 'frei';
     this.uiZeigen(false);
-    this.katze = this.add.sprite(KATZE_P.x, KATZE_P.y, 'katzeKanal', 4).setOrigin(0.5, 1).setScale(0.75).setDepth(KATZE_P.y).play('katzeKanal_sitz');
+    this.katze = this.add.sprite(KATZE_P.x, KATZE_P.y, 'katzeKanal', 4).setOrigin(0.5, 1).setDepth(KATZE_P.y).play('katzeKanal_sitz');
     audio.music('kanal');
     this.toast('Das Klärwerk. Still. Nur die Brühe blubbert.', 2600);
   }
